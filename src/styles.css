@@ -1,0 +1,112 @@
+@import "@fontsource/besley/latin-700.css";
+@import "@fontsource/manrope/latin-400.css";
+@import "@fontsource/manrope/latin-500.css";
+@import "@fontsource/manrope/latin-600.css";
+@import "@fontsource/manrope/latin-700.css";
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Besley", ui-serif, Georgia, serif;
+}
+
+:root {
+  color-scheme: dark;
+  --bg: #06070a;
+  --panel: rgba(14, 18, 27, 0.84);
+  --panel-strong: rgba(20, 25, 38, 0.96);
+  --border: rgba(161, 173, 201, 0.18);
+  --border-strong: rgba(227, 232, 255, 0.28);
+  --text: #eef2ff;
+  --accent: #7dd3fc;
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(circle at top, rgba(125, 211, 252, 0.18), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(251, 191, 36, 0.12), transparent 26%),
+    linear-gradient(180deg, #090b10 0%, #05060a 100%);
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top, rgba(125, 211, 252, 0.18), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(251, 191, 36, 0.12), transparent 26%),
+    linear-gradient(180deg, #090b10 0%, #05060a 100%);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(180deg, rgba(255, 255, 255, 0.45), transparent 92%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+input,
+textarea {
+  color: inherit;
+}
+
+::selection {
+  background: rgba(125, 211, 252, 0.28);
+}
+
+.surface {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow:
+    0 22px 60px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(18px);
+}
+
+.surface-strong {
+  background: var(--panel-strong);
+  border: 1px solid var(--border-strong);
+}
+
+.eyebrow {
+  color: var(--accent);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.panel-grid {
+  position: relative;
+  overflow: hidden;
+}
+
+.panel-grid::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.04), transparent 30%);
+}
