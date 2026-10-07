@@ -6,7 +6,6 @@ Chrome extension for overriding request headers with ordered rules.
 
 - React
 - TypeScript
-- Tailwind CSS v4
 - Vite
 - `@crxjs/vite-plugin`
 - Manifest V3
@@ -14,8 +13,9 @@ Chrome extension for overriding request headers with ordered rules.
 ## Features
 
 - Browser-wide request header override rules
-- Popup with per-rule enable and disable switches
-- Options page for creating, editing, deleting, and reordering rules
+- Popup rule list with enable switches and links to each rule editor
+- Home page listing rules, with a separate page for creating or editing each rule
+- Rule deletion
 - `chrome.storage.local` persistence
 - Automatic sync into `declarativeNetRequest` dynamic rules
 - Dark-mode UI

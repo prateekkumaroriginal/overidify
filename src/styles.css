@@ -1,112 +1,70 @@
-@import "@fontsource/besley/latin-700.css";
-@import "@fontsource/manrope/latin-400.css";
-@import "@fontsource/manrope/latin-500.css";
-@import "@fontsource/manrope/latin-600.css";
-@import "@fontsource/manrope/latin-700.css";
-@import "tailwindcss";
-
-@theme {
-  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Besley", ui-serif, Georgia, serif;
-}
-
 :root {
   color-scheme: dark;
-  --bg: #06070a;
-  --panel: rgba(14, 18, 27, 0.84);
-  --panel-strong: rgba(20, 25, 38, 0.96);
-  --border: rgba(161, 173, 201, 0.18);
-  --border-strong: rgba(227, 232, 255, 0.28);
-  --text: #eef2ff;
-  --accent: #7dd3fc;
-  font-family: var(--font-sans);
-  background:
-    radial-gradient(circle at top, rgba(125, 211, 252, 0.18), transparent 30%),
-    radial-gradient(circle at bottom right, rgba(251, 191, 36, 0.12), transparent 26%),
-    linear-gradient(180deg, #090b10 0%, #05060a 100%);
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #e5e5e5;
+  background: #111;
 }
 
-html,
-body,
-#app {
-  min-height: 100%;
-}
-
-body {
-  margin: 0;
-  color: var(--text);
-  background:
-    radial-gradient(circle at top, rgba(125, 211, 252, 0.18), transparent 30%),
-    radial-gradient(circle at bottom right, rgba(251, 191, 36, 0.12), transparent 26%),
-    linear-gradient(180deg, #090b10 0%, #05060a 100%);
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-  background-size: 32px 32px;
-  mask-image: linear-gradient(180deg, rgba(255, 255, 255, 0.45), transparent 92%);
-}
-
-* {
-  box-sizing: border-box;
-}
-
-button,
-input,
-textarea {
-  font: inherit;
-}
-
-button {
+* { box-sizing: border-box; }
+body { margin: 0; }
+button, input { font: inherit; }
+a { color: inherit; text-underline-offset: 3px; }
+button, .button {
+  padding: 6px 12px;
+  border: 1px solid #444;
+  border-radius: 3px;
+  color: inherit;
+  background: #1c1c1c;
+  text-decoration: none;
   cursor: pointer;
 }
-
-input,
-textarea {
+button:hover, .button:hover { background: #292929; }
+button:disabled, [aria-disabled="true"] { opacity: .4; cursor: default; }
+a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid #aaa; outline-offset: 3px; }
+input:not([type="checkbox"]) {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid #444;
+  border-radius: 3px;
   color: inherit;
+  background: #191919;
 }
+input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: #ccc; cursor: pointer; }
+h1 { margin: 0 0 20px; font-size: 20px; font-weight: 600; }
+h2 { margin: 0; font-size: 15px; font-weight: 600; }
+p { margin: 16px 0; }
+.page { max-width: 800px; margin: 0 auto; padding: 32px 24px; }
+.popup { width: 360px; padding: 16px; }
+.page-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 32px; }
+.page-header h1 { margin: 0; font-size: 18px; }
+.brand { font-size: 18px; font-weight: 600; text-decoration: none; }
+.muted, .hint { color: #999; }
+.hint { font-size: 12px; }
+.error { color: #f1a6a6; }
+.rule-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid #333; }
+.rule-row { display: flex; align-items: center; gap: 16px; border-bottom: 1px solid #333; }
+.rule-link { flex: 1; min-width: 0; display: grid; gap: 3px; padding: 14px 0; text-decoration: none; }
+.rule-link:hover .rule-name { text-decoration: underline; }
+.rule-name, .rule-url { overflow-wrap: anywhere; }
+.rule-name { font-weight: 500; }
+.rule-url { color: #aaa; font-family: ui-monospace, monospace; font-size: 12px; }
+fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.field { display: grid; gap: 6px; margin-bottom: 16px; }
+.checkbox-label { display: flex; align-items: center; gap: 8px; margin: 20px 0; }
+.section-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 28px 0 16px; }
+.header-row { display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; gap: 12px; margin-bottom: 16px; }
+.header-row .field { margin: 0; }
+.header-row button { padding: 8px 10px; }
+.form-actions { display: flex; align-items: center; gap: 16px; margin-top: 28px; }
+.delete-button { margin-left: auto; }
+footer { margin-top: 20px; font-size: 12px; }
 
-::selection {
-  background: rgba(125, 211, 252, 0.28);
-}
-
-.surface {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  box-shadow:
-    0 22px 60px rgba(0, 0, 0, 0.26),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(18px);
-}
-
-.surface-strong {
-  background: var(--panel-strong);
-  border: 1px solid var(--border-strong);
-}
-
-.eyebrow {
-  color: var(--accent);
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  font-size: 0.68rem;
-  font-weight: 700;
-}
-
-.panel-grid {
-  position: relative;
-  overflow: hidden;
-}
-
-.panel-grid::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.04), transparent 30%);
+@media (max-width: 520px) {
+  .page { padding: 20px 16px; }
+  .header-row { grid-template-columns: 1fr; padding-bottom: 16px; border-bottom: 1px solid #333; }
+  .header-row button { justify-self: start; }
+  .form-actions { flex-wrap: wrap; gap: 12px; }
 }
