@@ -7,6 +7,8 @@ Chrome extension for overriding request headers with rules and named switchers.
 - React
 - TypeScript
 - Vite
+- Tailwind CSS v4
+- shadcn/ui with Radix primitives
 - `@crxjs/vite-plugin`
 - Manifest V3
 
@@ -38,6 +40,8 @@ pnpm dev
 Commit dependency changes with `pnpm-lock.yaml`. For CI or a reproducible install, use `pnpm install --frozen-lockfile`.
 
 Open `/options.html` or `/popup.html` to preview the UI in a regular browser. Development previews store rules in browser local storage; the installed extension uses `chrome.storage.local`.
+
+Styling uses Tailwind utilities and local shadcn components in `src/components/ui`. Theme tokens and shared base styles live in `src/styles.css`. Add components with `pnpm dlx shadcn@latest add <component>`.
 
 ## Tests
 

@@ -80,21 +80,21 @@ export function PopupApp() {
     : []
 
   return (
-    <main className="popup">
+    <main className="w-full px-[18px] pt-2 pb-3.5">
       {error && (
-        <p className="notice error" role="alert">
+        <p className="mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 border-[#494949] bg-[#2b2b2b] text-[#bebebe]" role="alert">
           {error}
         </p>
       )}
       {loading ? (
-        <p className="popup-message" role="status">
+        <p className="py-4 text-xs text-muted-foreground" role="status">
           Loading...
         </p>
       ) : (
         pageRules.length ? (
-          <ul className="popup-rule-list">
+          <ul className="m-0 max-h-[400px] list-none overflow-y-auto p-0">
             {pageRules.map((rule) => (
-              <li className="popup-rule-row" key={rule.id}>
+              <li className="flex min-h-12 items-center gap-3 border-b py-3 last:border-b-0" key={rule.id}>
                 <ToggleSwitch
                   checked={rule.enabled}
                   label={`Enable ${rule.name}`}
@@ -103,7 +103,7 @@ export function PopupApp() {
                     void handleUpdate(rule, { enabled })
                   }}
                 />
-                <span className="popup-rule-name">{rule.name}</span>
+                <span className="min-w-0 flex-1 text-[13px] wrap-anywhere">{rule.name}</span>
                 {rule.kind === 'switcher' && <SwitcherOptionSelect
                   switcher={rule}
                   disabled={pending}
@@ -113,10 +113,10 @@ export function PopupApp() {
             ))}
           </ul>
         ) : (
-          <p className="popup-message">No matches for this page</p>
+          <p className="py-4 text-xs text-muted-foreground">No matches for this page</p>
         )
       )}
-      <footer className="popup-footer">
+      <footer className="mt-2 flex justify-end border-t pt-3 [&_a]:text-xs [&_a]:text-muted-foreground [&_a]:no-underline [&_a:hover]:text-foreground">
         <a href="options.html#/" target="_blank" rel="noreferrer">
           Settings
         </a>

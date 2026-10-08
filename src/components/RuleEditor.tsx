@@ -1,3 +1,5 @@
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import { useState } from 'react'
 import type { SubmitEvent } from 'react'
 import { isValidUrlPattern } from '../lib/pattern'
@@ -54,11 +56,11 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
   }
 
   return (
-    <section className="editor rule-editor" aria-labelledby="editor-title">
-      <a className="back-link" href="#/">
+    <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="editor-title">
+      <a className="inline-flex items-center gap-2 text-[11px] text-muted-foreground no-underline hover:text-primary [&_svg]:w-[15px]" href="#/">
         <Icon name="back" /> Back to rules
       </a>
-      <div className="editor-heading">
+      <div className="mt-[27px] mb-[30px] mobile:mt-5 [&_h1]:text-xl [&_h1]:leading-[1.4] [&_h1]:font-semibold">
         <h1 id="editor-title">{rule ? 'Edit rule' : 'New rule'}</h1>
       </div>
       <form
@@ -67,17 +69,17 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
           void handleSubmit(event)
         }}
       >
-        <fieldset disabled={pending}>
-          <div className="editor-card">
-            <div className="card-heading">
+        <fieldset className="m-0 min-w-0 border-0 p-0" disabled={pending}>
+          <div className="mb-5 rounded-[10px] border bg-card px-7 pt-[25px] mobile:px-[17px] mobile:pt-5">
+            <div className="mb-6 flex items-center justify-between gap-[13px] mobile:flex-wrap mobile:gap-[9px] [&_h2]:text-[13px] [&_h2]:font-bold [&_h2]:tracking-[-0.2px] mobile:[&>div]:flex-1">
               <div>
                 <h2>Rule details</h2>
               </div>
             </div>
-            <div className="details-fields">
-              <label className="field">
+            <div className="mb-[22px] grid grid-cols-[1fr_1.35fr] gap-6 mobile:grid-cols-1 mobile:gap-[17px]">
+              <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">
                 Rule name
-                <input
+                <Input
                   value={draft.name}
                   onChange={(event) =>
                     setDraft({ ...draft, name: event.target.value })
@@ -87,10 +89,10 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
                   required
                 />
               </label>
-              <label className="field">
+              <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">
                 URL pattern
-                <input
-                  className="mono-input"
+                <Input
+                  className="font-mono text-[11px]"
                   value={draft.url}
                   onChange={(event) =>
                     setDraft({ ...draft, url: event.target.value })
@@ -101,8 +103,8 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
                 />
               </label>
             </div>
-            <div className="enabled-setting">
-              <span className="setting-title">Enabled</span>
+            <div className="flex items-center justify-between gap-5 border-t py-[17px]">
+              <span className="text-[11px] font-semibold">Enabled</span>
               <ToggleSwitch
                 checked={draft.enabled}
                 label="Rule enabled"
@@ -110,13 +112,12 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
               />
             </div>
           </div>
-          <div className="editor-card">
-            <div className="card-heading">
+          <div className="mb-5 rounded-[10px] border bg-card px-7 pt-[25px] mobile:px-[17px] mobile:pt-5">
+            <div className="mb-6 flex items-center justify-between gap-[13px] mobile:flex-wrap mobile:gap-[9px] [&_h2]:text-[13px] [&_h2]:font-bold [&_h2]:tracking-[-0.2px] mobile:[&>div]:flex-1">
               <div>
                 <h2>Request headers</h2>
               </div>
-              <button
-                className="button button-secondary add-header"
+              <Button variant="outline" className="ml-auto h-auto min-h-[35px] px-2.5 py-[7px] text-[10px] [&_svg]:size-[15px]"
                 type="button"
                 onClick={() =>
                   setDraft({
@@ -126,18 +127,18 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
                 }
               >
                 <Icon name="plus" /> Add header
-              </button>
+              </Button>
             </div>
-            <div className="header-list">
+            <div className="min-w-0">
               {draft.headers.map((header, index) => (
-                <div className="header-row" key={index}>
-                  <span className="header-index">
+                <div className="mb-6 grid grid-cols-[20px_minmax(0,1fr)_minmax(0,1.4fr)_26px] items-end gap-[13px] mobile:gap-3 mobile:grid-cols-[1fr_26px] mobile:items-center mobile:border-b mobile:pb-5 mobile:last:border-b-0 mobile:last:pb-0" key={index}>
+                  <span className="pb-3 font-mono text-[10px] text-[#acacac] mobile:hidden">
                     {String(index + 1).padStart(2, '0')}
                   </span>
-                  <label className="field">
+                  <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">
                     {index === 0 && 'Name'}
-                    <input
-                      className="mono-input"
+                    <Input
+                      className="font-mono text-[11px]"
                       value={header.key}
                       onChange={(event) =>
                         updateHeader(index, 'key', event.target.value)
@@ -146,10 +147,10 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
                       aria-label={`Header ${index + 1} name`}
                     />
                   </label>
-                  <label className="field">
+                  <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">
                     {index === 0 && 'Value'}
-                    <input
-                      className="mono-input"
+                    <Input
+                      className="font-mono text-[11px]"
                       value={header.value}
                       onChange={(event) =>
                         updateHeader(index, 'value', event.target.value)
@@ -158,8 +159,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
                       aria-label={`Header ${index + 1} value`}
                     />
                   </label>
-                  <button
-                    className="icon-button remove-header"
+                  <Button variant="ghost" className="mb-[7px] size-[26px] text-[#b2b2b2] [&_svg]:size-[15px] mobile:col-start-2 mobile:row-span-2 mobile:row-start-1 mobile:mb-0"
                     type="button"
                     aria-label={`Remove header ${index + 1}`}
                     onClick={() =>
@@ -173,36 +173,36 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
                     }
                   >
                     <Icon name="close" />
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
           </div>
           {saveState.message && (
             <p
-              className={`notice ${saveState.tone === 'error' ? 'error' : 'success'}`}
+              className={`mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 ${saveState.tone === 'error' ? 'border-[#494949] bg-[#2b2b2b] text-[#bebebe]' : 'border-[#515151] bg-[#323232] text-[#cdcdcd]'}`}
               role={saveState.tone === 'error' ? 'alert' : 'status'}
             >
               <Icon name={saveState.tone === 'error' ? 'close' : 'check'} />
               {saveState.message}
             </p>
           )}
-          <div className="form-actions">
-            <button className="button button-primary" type="submit">
+          <div className="mt-[25px] mb-10 flex items-center gap-[23px] mobile:gap-[17px]">
+            <Button variant="default" className="h-auto min-h-[46px] px-5 py-[13px] text-xs font-bold mobile:px-[15px] mobile:py-3" type="submit">
               <Icon name="check" />
               {pending ? 'Saving...' : 'Save rule'}
-            </button>
-            <a className="cancel-link" href="#/">
+            </Button>
+            <a className="text-[11px] text-muted-foreground no-underline hover:text-foreground" href="#/">
               Cancel
             </a>
             {onDelete && (
-              <button
+              <Button variant="ghost"
                 type="button"
-                className="delete-button"
+                className="ml-auto h-auto pr-0 pl-3 py-[9px] rounded-none text-[11px] text-[#aeaeae] hover:bg-transparent hover:text-[#bebebe]"
                 onClick={onDelete}
               >
                 Delete rule
-              </button>
+              </Button>
             )}
           </div>
         </fieldset>

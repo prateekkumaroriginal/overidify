@@ -1,3 +1,5 @@
+import { Switch } from '@/components/ui/switch'
+
 type ToggleSwitchProps = {
   checked: boolean
   label: string
@@ -12,14 +14,11 @@ export function ToggleSwitch({
   disabled = false,
 }: ToggleSwitchProps) {
   return (
-    <input
-      className="toggle-switch"
-      type="checkbox"
-      role="switch"
+    <Switch
       checked={checked}
       aria-label={label}
       disabled={disabled}
-      onChange={(event) => onChange(event.target.checked)}
+      onCheckedChange={onChange}
     />
   )
 }

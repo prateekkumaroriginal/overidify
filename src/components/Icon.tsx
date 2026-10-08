@@ -35,7 +35,7 @@ export function Icon({
 }) {
   return (
     <svg
-      className={`icon ${className}`}
+      className={`shrink-0 align-middle ${className}`}
       width="20"
       height="20"
       viewBox="0 0 24 24"
