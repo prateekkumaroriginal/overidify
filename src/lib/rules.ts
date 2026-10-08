@@ -20,7 +20,7 @@ export function createRuleDraft(): RuleDraft {
   return { name: '', url: '*', enabled: true, headers: [createHeaderPair()] }
 }
 
-export function createSwitcherOption(name = 'Default'): SwitcherOption {
+export function createSwitcherOption(name = 'Option 1'): SwitcherOption {
   return { id: createRuleId(), name, headers: [createHeaderPair()] }
 }
 
@@ -127,7 +127,7 @@ function normalizeEntry(input: unknown, index: number): HeaderEntry {
           headers: normalizeHeaders(option.headers),
         }
       })
-    : [{ id: `${id}-default`, name: 'Default', headers: normalizeHeaders(candidate.headers) }]
+    : [{ id: `${id}-default`, name: 'Option 1', headers: normalizeHeaders(candidate.headers) }]
   return {
     ...base,
     kind: 'switcher',

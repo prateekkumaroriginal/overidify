@@ -118,10 +118,10 @@ export function SwitcherEditor({ switcher, pending, onSave, onDelete }: Switcher
             <div className="mb-6 flex items-center justify-between gap-[13px] mobile:flex-wrap mobile:gap-[9px] [&_h2]:text-[13px] [&_h2]:font-bold [&_h2]:tracking-[-0.2px]"><h2>Switcher details</h2></div>
             <div className="mb-[22px] grid grid-cols-[1fr_1.35fr] gap-6 mobile:grid-cols-1 mobile:gap-[17px]">
               <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">Switcher name
-                <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="Authenticated API" autoFocus required />
+                <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="e.g. Authenticated API" autoFocus required />
               </label>
               <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">URL pattern
-                <Input className="font-mono text-[11px]" value={draft.url} onChange={(event) => setDraft({ ...draft, url: event.target.value })} placeholder="*://api.example.com/*" required />
+                <Input className="font-mono text-[11px]" value={draft.url} onChange={(event) => setDraft({ ...draft, url: event.target.value })} placeholder="e.g. *://api.example.com/*" required />
               </label>
             </div>
             <div className="flex items-center justify-between gap-5 border-t py-[17px]">
@@ -132,7 +132,7 @@ export function SwitcherEditor({ switcher, pending, onSave, onDelete }: Switcher
           <div className="mb-5 rounded-[10px] border bg-card px-7 pt-[25px] mobile:px-[17px] mobile:pt-5 pb-6 mobile:pb-5">
             <div className="mb-6 flex items-center justify-between gap-[13px] mobile:flex-wrap mobile:gap-[9px] [&_h2]:text-[13px] [&_h2]:font-bold [&_h2]:tracking-[-0.2px]">
               <h2>Options</h2>
-              <Button variant="ghost" className="h-auto rounded-none px-0 py-[5px] text-xs text-[#bcbcbc] hover:bg-transparent hover:text-foreground" type="button" onClick={addOption}>Add option</Button>
+              <Button variant="outline" size="sm" className="border-input bg-accent text-foreground [&_svg]:size-3.5" type="button" onClick={addOption}><Icon name="plus" />Add option</Button>
             </div>
             <div className="grid grid-cols-[164px_minmax(0,1fr)] gap-6 mobile:grid-cols-1 mobile:gap-5">
               <div className="flex min-w-0 flex-col gap-1.5 self-start border-r pr-4 mobile:flex-row mobile:flex-wrap mobile:border-r-0 mobile:border-b mobile:pr-0 mobile:pb-4" aria-label="Options to edit">
@@ -160,16 +160,16 @@ export function SwitcherEditor({ switcher, pending, onSave, onDelete }: Switcher
                   {editingOption.headers.map((header, index) => (
                     <div className="mb-4 grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_26px] items-end gap-3 mobile:grid-cols-[1fr_26px] mobile:items-center mobile:border-b mobile:pb-5 mobile:last:border-b-0 mobile:last:pb-0" key={index}>
                       <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">{index === 0 && 'Header'}
-                        <Input className="font-mono text-[11px]" value={header.key} onChange={(event) => updateHeader(index, 'key', event.target.value)} placeholder="Authorization" aria-label={`Header ${index + 1} name`} />
+                        <Input className="font-mono text-[11px]" value={header.key} onChange={(event) => updateHeader(index, 'key', event.target.value)} placeholder="e.g. Authorization" aria-label={`Header ${index + 1} name`} />
                       </label>
                       <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">{index === 0 && 'Value'}
-                        <Input className="font-mono text-[11px]" value={header.value} onChange={(event) => updateHeader(index, 'value', event.target.value)} placeholder="Bearer token" aria-label={`Header ${index + 1} value`} />
+                        <Input className="font-mono text-[11px]" value={header.value} onChange={(event) => updateHeader(index, 'value', event.target.value)} placeholder="e.g. Bearer token" aria-label={`Header ${index + 1} value`} />
                       </label>
                       <Button variant="ghost" className="mb-[7px] size-[26px] text-[#b2b2b2] [&_svg]:size-[15px] mobile:col-start-2 mobile:row-span-2 mobile:row-start-1 mobile:mb-0" type="button" aria-label={`Remove header ${index + 1}`} onClick={() => updateOption((option) => ({ ...option, headers: option.headers.filter((_, i) => i !== index) }))}><Icon name="close" /></Button>
                     </div>
                   ))}
                 </div>
-                <Button variant="ghost" className="h-auto rounded-none px-0 py-[5px] text-xs text-[#bcbcbc] hover:bg-transparent hover:text-foreground" type="button" onClick={() => updateOption((option) => ({ ...option, headers: [...option.headers, createHeaderPair()] }))}>Add header</Button>
+                <Button variant="outline" size="sm" className="border-input bg-accent text-foreground [&_svg]:size-3.5" type="button" onClick={() => updateOption((option) => ({ ...option, headers: [...option.headers, createHeaderPair()] }))}><Icon name="plus" />Add header</Button>
               </div>
             </div>
             {deletedOption && <div className="mt-[18px] flex items-center gap-3 border-t pt-4 text-xs text-[#aaa]" role="status"><span>{deletedOption.option.name} deleted</span><Button variant="link" className="min-h-0 min-w-0 rounded-none px-1.5 py-[1px] text-xs underline" type="button" onClick={undoDelete}>Undo</Button></div>}

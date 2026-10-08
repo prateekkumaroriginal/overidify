@@ -84,7 +84,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
                   onChange={(event) =>
                     setDraft({ ...draft, name: event.target.value })
                   }
-                  placeholder="Authenticated API"
+                  placeholder="e.g. Authenticated API"
                   autoFocus
                   required
                 />
@@ -97,7 +97,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
                   onChange={(event) =>
                     setDraft({ ...draft, url: event.target.value })
                   }
-                  placeholder="*://api.example.com/*"
+                  placeholder="e.g. *://api.example.com/*"
                   aria-label="URL pattern"
                   required
                 />
@@ -143,7 +143,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
                       onChange={(event) =>
                         updateHeader(index, 'key', event.target.value)
                       }
-                      placeholder="Authorization"
+                      placeholder="e.g. Authorization"
                       aria-label={`Header ${index + 1} name`}
                     />
                   </label>
@@ -155,7 +155,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
                       onChange={(event) =>
                         updateHeader(index, 'value', event.target.value)
                       }
-                      placeholder="Bearer token"
+                      placeholder="e.g. Bearer token"
                       aria-label={`Header ${index + 1} value`}
                     />
                   </label>
