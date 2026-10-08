@@ -1,35 +1,27 @@
 import { startTransition, useEffect, useState } from 'react'
-import type { SubmitEvent } from 'react'
+import type { KeyboardEvent } from 'react'
 
 import { Brand } from '../components/Brand'
 import { Icon } from '../components/Icon'
+import { RuleEditor } from '../components/RuleEditor'
 import { RulesList } from '../components/RulesList'
-import { ToggleSwitch } from '../components/ToggleSwitch'
-import { isValidUrlPattern } from '../lib/pattern'
-import {
-  createHeaderPair,
-  createRuleDraft,
-  createRuleId,
-  getRules,
-  ruleToDraft,
-  saveRules,
-  subscribeToRules,
-} from '../lib/storage'
-import type { HeaderPair, HeaderRule, RuleDraft } from '../lib/types'
-
-type SaveState = {
-  tone: 'idle' | 'success' | 'error'
-  message: string
-}
-
-const initialSaveState: SaveState = { tone: 'idle', message: '' }
+import { SwitcherEditor } from '../components/SwitcherEditor'
+import { SwitchersList } from '../components/SwitchersList'
+import { createRuleId, getEntryHeaders, sanitizeHeaders } from '../lib/rules'
+import { getEntries, saveEntries, subscribeToEntries } from '../lib/storage'
+import type { HeaderEntry, HeaderRule, HeaderSwitcher, RuleDraft, SwitcherDraft } from '../lib/types'
 
 function readRoute() {
   return window.location.hash.slice(1) || '/'
 }
 
+function entryRoute(entry: HeaderEntry) {
+  const group = entry.kind === 'switcher' ? 'switchers' : 'rules'
+  return `/${group}/${encodeURIComponent(entry.id)}`
+}
+
 export function OptionsApp() {
-  const [rules, setRules] = useState<HeaderRule[]>([])
+  const [entries, setEntries] = useState<HeaderEntry[]>([])
   const [route, setRoute] = useState(readRoute)
   const [loading, setLoading] = useState(true)
   const [loadFailed, setLoadFailed] = useState(false)
@@ -44,448 +36,218 @@ export function OptionsApp() {
 
   useEffect(() => {
     let alive = true
-
-    async function load() {
-      try {
-        const nextRules = await getRules()
-        if (alive) {
-          startTransition(() => {
-            setRules(nextRules)
-            setLoading(false)
-          })
-        }
-      } catch {
-        if (alive) {
-          setError('Could not load rules. Reopen this page to try again.')
-          setLoadFailed(true)
-          setLoading(false)
-        }
+    void getEntries().then((nextEntries) => {
+      if (alive) startTransition(() => { setEntries(nextEntries); setLoading(false) })
+    }).catch(() => {
+      if (alive) {
+        setError('Could not load your settings. Reopen this page to try again.')
+        setLoadFailed(true)
+        setLoading(false)
       }
-    }
-
-    void load()
-    const unsubscribe = subscribeToRules((nextRules) => {
-      if (alive) startTransition(() => setRules(nextRules))
     })
-    return () => {
-      alive = false
-      unsubscribe()
-    }
+    const unsubscribe = subscribeToEntries((nextEntries) => {
+      if (alive) startTransition(() => setEntries(nextEntries))
+    })
+    return () => { alive = false; unsubscribe() }
   }, [])
 
-  async function persistRules(nextRules: HeaderRule[]) {
+  async function persistEntries(nextEntries: HeaderEntry[]) {
     setPending(true)
     setError('')
     try {
-      const savedRules = await saveRules(nextRules)
-      setRules(savedRules)
-      return savedRules
+      const saved = await saveEntries(nextEntries)
+      setEntries(saved)
+      return saved
     } finally {
       setPending(false)
     }
   }
 
-  async function handleSaveRule(draft: RuleDraft, ruleId?: string) {
-    const nextRule: HeaderRule = {
+  async function persistEntry(entry: HeaderEntry, existingId?: string) {
+    await persistEntries(existingId
+      ? entries.map((current) => current.id === existingId ? entry : current)
+      : [...entries, entry])
+    if (!existingId) window.location.hash = entryRoute(entry)
+  }
+
+  async function handleSaveRule(draft: RuleDraft, ruleId?: string): Promise<HeaderRule> {
+    const current = entries.find((entry) => entry.id === ruleId)
+    const rule: HeaderRule = {
+      kind: 'rule',
       id: ruleId ?? createRuleId(),
       name: draft.name.trim(),
       url: draft.url.trim(),
       enabled: draft.enabled,
       headers: sanitizeHeaders(draft.headers),
-      order: ruleId
-        ? (rules.find((rule) => rule.id === ruleId)?.order ?? rules.length)
-        : rules.length,
+      order: current?.order ?? entries.length,
     }
-    const nextRules = ruleId
-      ? rules.map((rule) => (rule.id === ruleId ? nextRule : rule))
-      : [...rules, nextRule]
-    await persistRules(nextRules)
-    if (!ruleId) {
-      window.location.hash = `/rules/${encodeURIComponent(nextRule.id)}`
-    }
-    return nextRule
+    await persistEntry(rule, ruleId)
+    return rule
   }
 
-  async function handleDeleteRule(rule: HeaderRule) {
-    if (!window.confirm(`Delete "${rule.name}"?`)) {
-      return
+  async function handleSaveSwitcher(draft: SwitcherDraft, switcherId?: string): Promise<HeaderSwitcher> {
+    const current = entries.find((entry) => entry.id === switcherId)
+    const switcher: HeaderSwitcher = {
+      kind: 'switcher',
+      id: switcherId ?? createRuleId(),
+      name: draft.name.trim(),
+      url: draft.url.trim(),
+      enabled: draft.enabled,
+      options: draft.options.map((option) => ({
+        ...option, name: option.name.trim(), headers: sanitizeHeaders(option.headers),
+      })),
+      selectedOptionId: current?.kind === 'switcher' && draft.options.some((option) => option.id === current.selectedOptionId)
+        ? current.selectedOptionId
+        : draft.selectedOptionId,
+      order: current?.order ?? entries.length,
     }
+    await persistEntry(switcher, switcherId)
+    return switcher
+  }
+
+  async function handleDelete(entry: HeaderEntry) {
+    if (!window.confirm(`Delete "${entry.name}"?`)) return
     try {
-      await persistRules(
-        rules.filter((currentRule) => currentRule.id !== rule.id),
-      )
-      window.location.hash = '/'
+      await persistEntries(entries.filter((current) => current.id !== entry.id))
+      window.location.hash = entry.kind === 'switcher' ? '/switchers' : '/'
     } catch {
-      setError('Could not delete the rule. Try again.')
+      setError(`Could not delete the ${entry.kind}. Try again.`)
     }
   }
 
-  async function handleToggleRule(ruleId: string, enabled: boolean) {
+  async function handleToggle(entry: HeaderEntry, enabled: boolean) {
     try {
-      await persistRules(
-        rules.map((rule) => (rule.id === ruleId ? { ...rule, enabled } : rule)),
-      )
+      await persistEntries(entries.map((current) => current.id === entry.id ? { ...current, enabled } : current))
     } catch {
-      setError('Could not change rule state. Try again.')
+      setError(`Could not change ${entry.kind} state. Try again.`)
     }
   }
 
-  const selectedRule = rules.find(
-    (rule) => route === `/rules/${encodeURIComponent(rule.id)}`,
-  )
-  const isHome = route === '/'
+  async function handleSelectOption(switcher: HeaderSwitcher, selectedOptionId: string) {
+    try {
+      await persistEntries(entries.map((current) => current.id === switcher.id && current.kind === 'switcher'
+        ? { ...current, selectedOptionId }
+        : current))
+    } catch {
+      setError('Could not change the selected option. Try again.')
+    }
+  }
+
+  // Old bookmarks for multi-option rules still open their switcher editor.
+  const selected = entries.find((entry) => route === entryRoute(entry) || route === `/rules/${encodeURIComponent(entry.id)}`)
+  const isHome = route === '/' || route === '/switchers'
 
   return (
     <div className="app-shell">
-      <header className="site-header">
-        <Brand />
-      </header>
+      <header className="site-header"><Brand /></header>
       <main className="page">
-        {error && (
-          <p className="notice error" role="alert">
-            {error}
-          </p>
-        )}
+        {error && <p className="notice error" role="alert">{error}</p>}
         {loading ? (
-          <div className="loading-state" role="status">
-            <span className="loading-dot" /> Loading your rules...
-          </div>
+          <div className="loading-state" role="status"><span className="loading-dot" /> Loading...</div>
         ) : loadFailed ? null : isHome ? (
-          <RulesWorkspace
-            rules={rules}
+          <Workspace
+            entries={entries}
+            view={route === '/switchers' ? 'switcher' : 'rule'}
             pending={pending}
-            onToggle={(rule, enabled) => {
-              void handleToggleRule(rule.id, enabled)
-            }}
+            onToggle={(entry, enabled) => { void handleToggle(entry, enabled) }}
+            onSelectOption={(switcher, optionId) => { void handleSelectOption(switcher, optionId) }}
           />
-        ) : route === '/new' || selectedRule ? (
+        ) : route === '/new' || selected?.kind === 'rule' ? (
           <RuleEditor
             key={route}
-            rule={selectedRule}
+            rule={selected?.kind === 'rule' ? selected : undefined}
             pending={pending}
-            onSave={(draft) => handleSaveRule(draft, selectedRule?.id)}
-            onDelete={
-              selectedRule
-                ? () => {
-                    void handleDeleteRule(selectedRule)
-                  }
-                : undefined
-            }
+            onSave={(draft) => handleSaveRule(draft, selected?.id)}
+            onDelete={selected ? () => { void handleDelete(selected) } : undefined}
+          />
+        ) : route === '/switchers/new' || selected?.kind === 'switcher' ? (
+          <SwitcherEditor
+            key={route}
+            switcher={selected?.kind === 'switcher' ? selected : undefined}
+            pending={pending}
+            onSave={(draft) => handleSaveSwitcher(draft, selected?.id)}
+            onDelete={selected ? () => { void handleDelete(selected) } : undefined}
           />
         ) : (
-          <div className="empty-state">
-            <h1>Rule not found.</h1>
-            <a className="button" href="#/">
-              Back to rules <Icon name="arrow" />
-            </a>
-          </div>
+          <div className="empty-state"><h1>Not found.</h1><a className="button" href="#/">Back to rules <Icon name="arrow" /></a></div>
         )}
       </main>
     </div>
   )
 }
 
-function RulesWorkspace({
-  rules,
-  pending,
-  onToggle,
-}: {
-  rules: HeaderRule[]
+type WorkspaceProps = {
+  entries: HeaderEntry[]
+  view: HeaderEntry['kind']
   pending: boolean
-  onToggle: (rule: HeaderRule, enabled: boolean) => void
-}) {
-  const [query, setQuery] = useState('')
-  const visibleRules = rules.filter((rule) => {
+  onToggle: (entry: HeaderEntry, enabled: boolean) => void
+  onSelectOption: (switcher: HeaderSwitcher, optionId: string) => void
+}
+
+function Workspace({ entries, view, pending, onToggle, onSelectOption }: WorkspaceProps) {
+  const [queries, setQueries] = useState({ rule: '', switcher: '' })
+  const query = queries[view]
+  const isSwitchers = view === 'switcher'
+  const noun = isSwitchers ? 'switcher' : 'rule'
+  const plural = isSwitchers ? 'switchers' : 'rules'
+  const newRoute = isSwitchers ? '#/switchers/new' : '#/new'
+  const group = entries.filter((entry) => entry.kind === view)
+  const visible = group.filter((entry) => {
     const term = query.trim().toLowerCase()
-    return (
-      !term ||
-      `${rule.name} ${rule.url} ${rule.headers.map((header) => header.key).join(' ')}`
-        .toLowerCase()
-        .includes(term)
-    )
+    const options = entry.kind === 'switcher'
+      ? entry.options.map((option) => `${option.name} ${option.headers.map((header) => header.key).join(' ')}`).join(' ')
+      : getEntryHeaders(entry).map((header) => header.key).join(' ')
+    return !term || `${entry.name} ${entry.url} ${options}`.toLowerCase().includes(term)
   })
 
-  return (
-    <section className="rules-section" aria-labelledby="rules-title">
-      <div className="section-heading">
-        <h1 id="rules-title">Request rules</h1>
-        <a className="button button-primary" href="#/new">
-          <Icon name="plus" /> New rule
-        </a>
-      </div>
-      <div className="rulebook">
-        <div className="rules-toolbar">
-          <label className="search-field">
-            <Icon name="search" />
-            <input
-              aria-label="Search rules"
-              placeholder="Find a rule..."
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-            {query && (
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Clear search"
-                onClick={() => setQuery('')}
-              >
-                <Icon name="close" />
-              </button>
-            )}
-          </label>
-        </div>
-        {rules.length === 0 ? (
-          <div className="empty-state">
-            <h3>No rules yet</h3>
-            <a className="empty-link" href="#/new">
-              Create your first rule <Icon name="arrow" />
-            </a>
-          </div>
-        ) : visibleRules.length ? (
-          <>
-            <div className="list-columns" aria-hidden="true">
-              <span>RULE / URL PATTERN</span>
-              <span>HEADERS</span>
-            </div>
-            <RulesList
-              rules={visibleRules}
-              disabled={pending}
-              ruleHref={(rule) => `#/rules/${encodeURIComponent(rule.id)}`}
-              onToggle={onToggle}
-            />
-          </>
-        ) : (
-          <div className="empty-state filtered-empty">
-            <Icon name="search" />
-            <h3>No matching rules.</h3>
-            <button
-              className="button button-secondary"
-              onClick={() => {
-                setQuery('')
-              }}
-            >
-              Show all rules
-            </button>
-          </div>
-        )}
-      </div>
-    </section>
-  )
-}
-
-type RuleEditorProps = {
-  rule?: HeaderRule
-  pending: boolean
-  onSave: (draft: RuleDraft) => Promise<HeaderRule>
-  onDelete?: () => void
-}
-
-function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps) {
-  const [draft, setDraft] = useState<RuleDraft>(() =>
-    rule ? ruleToDraft(rule) : createRuleDraft(),
-  )
-  const [saveState, setSaveState] = useState<SaveState>(initialSaveState)
-
-  function updateHeader(index: number, field: keyof HeaderPair, value: string) {
-    setDraft((current) => ({
-      ...current,
-      headers: current.headers.map((header, i) =>
-        i === index ? { ...header, [field]: value } : header,
-      ),
-    }))
-  }
-
-  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+  function handleTabKey(event: KeyboardEvent<HTMLButtonElement>) {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
     event.preventDefault()
-    const validationError = validateDraft(draft)
-    if (validationError) {
-      setSaveState({ tone: 'error', message: validationError })
-      return
-    }
-    try {
-      const savedRule = await onSave(draft)
-      setDraft(ruleToDraft(savedRule))
-      setSaveState({ tone: 'success', message: 'Rule saved.' })
-    } catch {
-      setSaveState({
-        tone: 'error',
-        message: 'Could not save the rule. Try again.',
-      })
-    }
+    const nextSwitchers = event.key === 'End' || (event.key !== 'Home' && !isSwitchers)
+    window.location.hash = nextSwitchers ? '/switchers' : '/'
+    document.getElementById(nextSwitchers ? 'switchers-tab' : 'rules-tab')?.focus()
   }
 
   return (
-    <section className="editor" aria-labelledby="editor-title">
-      <a className="back-link" href="#/">
-        <Icon name="back" /> Back to rules
-      </a>
-      <div className="editor-heading">
-        <h1 id="editor-title">{rule ? 'Edit rule' : 'New rule'}</h1>
+    <section className="rules-section">
+      <div className="workspace-tabs" role="tablist" aria-label="Header settings">
+        <button id="rules-tab" type="button" role="tab" aria-selected={!isSwitchers} aria-controls="workspace-panel" tabIndex={isSwitchers ? -1 : 0} onClick={() => { window.location.hash = '/' }} onKeyDown={handleTabKey}>Rules</button>
+        <button id="switchers-tab" type="button" role="tab" aria-selected={isSwitchers} aria-controls="workspace-panel" tabIndex={isSwitchers ? 0 : -1} onClick={() => { window.location.hash = '/switchers' }} onKeyDown={handleTabKey}>Switchers</button>
       </div>
-      <form
-        onSubmit={(event) => {
-          void handleSubmit(event)
-        }}
-      >
-        <fieldset disabled={pending}>
-          <div className="editor-card">
-            <div className="card-heading">
-              <div>
-                <h2>Rule details</h2>
-              </div>
-            </div>
-            <div className="details-fields">
-              <label className="field">
-                Rule name
-                <input
-                  value={draft.name}
-                  onChange={(event) =>
-                    setDraft({ ...draft, name: event.target.value })
-                  }
-                  placeholder="Authenticated API"
-                  autoFocus
-                  required
-                />
-              </label>
-              <label className="field">
-                URL pattern
-                <input
-                  className="mono-input"
-                  value={draft.url}
-                  onChange={(event) =>
-                    setDraft({ ...draft, url: event.target.value })
-                  }
-                  placeholder="*://api.example.com/*"
-                  aria-label="URL pattern"
-                  required
-                />
-              </label>
-            </div>
-            <div className="enabled-setting">
-              <span className="setting-title">Enabled</span>
-              <ToggleSwitch
-                checked={draft.enabled}
-                label="Rule enabled"
-                onChange={(enabled) => setDraft({ ...draft, enabled })}
-              />
-            </div>
+      <div id="workspace-panel" role="tabpanel" aria-labelledby={isSwitchers ? 'switchers-tab' : 'rules-tab'}>
+        <div className="section-heading">
+          <h1>{isSwitchers ? 'Switchers' : 'Rules'}</h1>
+          <a className="button button-primary" href={newRoute}><Icon name="plus" /> {isSwitchers ? 'New Switcher' : 'New Rule'}</a>
+        </div>
+        <div className="rulebook">
+          <div className="rules-toolbar">
+            <label className="search-field">
+              <Icon name="search" />
+              <input aria-label={`Search ${plural}`} placeholder={`Find a ${noun}...`} value={query} onChange={(event) => setQueries({ ...queries, [view]: event.target.value })} />
+              {query && <button type="button" className="icon-button" aria-label="Clear search" onClick={() => setQueries({ ...queries, [view]: '' })}><Icon name="close" /></button>}
+            </label>
           </div>
-          <div className="editor-card">
-            <div className="card-heading">
-              <div>
-                <h2>Request headers</h2>
-              </div>
-              <button
-                className="button button-secondary add-header"
-                type="button"
-                onClick={() =>
-                  setDraft({
-                    ...draft,
-                    headers: [...draft.headers, createHeaderPair()],
-                  })
-                }
-              >
-                <Icon name="plus" /> Add header
-              </button>
+          {!group.length ? (
+            <div className="empty-state">
+              <h3>No {plural} yet</h3>
+              <a className="button button-primary empty-create-button" href={newRoute}>
+                <Icon name="plus" /> {isSwitchers ? 'New Switcher' : 'New Rule'}
+              </a>
             </div>
-            <div className="header-list">
-              {draft.headers.map((header, index) => (
-                <div className="header-row" key={index}>
-                  <span className="header-index">
-                    {String(index + 1).padStart(2, '0')}
-                  </span>
-                  <label className="field">
-                    Name
-                    <input
-                      className="mono-input"
-                      value={header.key}
-                      onChange={(event) =>
-                        updateHeader(index, 'key', event.target.value)
-                      }
-                      placeholder="Authorization"
-                      aria-label={`Header ${index + 1} name`}
-                    />
-                  </label>
-                  <label className="field">
-                    Value
-                    <input
-                      className="mono-input"
-                      value={header.value}
-                      onChange={(event) =>
-                        updateHeader(index, 'value', event.target.value)
-                      }
-                      placeholder="Bearer token"
-                      aria-label={`Header ${index + 1} value`}
-                    />
-                  </label>
-                  <button
-                    className="icon-button remove-header"
-                    type="button"
-                    aria-label={`Remove header ${index + 1}`}
-                    onClick={() =>
-                      setDraft({
-                        ...draft,
-                        headers:
-                          draft.headers.length === 1
-                            ? [createHeaderPair()]
-                            : draft.headers.filter((_, i) => i !== index),
-                      })
-                    }
-                  >
-                    <Icon name="close" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-          {saveState.message && (
-            <p
-              className={`notice ${saveState.tone === 'error' ? 'error' : 'success'}`}
-              role={saveState.tone === 'error' ? 'alert' : 'status'}
-            >
-              <Icon name={saveState.tone === 'error' ? 'close' : 'check'} />
-              {saveState.message}
-            </p>
+          ) : visible.length ? (
+            isSwitchers ? (
+              <SwitchersList switchers={visible.filter((entry): entry is HeaderSwitcher => entry.kind === 'switcher')} disabled={pending} switcherHref={(switcher) => `#${entryRoute(switcher)}`} onToggle={onToggle} onSelectOption={onSelectOption} />
+            ) : (
+              <>
+                <div className="list-columns" aria-hidden="true"><span>RULE / URL PATTERN</span><span>HEADERS</span></div>
+                <RulesList rules={visible.filter((entry): entry is HeaderRule => entry.kind === 'rule')} disabled={pending} ruleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} />
+              </>
+            )
+          ) : (
+            <div className="empty-state filtered-empty"><Icon name="search" /><h3>No matching {plural}.</h3><button className="button button-secondary" onClick={() => setQueries({ ...queries, [view]: '' })}>Show all {plural}</button></div>
           )}
-          <div className="form-actions">
-            <button className="button button-primary" type="submit">
-              <Icon name="check" />
-              {pending ? 'Saving...' : 'Save rule'}
-            </button>
-            <a className="cancel-link" href="#/">
-              Cancel
-            </a>
-            {onDelete && (
-              <button
-                type="button"
-                className="delete-button"
-                onClick={onDelete}
-              >
-                Delete rule
-              </button>
-            )}
-          </div>
-        </fieldset>
-      </form>
+        </div>
+      </div>
     </section>
   )
-}
-
-function sanitizeHeaders(headers: HeaderPair[]): HeaderPair[] {
-  return headers
-    .map((header) => ({ key: header.key.trim(), value: header.value.trim() }))
-    .filter((header) => header.key || header.value)
-}
-
-function validateDraft(draft: RuleDraft): string | null {
-  if (!draft.name.trim()) return 'Rule name is required.'
-  if (!draft.url.trim()) return 'URL pattern is required.'
-  if (!isValidUrlPattern(draft.url.trim()))
-    return 'Use * or a wildcard URL pattern like *://api.example.com/*.'
-  const headers = sanitizeHeaders(draft.headers)
-  if (headers.length === 0) return 'Add at least one header pair.'
-  if (headers.some((header) => !header.key || !header.value))
-    return 'Each header row needs both a name and a value.'
-  return null
 }

@@ -1,6 +1,7 @@
 import { patternToRegexFilter } from './pattern'
+import { getEntryHeaders } from './rules'
 export { isValidUrlPattern, patternToRegexFilter } from './pattern'
-import type { HeaderRule } from './types'
+import type { HeaderEntry } from './types'
 
 const DYNAMIC_RULE_OFFSET = 1000
 
@@ -22,17 +23,17 @@ const RESOURCE_TYPES: chrome.declarativeNetRequest.ResourceType[] = [
 ]
 
 export function rulesToDynamicRules(
-  rules: HeaderRule[],
+  rules: HeaderEntry[],
 ): chrome.declarativeNetRequest.Rule[] {
   return [...rules]
     .sort((left, right) => left.order - right.order)
-    .filter((rule) => rule.enabled && rule.headers.length > 0)
+    .filter((rule) => rule.enabled && getEntryHeaders(rule).length > 0)
     .map((rule, index) => ({
       id: DYNAMIC_RULE_OFFSET + index,
       priority: DYNAMIC_RULE_OFFSET + index,
       action: {
         type: 'modifyHeaders',
-        requestHeaders: rule.headers.map((header) => ({
+        requestHeaders: getEntryHeaders(rule).map((header) => ({
           header: header.key,
           operation: 'set',
           value: header.value,
@@ -45,7 +46,7 @@ export function rulesToDynamicRules(
     }))
 }
 
-export async function syncDynamicRules(rules: HeaderRule[]): Promise<void> {
+export async function syncDynamicRules(rules: HeaderEntry[]): Promise<void> {
   const existingRules = await chrome.declarativeNetRequest.getDynamicRules()
   const nextRules = rulesToDynamicRules(rules)
 

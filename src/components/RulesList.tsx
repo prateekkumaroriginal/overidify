@@ -20,7 +20,7 @@ export function RulesList({
     <ul className="rule-list">
       {rules.map((rule, index) => (
         <li
-          className={`rule-row ${rule.enabled ? '' : 'rule-paused'}`}
+          className={`rule-row regular-rule-row ${rule.enabled ? '' : 'rule-paused'}`}
           key={rule.id}
           style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
         >

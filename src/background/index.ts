@@ -1,17 +1,32 @@
 import { syncDynamicRules } from '../lib/dnr'
-import { getRules, STORAGE_KEY } from '../lib/storage'
+import { getEntries, STORAGE_KEY } from '../lib/storage'
 
 async function syncFromStorage(): Promise<void> {
   try {
-    const rules = await getRules()
+    const rules = await getEntries()
     await syncDynamicRules(rules)
   } catch (error) {
     console.error('Failed to sync dynamic header rules.', error)
   }
 }
 
+let syncing = false
+let syncRequested = false
+
 function queueSync(): void {
-  void syncFromStorage()
+  syncRequested = true
+  if (syncing) return
+  syncing = true
+  void (async () => {
+    try {
+      while (syncRequested) {
+        syncRequested = false
+        await syncFromStorage()
+      }
+    } finally {
+      syncing = false
+    }
+  })()
 }
 
 chrome.runtime.onInstalled.addListener(() => {

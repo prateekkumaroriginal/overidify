@@ -9,6 +9,7 @@ type IconName =
   | 'close'
   | 'check'
   | 'external'
+  | 'trash'
 
 const paths: Record<IconName, string> = {
   arrow: 'M4 12h16m-6-6 6 6-6 6',
@@ -21,6 +22,7 @@ const paths: Record<IconName, string> = {
     'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0M3 12h18M12 3c5 5 5 13 0 18-5-5-5-13 0-18',
   close: 'm6 6 12 12M6 18 18 6',
   check: 'm5 12 4 4L19 6',
+  trash: 'M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6',
   external: 'M14 3h7v7m0-7L10 14M10 3H3v18h18v-7',
 }
 

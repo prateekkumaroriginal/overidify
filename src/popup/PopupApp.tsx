@@ -1,9 +1,10 @@
 import { startTransition, useEffect, useState } from 'react'
 
+import { SwitcherOptionSelect } from '../components/SwitcherOptionSelect'
 import { ToggleSwitch } from '../components/ToggleSwitch'
 import { patternToRegexFilter } from '../lib/pattern'
-import { getRules, saveRules, subscribeToRules } from '../lib/storage'
-import type { HeaderRule } from '../lib/types'
+import { getEntries, saveEntries, subscribeToEntries } from '../lib/storage'
+import type { HeaderEntry } from '../lib/types'
 
 async function getCurrentPageUrl(): Promise<string> {
   if (import.meta.env.DEV && !globalThis.chrome?.tabs?.query) {
@@ -14,7 +15,7 @@ async function getCurrentPageUrl(): Promise<string> {
 }
 
 export function PopupApp() {
-  const [rules, setRules] = useState<HeaderRule[]>([])
+  const [rules, setRules] = useState<HeaderEntry[]>([])
   const [pageUrl, setPageUrl] = useState('')
   const [loading, setLoading] = useState(true)
   const [pending, setPending] = useState(false)
@@ -25,7 +26,7 @@ export function PopupApp() {
     async function load() {
       try {
         const [nextRules, currentPageUrl] = await Promise.all([
-          getRules(),
+          getEntries(),
           getCurrentPageUrl(),
         ])
         if (alive) {
@@ -37,13 +38,13 @@ export function PopupApp() {
         }
       } catch {
         if (alive) {
-          setError('Could not load rules. Reopen the popup to try again.')
+          setError('Could not load your settings. Reopen the popup to try again.')
           setLoading(false)
         }
       }
     }
     void load()
-    const unsubscribe = subscribeToRules((nextRules) => {
+    const unsubscribe = subscribeToEntries((nextRules) => {
       if (alive) startTransition(() => setRules(nextRules))
     })
     return () => {
@@ -52,19 +53,21 @@ export function PopupApp() {
     }
   }, [])
 
-  async function handleToggle(rule: HeaderRule, enabled: boolean) {
+  async function handleUpdate(rule: HeaderEntry, patch: { enabled?: boolean; selectedOptionId?: string }) {
     setPending(true)
     setError('')
     try {
       setRules(
-        await saveRules(
+        await saveEntries(
           rules.map((current) =>
-            current.id === rule.id ? { ...current, enabled } : current,
+            current.id !== rule.id ? current : current.kind === 'switcher'
+              ? { ...current, ...patch }
+              : { ...current, enabled: patch.enabled ?? current.enabled },
           ),
         ),
       )
     } catch {
-      setError('Could not change rule state. Try again.')
+      setError(`Could not update the ${rule.kind}. Try again.`)
     } finally {
       setPending(false)
     }
@@ -85,29 +88,33 @@ export function PopupApp() {
       )}
       {loading ? (
         <p className="popup-message" role="status">
-          Loading rules...
+          Loading...
         </p>
       ) : (
-        !error &&
-        (pageRules.length ? (
+        pageRules.length ? (
           <ul className="popup-rule-list">
             {pageRules.map((rule) => (
               <li className="popup-rule-row" key={rule.id}>
-                <span className="popup-rule-name">{rule.name}</span>
                 <ToggleSwitch
                   checked={rule.enabled}
                   label={`Enable ${rule.name}`}
                   disabled={pending}
                   onChange={(enabled) => {
-                    void handleToggle(rule, enabled)
+                    void handleUpdate(rule, { enabled })
                   }}
                 />
+                <span className="popup-rule-name">{rule.name}</span>
+                {rule.kind === 'switcher' && <SwitcherOptionSelect
+                  switcher={rule}
+                  disabled={pending}
+                  onChange={(selectedOptionId) => { void handleUpdate(rule, { selectedOptionId }) }}
+                />}
               </li>
             ))}
           </ul>
         ) : (
-          <p className="popup-message">No rules for this page</p>
-        ))
+          <p className="popup-message">No matches for this page</p>
+        )
       )}
       <footer className="popup-footer">
         <a href="options.html#/" target="_blank" rel="noreferrer">
