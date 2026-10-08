@@ -135,7 +135,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
                     {String(index + 1).padStart(2, '0')}
                   </span>
                   <label className="field">
-                    Name
+                    {index === 0 && 'Name'}
                     <input
                       className="mono-input"
                       value={header.key}
@@ -147,7 +147,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
                     />
                   </label>
                   <label className="field">
-                    Value
+                    {index === 0 && 'Value'}
                     <input
                       className="mono-input"
                       value={header.value}

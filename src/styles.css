@@ -841,7 +841,11 @@ fieldset {
   overflow-wrap: anywhere;
 }
 .selected .option-list-choice { color: var(--ink); }
-.delete-option { flex-shrink: 0; margin-right: 3px; }
+.delete-option { flex-shrink: 0; margin-right: 3px; visibility: hidden; }
+.option-list-row:hover .delete-option,
+.option-list-row.selected .delete-option,
+.option-list-row:focus-within .delete-option { visibility: visible; }
+.delete-option:hover:not(:disabled) { color: #f87171; background: #f871711a; }
 .option-pane { min-width: 0; }
 .option-name-field { margin-bottom: 20px; }
 .option-deleted {

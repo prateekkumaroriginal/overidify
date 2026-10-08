@@ -57,18 +57,21 @@ export function SwitcherEditor({ switcher, pending, onSave, onDelete }: Switcher
     setSaveState({ tone: 'idle', message: '' })
   }
 
-  function deleteOption() {
+  function deleteOption(optionId: string) {
     if (draft.options.length < 2) return
-    const index = draft.options.findIndex((option) => option.id === editingOption.id)
-    const options = draft.options.filter((option) => option.id !== editingOption.id)
-    setDeletedOption({ option: editingOption, index, selectedOptionId: draft.selectedOptionId })
+    const index = draft.options.findIndex((option) => option.id === optionId)
+    if (index === -1) return
+    const options = draft.options.filter((option) => option.id !== optionId)
+    setDeletedOption({ option: draft.options[index], index, selectedOptionId: draft.selectedOptionId })
     setDraft({
       ...draft,
       options,
-      selectedOptionId: draft.selectedOptionId === editingOption.id ? options[0].id : draft.selectedOptionId,
+      selectedOptionId: draft.selectedOptionId === optionId ? options[0].id : draft.selectedOptionId,
     })
-    setEditingId(options[Math.min(index, options.length - 1)].id)
-    requestAnimationFrame(() => optionNameInput.current?.focus())
+    if (editingOption.id === optionId) {
+      setEditingId(options[Math.min(index, options.length - 1)].id)
+      requestAnimationFrame(() => optionNameInput.current?.focus())
+    }
     setSaveState({ tone: 'idle', message: '' })
   }
 
@@ -136,14 +139,13 @@ export function SwitcherEditor({ switcher, pending, onSave, onDelete }: Switcher
                     <button className="option-list-choice" type="button" aria-pressed={option.id === editingOption.id} onClick={() => setEditingId(option.id)}>
                       {option.name || 'Untitled'}
                     </button>
-                    {option.id === editingOption.id && (
+                    {draft.options.length > 1 && (
                       <button
                         className="icon-button delete-option"
                         type="button"
                         aria-label={`Delete option ${option.name || 'Untitled'}`}
-                        title={draft.options.length === 1 ? 'At least one option is required' : 'Delete option'}
-                        disabled={draft.options.length === 1}
-                        onClick={deleteOption}
+                        title="Delete option"
+                        onClick={() => deleteOption(option.id)}
                       ><Icon name="trash" /></button>
                     )}
                   </div>
@@ -156,10 +158,10 @@ export function SwitcherEditor({ switcher, pending, onSave, onDelete }: Switcher
                 <div className="header-list">
                   {editingOption.headers.map((header, index) => (
                     <div className="header-row" key={index}>
-                      <label className="field">Header
+                      <label className="field">{index === 0 && 'Header'}
                         <input className="mono-input" value={header.key} onChange={(event) => updateHeader(index, 'key', event.target.value)} placeholder="Authorization" aria-label={`Header ${index + 1} name`} />
                       </label>
-                      <label className="field">Value
+                      <label className="field">{index === 0 && 'Value'}
                         <input className="mono-input" value={header.value} onChange={(event) => updateHeader(index, 'value', event.target.value)} placeholder="Bearer token" aria-label={`Header ${index + 1} value`} />
                       </label>
                       <button className="icon-button remove-header" type="button" aria-label={`Remove header ${index + 1}`} onClick={() => updateOption((option) => ({ ...option, headers: option.headers.filter((_, i) => i !== index) }))}><Icon name="close" /></button>
