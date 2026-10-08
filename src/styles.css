@@ -884,8 +884,8 @@ fieldset {
 .workspace-tabs button[aria-selected='true'] { background: #303030; color: var(--ink); }
 .list-columns {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 92px 32px;
-  gap: 18px;
+  grid-template-columns: 32px minmax(0, 1fr) 92px;
+  gap: 16px;
   padding: 17px 24px 8px;
   font-size: 8px;
   letter-spacing: 1.1px;
@@ -894,7 +894,7 @@ fieldset {
 .regular-rule-row {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 16px;
   min-height: 80px;
 }
 .rule-link {
@@ -902,7 +902,7 @@ fieldset {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   padding: 20px 0;
   text-decoration: none;
 }
@@ -919,8 +919,7 @@ fieldset {
 .rule-editor .cancel-link { margin-left: 0; }
 .rule-editor .delete-button { margin-left: auto; padding-left: 12px; }
 @media (max-width: 900px) {
-  .regular-rule-row { gap: 12px; }
-  .list-columns { grid-template-columns: minmax(0, 1fr) 68px 32px; gap: 12px; }
+  .list-columns { grid-template-columns: 32px minmax(0, 1fr) 68px; }
   .header-count { min-width: 68px; }
 }
 @media (max-width: 620px) {

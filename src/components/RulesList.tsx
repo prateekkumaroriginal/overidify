@@ -24,6 +24,12 @@ export function RulesList({
           key={rule.id}
           style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
         >
+          <ToggleSwitch
+            checked={rule.enabled}
+            label={`Enable ${rule.name}`}
+            disabled={disabled}
+            onChange={(enabled) => onToggle(rule, enabled)}
+          />
           <a
             className="rule-link"
             href={ruleHref(rule)}
@@ -39,12 +45,6 @@ export function RulesList({
               <span>header{rule.headers.length === 1 ? '' : 's'}</span>
             </span>
           </a>
-          <ToggleSwitch
-            checked={rule.enabled}
-            label={`Enable ${rule.name}`}
-            disabled={disabled}
-            onChange={(enabled) => onToggle(rule, enabled)}
-          />
         </li>
       ))}
     </ul>

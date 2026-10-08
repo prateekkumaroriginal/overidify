@@ -239,7 +239,7 @@ function Workspace({ entries, view, pending, onToggle, onSelectOption }: Workspa
               <SwitchersList switchers={visible.filter((entry): entry is HeaderSwitcher => entry.kind === 'switcher')} disabled={pending} switcherHref={(switcher) => `#${entryRoute(switcher)}`} onToggle={onToggle} onSelectOption={onSelectOption} />
             ) : (
               <>
-                <div className="list-columns" aria-hidden="true"><span>RULE / URL PATTERN</span><span>HEADERS</span></div>
+                <div className="list-columns" aria-hidden="true"><span /><span>RULE / URL PATTERN</span><span>HEADERS</span></div>
                 <RulesList rules={visible.filter((entry): entry is HeaderRule => entry.kind === 'rule')} disabled={pending} ruleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} />
               </>
             )
