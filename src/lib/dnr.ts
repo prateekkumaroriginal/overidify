@@ -1,3 +1,5 @@
+import { patternToRegexFilter } from './pattern'
+export { isValidUrlPattern, patternToRegexFilter } from './pattern'
 import type { HeaderRule } from './types'
 
 const DYNAMIC_RULE_OFFSET = 1000
@@ -18,37 +20,6 @@ const RESOURCE_TYPES: chrome.declarativeNetRequest.ResourceType[] = [
   chrome.declarativeNetRequest.ResourceType.WEBBUNDLE,
   chrome.declarativeNetRequest.ResourceType.OTHER,
 ]
-
-function escapeRegexSegment(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-export function patternToRegexFilter(pattern: string): string {
-  const trimmed = pattern.trim()
-
-  if (!trimmed || trimmed === '*') {
-    return '^.*$'
-  }
-
-  return `^${Array.from(trimmed)
-    .map((character) => (character === '*' ? '.*' : escapeRegexSegment(character)))
-    .join('')}$`
-}
-
-export function isValidUrlPattern(pattern: string): boolean {
-  const trimmed = pattern.trim()
-
-  if (!trimmed) {
-    return false
-  }
-
-  try {
-    new RegExp(patternToRegexFilter(trimmed))
-    return true
-  } catch {
-    return false
-  }
-}
 
 export function rulesToDynamicRules(
   rules: HeaderRule[],

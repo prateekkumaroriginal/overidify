@@ -1,18 +1,19 @@
 import { startTransition, useEffect, useState } from 'react'
 import type { SubmitEvent } from 'react'
 
+import { Brand } from '../components/Brand'
+import { Icon } from '../components/Icon'
 import { RulesList } from '../components/RulesList'
 import { ToggleSwitch } from '../components/ToggleSwitch'
-import { isValidUrlPattern } from '../lib/dnr'
+import { isValidUrlPattern } from '../lib/pattern'
 import {
   createHeaderPair,
   createRuleDraft,
   createRuleId,
   getRules,
-  normalizeRules,
   ruleToDraft,
   saveRules,
-  STORAGE_KEY,
+  subscribeToRules,
 } from '../lib/storage'
 import type { HeaderPair, HeaderRule, RuleDraft } from '../lib/types'
 
@@ -62,20 +63,13 @@ export function OptionsApp() {
       }
     }
 
-    const handleStorageChange = (
-      changes: Record<string, chrome.storage.StorageChange>,
-      areaName: string,
-    ) => {
-      if (areaName === 'local' && STORAGE_KEY in changes) {
-        startTransition(() => setRules(normalizeRules(changes[STORAGE_KEY]?.newValue)))
-      }
-    }
-
     void load()
-    chrome.storage.onChanged.addListener(handleStorageChange)
+    const unsubscribe = subscribeToRules((nextRules) => {
+      if (alive) startTransition(() => setRules(nextRules))
+    })
     return () => {
       alive = false
-      chrome.storage.onChanged.removeListener(handleStorageChange)
+      unsubscribe()
     }
   }, [])
 
@@ -98,7 +92,9 @@ export function OptionsApp() {
       url: draft.url.trim(),
       enabled: draft.enabled,
       headers: sanitizeHeaders(draft.headers),
-      order: ruleId ? rules.find((rule) => rule.id === ruleId)?.order ?? rules.length : rules.length,
+      order: ruleId
+        ? (rules.find((rule) => rule.id === ruleId)?.order ?? rules.length)
+        : rules.length,
     }
     const nextRules = ruleId
       ? rules.map((rule) => (rule.id === ruleId ? nextRule : rule))
@@ -115,7 +111,9 @@ export function OptionsApp() {
       return
     }
     try {
-      await persistRules(rules.filter((currentRule) => currentRule.id !== rule.id))
+      await persistRules(
+        rules.filter((currentRule) => currentRule.id !== rule.id),
+      )
       window.location.hash = '/'
     } catch {
       setError('Could not delete the rule. Try again.')
@@ -124,39 +122,155 @@ export function OptionsApp() {
 
   async function handleToggleRule(ruleId: string, enabled: boolean) {
     try {
-      await persistRules(rules.map((rule) => (rule.id === ruleId ? { ...rule, enabled } : rule)))
+      await persistRules(
+        rules.map((rule) => (rule.id === ruleId ? { ...rule, enabled } : rule)),
+      )
     } catch {
       setError('Could not change rule state. Try again.')
     }
   }
 
-  const selectedRule = rules.find((rule) => route === `/rules/${encodeURIComponent(rule.id)}`)
+  const selectedRule = rules.find(
+    (rule) => route === `/rules/${encodeURIComponent(rule.id)}`,
+  )
   const isHome = route === '/'
 
   return (
-    <main className="page">
-      <header className="page-header">
-        <a className="brand" href="#/">Overidify</a>
-        {isHome ? <a className="button" href="#/new" aria-disabled={loading || loadFailed}
-          onClick={(event) => { if (loading || loadFailed) event.preventDefault() }}>New rule</a> : <a href="#/">Back to rules</a>}
+    <div className="app-shell">
+      <header className="site-header">
+        <Brand />
       </header>
+      <main className="page">
+        {error && (
+          <p className="notice error" role="alert">
+            {error}
+          </p>
+        )}
+        {loading ? (
+          <div className="loading-state" role="status">
+            <span className="loading-dot" /> Loading your rules...
+          </div>
+        ) : loadFailed ? null : isHome ? (
+          <RulesWorkspace
+            rules={rules}
+            pending={pending}
+            onToggle={(rule, enabled) => {
+              void handleToggleRule(rule.id, enabled)
+            }}
+          />
+        ) : route === '/new' || selectedRule ? (
+          <RuleEditor
+            key={route}
+            rule={selectedRule}
+            pending={pending}
+            onSave={(draft) => handleSaveRule(draft, selectedRule?.id)}
+            onDelete={
+              selectedRule
+                ? () => {
+                    void handleDeleteRule(selectedRule)
+                  }
+                : undefined
+            }
+          />
+        ) : (
+          <div className="empty-state">
+            <h1>Rule not found.</h1>
+            <a className="button" href="#/">
+              Back to rules <Icon name="arrow" />
+            </a>
+          </div>
+        )}
+      </main>
+    </div>
+  )
+}
 
-      {error && <p className="error" role="alert">{error}</p>}
-      {loading ? <p className="muted" role="status">Loading rules...</p> : loadFailed ? null : isHome ? (
-        <section aria-labelledby="rules-title">
-          <h1 id="rules-title">Rules</h1>
-          {rules.length === 0 ? <p className="muted">No rules yet. Create a rule to get started.</p> : (
-            <RulesList rules={rules} disabled={pending}
+function RulesWorkspace({
+  rules,
+  pending,
+  onToggle,
+}: {
+  rules: HeaderRule[]
+  pending: boolean
+  onToggle: (rule: HeaderRule, enabled: boolean) => void
+}) {
+  const [query, setQuery] = useState('')
+  const visibleRules = rules.filter((rule) => {
+    const term = query.trim().toLowerCase()
+    return (
+      !term ||
+      `${rule.name} ${rule.url} ${rule.headers.map((header) => header.key).join(' ')}`
+        .toLowerCase()
+        .includes(term)
+    )
+  })
+
+  return (
+    <section className="rules-section" aria-labelledby="rules-title">
+      <div className="section-heading">
+        <h1 id="rules-title">Request rules</h1>
+        <a className="button button-primary" href="#/new">
+          <Icon name="plus" /> New rule
+        </a>
+      </div>
+      <div className="rulebook">
+        <div className="rules-toolbar">
+          <label className="search-field">
+            <Icon name="search" />
+            <input
+              aria-label="Search rules"
+              placeholder="Find a rule..."
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            {query && (
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Clear search"
+                onClick={() => setQuery('')}
+              >
+                <Icon name="close" />
+              </button>
+            )}
+          </label>
+        </div>
+        {rules.length === 0 ? (
+          <div className="empty-state">
+            <h3>No rules yet</h3>
+            <a className="empty-link" href="#/new">
+              Create your first rule <Icon name="arrow" />
+            </a>
+          </div>
+        ) : visibleRules.length ? (
+          <>
+            <div className="list-columns" aria-hidden="true">
+              <span>RULE / URL PATTERN</span>
+              <span>HEADERS</span>
+            </div>
+            <RulesList
+              rules={visibleRules}
+              disabled={pending}
               ruleHref={(rule) => `#/rules/${encodeURIComponent(rule.id)}`}
-              onToggle={(rule, enabled) => { void handleToggleRule(rule.id, enabled) }} />
-          )}
-        </section>
-      ) : route === '/new' || selectedRule ? (
-        <RuleEditor key={route} rule={selectedRule} pending={pending}
-          onSave={(draft) => handleSaveRule(draft, selectedRule?.id)}
-          onDelete={selectedRule ? () => { void handleDeleteRule(selectedRule) } : undefined} />
-      ) : <p className="muted">Rule not found. <a href="#/">Back to rules</a></p>}
-    </main>
+              onToggle={onToggle}
+            />
+          </>
+        ) : (
+          <div className="empty-state filtered-empty">
+            <Icon name="search" />
+            <h3>No matching rules.</h3>
+            <button
+              className="button button-secondary"
+              onClick={() => {
+                setQuery('')
+              }}
+            >
+              Show all rules
+            </button>
+          </div>
+        )}
+      </div>
+    </section>
   )
 }
 
@@ -168,12 +282,17 @@ type RuleEditorProps = {
 }
 
 function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps) {
-  const [draft, setDraft] = useState<RuleDraft>(() => rule ? ruleToDraft(rule) : createRuleDraft())
+  const [draft, setDraft] = useState<RuleDraft>(() =>
+    rule ? ruleToDraft(rule) : createRuleDraft(),
+  )
   const [saveState, setSaveState] = useState<SaveState>(initialSaveState)
 
   function updateHeader(index: number, field: keyof HeaderPair, value: string) {
-    setDraft((current) => ({ ...current,
-      headers: current.headers.map((header, i) => i === index ? { ...header, [field]: value } : header),
+    setDraft((current) => ({
+      ...current,
+      headers: current.headers.map((header, i) =>
+        i === index ? { ...header, [field]: value } : header,
+      ),
     }))
   }
 
@@ -189,59 +308,163 @@ function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps) {
       setDraft(ruleToDraft(savedRule))
       setSaveState({ tone: 'success', message: 'Rule saved.' })
     } catch {
-      setSaveState({ tone: 'error', message: 'Could not save the rule. Try again.' })
+      setSaveState({
+        tone: 'error',
+        message: 'Could not save the rule. Try again.',
+      })
     }
   }
 
   return (
-    <section aria-labelledby="editor-title">
-      <h1 id="editor-title">{rule ? 'Edit rule' : 'New rule'}</h1>
-      <form onSubmit={(event) => { void handleSubmit(event) }}>
+    <section className="editor" aria-labelledby="editor-title">
+      <a className="back-link" href="#/">
+        <Icon name="back" /> Back to rules
+      </a>
+      <div className="editor-heading">
+        <h1 id="editor-title">{rule ? 'Edit rule' : 'New rule'}</h1>
+      </div>
+      <form
+        onSubmit={(event) => {
+          void handleSubmit(event)
+        }}
+      >
         <fieldset disabled={pending}>
-          <label className="field">
-            Rule name
-            <input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-              placeholder="Authenticated API" autoFocus required />
-          </label>
-          <label className="field">
-            URL pattern
-            <input value={draft.url} onChange={(event) => setDraft({ ...draft, url: event.target.value })}
-              placeholder="*://api.example.com/*" aria-describedby="url-help" required />
-          </label>
-          <p className="hint" id="url-help">Use * for all requests or a wildcard pattern such as *://api.example.com/*.</p>
-          <label className="checkbox-label">
-            <ToggleSwitch checked={draft.enabled} label="Rule enabled"
-              onChange={(enabled) => setDraft({ ...draft, enabled })} />
-            Enabled
-          </label>
-
-          <div className="section-header">
-            <h2>Headers</h2>
-            <button type="button" onClick={() => setDraft({ ...draft, headers: [...draft.headers, createHeaderPair()] })}>Add header</button>
-          </div>
-          <div className="header-list">
-            {draft.headers.map((header, index) => (
-              <div className="header-row" key={index}>
-                <label className="field">Name
-                  <input value={header.key} onChange={(event) => updateHeader(index, 'key', event.target.value)}
-                    placeholder="Authorization" aria-label={`Header ${index + 1} name`} />
-                </label>
-                <label className="field">Value
-                  <input value={header.value} onChange={(event) => updateHeader(index, 'value', event.target.value)}
-                    placeholder="Bearer token" aria-label={`Header ${index + 1} value`} />
-                </label>
-                <button type="button" aria-label={`Remove header ${index + 1}`}
-                  onClick={() => setDraft({ ...draft, headers: draft.headers.length === 1
-                    ? [createHeaderPair()] : draft.headers.filter((_, i) => i !== index) })}>Remove</button>
+          <div className="editor-card">
+            <div className="card-heading">
+              <div>
+                <h2>Rule details</h2>
               </div>
-            ))}
+            </div>
+            <div className="details-fields">
+              <label className="field">
+                Rule name
+                <input
+                  value={draft.name}
+                  onChange={(event) =>
+                    setDraft({ ...draft, name: event.target.value })
+                  }
+                  placeholder="Authenticated API"
+                  autoFocus
+                  required
+                />
+              </label>
+              <label className="field">
+                URL pattern
+                <input
+                  className="mono-input"
+                  value={draft.url}
+                  onChange={(event) =>
+                    setDraft({ ...draft, url: event.target.value })
+                  }
+                  placeholder="*://api.example.com/*"
+                  aria-label="URL pattern"
+                  required
+                />
+              </label>
+            </div>
+            <div className="enabled-setting">
+              <span className="setting-title">Enabled</span>
+              <ToggleSwitch
+                checked={draft.enabled}
+                label="Rule enabled"
+                onChange={(enabled) => setDraft({ ...draft, enabled })}
+              />
+            </div>
           </div>
-          {saveState.message && <p className={saveState.tone === 'error' ? 'error' : 'muted'}
-            role={saveState.tone === 'error' ? 'alert' : 'status'}>{saveState.message}</p>}
+          <div className="editor-card">
+            <div className="card-heading">
+              <div>
+                <h2>Request headers</h2>
+              </div>
+              <button
+                className="button button-secondary add-header"
+                type="button"
+                onClick={() =>
+                  setDraft({
+                    ...draft,
+                    headers: [...draft.headers, createHeaderPair()],
+                  })
+                }
+              >
+                <Icon name="plus" /> Add header
+              </button>
+            </div>
+            <div className="header-list">
+              {draft.headers.map((header, index) => (
+                <div className="header-row" key={index}>
+                  <span className="header-index">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <label className="field">
+                    Name
+                    <input
+                      className="mono-input"
+                      value={header.key}
+                      onChange={(event) =>
+                        updateHeader(index, 'key', event.target.value)
+                      }
+                      placeholder="Authorization"
+                      aria-label={`Header ${index + 1} name`}
+                    />
+                  </label>
+                  <label className="field">
+                    Value
+                    <input
+                      className="mono-input"
+                      value={header.value}
+                      onChange={(event) =>
+                        updateHeader(index, 'value', event.target.value)
+                      }
+                      placeholder="Bearer token"
+                      aria-label={`Header ${index + 1} value`}
+                    />
+                  </label>
+                  <button
+                    className="icon-button remove-header"
+                    type="button"
+                    aria-label={`Remove header ${index + 1}`}
+                    onClick={() =>
+                      setDraft({
+                        ...draft,
+                        headers:
+                          draft.headers.length === 1
+                            ? [createHeaderPair()]
+                            : draft.headers.filter((_, i) => i !== index),
+                      })
+                    }
+                  >
+                    <Icon name="close" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+          {saveState.message && (
+            <p
+              className={`notice ${saveState.tone === 'error' ? 'error' : 'success'}`}
+              role={saveState.tone === 'error' ? 'alert' : 'status'}
+            >
+              <Icon name={saveState.tone === 'error' ? 'close' : 'check'} />
+              {saveState.message}
+            </p>
+          )}
           <div className="form-actions">
-            <button type="submit">{pending ? 'Saving...' : 'Save rule'}</button>
-            <a href="#/">Cancel</a>
-            {onDelete && <button type="button" className="delete-button" onClick={onDelete}>Delete rule</button>}
+            <button className="button button-primary" type="submit">
+              <Icon name="check" />
+              {pending ? 'Saving...' : 'Save rule'}
+            </button>
+            <a className="cancel-link" href="#/">
+              Cancel
+            </a>
+            {onDelete && (
+              <button
+                type="button"
+                className="delete-button"
+                onClick={onDelete}
+              >
+                Delete rule
+              </button>
+            )}
           </div>
         </fieldset>
       </form>
@@ -250,16 +473,19 @@ function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps) {
 }
 
 function sanitizeHeaders(headers: HeaderPair[]): HeaderPair[] {
-  return headers.map((header) => ({ key: header.key.trim(), value: header.value.trim() }))
+  return headers
+    .map((header) => ({ key: header.key.trim(), value: header.value.trim() }))
     .filter((header) => header.key || header.value)
 }
 
 function validateDraft(draft: RuleDraft): string | null {
   if (!draft.name.trim()) return 'Rule name is required.'
   if (!draft.url.trim()) return 'URL pattern is required.'
-  if (!isValidUrlPattern(draft.url.trim())) return 'Use * or a wildcard URL pattern like *://api.example.com/*.'
+  if (!isValidUrlPattern(draft.url.trim()))
+    return 'Use * or a wildcard URL pattern like *://api.example.com/*.'
   const headers = sanitizeHeaders(draft.headers)
   if (headers.length === 0) return 'Add at least one header pair.'
-  if (headers.some((header) => !header.key || !header.value)) return 'Each header row needs both a name and a value.'
+  if (headers.some((header) => !header.key || !header.value))
+    return 'Each header row needs both a name and a value.'
   return null
 }

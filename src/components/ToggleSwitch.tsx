@@ -5,9 +5,21 @@ type ToggleSwitchProps = {
   disabled?: boolean
 }
 
-export function ToggleSwitch({ checked, label, onChange, disabled = false }: ToggleSwitchProps) {
+export function ToggleSwitch({
+  checked,
+  label,
+  onChange,
+  disabled = false,
+}: ToggleSwitchProps) {
   return (
-    <input type="checkbox" role="switch" checked={checked} aria-label={label}
-      disabled={disabled} onChange={(event) => onChange(event.target.checked)} />
+    <input
+      className="toggle-switch"
+      type="checkbox"
+      role="switch"
+      checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onChange={(event) => onChange(event.target.checked)}
+    />
   )
 }

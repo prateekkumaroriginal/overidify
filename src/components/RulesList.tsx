@@ -9,18 +9,42 @@ type RulesListProps = {
   openInTab?: boolean
 }
 
-export function RulesList({ rules, ruleHref, onToggle, disabled, openInTab }: RulesListProps) {
+export function RulesList({
+  rules,
+  ruleHref,
+  onToggle,
+  disabled,
+  openInTab,
+}: RulesListProps) {
   return (
     <ul className="rule-list">
-      {rules.map((rule) => (
-        <li className="rule-row" key={rule.id}>
-          <a className="rule-link" href={ruleHref(rule)} target={openInTab ? '_blank' : undefined} rel={openInTab ? 'noreferrer' : undefined}>
-            <span className="rule-name">{rule.name}</span>
-            <span className="rule-url">{rule.url}</span>
-            <span className="hint">{rule.headers.length} header{rule.headers.length === 1 ? '' : 's'} · {rule.enabled ? 'Enabled' : 'Disabled'}</span>
+      {rules.map((rule, index) => (
+        <li
+          className={`rule-row ${rule.enabled ? '' : 'rule-paused'}`}
+          key={rule.id}
+          style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+        >
+          <a
+            className="rule-link"
+            href={ruleHref(rule)}
+            target={openInTab ? '_blank' : undefined}
+            rel={openInTab ? 'noreferrer' : undefined}
+          >
+            <span className="rule-description">
+              <span className="rule-name">{rule.name}</span>
+              <span className="rule-url">{rule.url}</span>
+            </span>
+            <span className="header-count">
+              {rule.headers.length}{' '}
+              <span>header{rule.headers.length === 1 ? '' : 's'}</span>
+            </span>
           </a>
-          <ToggleSwitch checked={rule.enabled} label={`Enable ${rule.name}`} disabled={disabled}
-            onChange={(enabled) => onToggle(rule, enabled)} />
+          <ToggleSwitch
+            checked={rule.enabled}
+            label={`Enable ${rule.name}`}
+            disabled={disabled}
+            onChange={(enabled) => onToggle(rule, enabled)}
+          />
         </li>
       ))}
     </ul>

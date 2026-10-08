@@ -1,11 +1,21 @@
 import { startTransition, useEffect, useState } from 'react'
 
-import { RulesList } from '../components/RulesList'
-import { getRules, normalizeRules, saveRules, STORAGE_KEY } from '../lib/storage'
+import { ToggleSwitch } from '../components/ToggleSwitch'
+import { patternToRegexFilter } from '../lib/pattern'
+import { getRules, saveRules, subscribeToRules } from '../lib/storage'
 import type { HeaderRule } from '../lib/types'
+
+async function getCurrentPageUrl(): Promise<string> {
+  if (import.meta.env.DEV && !globalThis.chrome?.tabs?.query) {
+    return window.location.href
+  }
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  return tab?.url ?? ''
+}
 
 export function PopupApp() {
   const [rules, setRules] = useState<HeaderRule[]>([])
+  const [pageUrl, setPageUrl] = useState('')
   const [loading, setLoading] = useState(true)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
@@ -14,10 +24,14 @@ export function PopupApp() {
     let alive = true
     async function load() {
       try {
-        const nextRules = await getRules()
+        const [nextRules, currentPageUrl] = await Promise.all([
+          getRules(),
+          getCurrentPageUrl(),
+        ])
         if (alive) {
           startTransition(() => {
             setRules(nextRules)
+            setPageUrl(currentPageUrl)
             setLoading(false)
           })
         }
@@ -28,19 +42,13 @@ export function PopupApp() {
         }
       }
     }
-    const handleStorageChange = (
-      changes: Record<string, chrome.storage.StorageChange>,
-      areaName: string,
-    ) => {
-      if (areaName === 'local' && STORAGE_KEY in changes) {
-        startTransition(() => setRules(normalizeRules(changes[STORAGE_KEY]?.newValue)))
-      }
-    }
     void load()
-    chrome.storage.onChanged.addListener(handleStorageChange)
+    const unsubscribe = subscribeToRules((nextRules) => {
+      if (alive) startTransition(() => setRules(nextRules))
+    })
     return () => {
       alive = false
-      chrome.storage.onChanged.removeListener(handleStorageChange)
+      unsubscribe()
     }
   }, [])
 
@@ -48,7 +56,13 @@ export function PopupApp() {
     setPending(true)
     setError('')
     try {
-      setRules(await saveRules(rules.map((current) => current.id === rule.id ? { ...current, enabled } : current)))
+      setRules(
+        await saveRules(
+          rules.map((current) =>
+            current.id === rule.id ? { ...current, enabled } : current,
+          ),
+        ),
+      )
     } catch {
       setError('Could not change rule state. Try again.')
     } finally {
@@ -56,19 +70,50 @@ export function PopupApp() {
     }
   }
 
+  const pageRules = /^https?:\/\//i.test(pageUrl)
+    ? rules.filter((rule) =>
+        new RegExp(patternToRegexFilter(rule.url)).test(pageUrl),
+      )
+    : []
+
   return (
     <main className="popup">
-      <header className="page-header">
-        <h1>Overidify</h1>
-        <a className="button" href="options.html#/new" target="_blank" rel="noreferrer">New rule</a>
-      </header>
-      {error && <p className="error" role="alert">{error}</p>}
-      {loading ? <p className="muted" role="status">Loading rules...</p> : rules.length === 0 ? (
-        <p className="muted">No rules yet. Create a rule to get started.</p>
-      ) : <RulesList rules={rules} disabled={pending} openInTab
-        ruleHref={(rule) => `options.html#/rules/${encodeURIComponent(rule.id)}`}
-        onToggle={(rule, enabled) => { void handleToggle(rule, enabled) }} />}
-      <footer><a href="options.html#/" target="_blank" rel="noreferrer">All rules</a></footer>
+      {error && (
+        <p className="notice error" role="alert">
+          {error}
+        </p>
+      )}
+      {loading ? (
+        <p className="popup-message" role="status">
+          Loading rules...
+        </p>
+      ) : (
+        !error &&
+        (pageRules.length ? (
+          <ul className="popup-rule-list">
+            {pageRules.map((rule) => (
+              <li className="popup-rule-row" key={rule.id}>
+                <span className="popup-rule-name">{rule.name}</span>
+                <ToggleSwitch
+                  checked={rule.enabled}
+                  label={`Enable ${rule.name}`}
+                  disabled={pending}
+                  onChange={(enabled) => {
+                    void handleToggle(rule, enabled)
+                  }}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="popup-message">No rules for this page</p>
+        ))
+      )}
+      <footer className="popup-footer">
+        <a href="options.html#/" target="_blank" rel="noreferrer">
+          Settings
+        </a>
+      </footer>
     </main>
   )
 }
