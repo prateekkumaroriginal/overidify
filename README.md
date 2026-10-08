@@ -24,18 +24,26 @@ Chrome extension for overriding request headers with rules and named switchers.
 
 ## Development
 
+Use pnpm 11.20.0, pinned in `package.json`. With Corepack installed, enable it once:
+
 ```bash
-npm install
-npm run dev
+corepack enable
 ```
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Commit dependency changes with `pnpm-lock.yaml`. For CI or a reproducible install, use `pnpm install --frozen-lockfile`.
 
 Open `/options.html` or `/popup.html` to preview the UI in a regular browser. Development previews store rules in browser local storage; the installed extension uses `chrome.storage.local`.
 
 ## Tests
 
 ```bash
-npm test
-npm run lint
+pnpm test
+pnpm lint
 ```
 
 The migration and option-selection tests run with Node’s TypeScript stripping support.
@@ -43,7 +51,7 @@ The migration and option-selection tests run with Node’s TypeScript stripping 
 ## Build
 
 ```bash
-npm run build
+pnpm build
 ```
 
 The production extension bundle is generated in `dist/`.

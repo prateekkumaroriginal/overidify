@@ -1,0 +1,3 @@
+# Native file watching on macOS.
+allowBuilds:
+  fsevents: true
