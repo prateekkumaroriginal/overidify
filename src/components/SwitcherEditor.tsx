@@ -11,6 +11,7 @@ import {
 import type { HeaderPair, HeaderSwitcher, SwitcherDraft, SwitcherOption } from '../lib/types'
 import { Icon } from './Icon'
 import { ToggleSwitch } from './ToggleSwitch'
+import { useEditorShortcuts } from './useEditorShortcuts'
 
 type SwitcherEditorProps = {
   switcher?: HeaderSwitcher
@@ -23,6 +24,7 @@ type SaveState = { tone: 'idle' | 'success' | 'error'; message: string }
 type DeletedOption = { option: SwitcherOption; index: number; selectedOptionId: string }
 
 export function SwitcherEditor({ switcher, pending, onSave, onDelete }: SwitcherEditorProps) {
+  const formRef = useEditorShortcuts('/switchers', pending)
   const [draft, setDraft] = useState<SwitcherDraft>(() => switcher ? switcherToDraft(switcher) : createSwitcherDraft())
   const [editingId, setEditingId] = useState(draft.selectedOptionId)
   const [deletedOption, setDeletedOption] = useState<DeletedOption | null>(null)
@@ -84,6 +86,7 @@ export function SwitcherEditor({ switcher, pending, onSave, onDelete }: Switcher
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (pending) return
     const error = validateDraft(draft)
     if (error) {
       if (error.optionId) setEditingId(error.optionId)
@@ -104,7 +107,7 @@ export function SwitcherEditor({ switcher, pending, onSave, onDelete }: Switcher
     <section className="editor switcher-editor" aria-labelledby="editor-title">
       <a className="back-link" href="#/switchers"><Icon name="back" /> Back to switchers</a>
       <div className="editor-heading"><h1 id="editor-title">{switcher ? 'Edit switcher' : 'New switcher'}</h1></div>
-      <form onSubmit={(event) => { void handleSubmit(event) }}>
+      <form ref={formRef} onSubmit={(event) => { void handleSubmit(event) }}>
         <fieldset disabled={pending}>
           <div className="editor-card">
             <div className="card-heading"><h2>Switcher details</h2></div>

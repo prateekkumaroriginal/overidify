@@ -5,6 +5,7 @@ import { createHeaderPair, createRuleDraft, ruleToDraft } from '../lib/rules'
 import type { HeaderPair, HeaderRule, RuleDraft } from '../lib/types'
 import { Icon } from './Icon'
 import { ToggleSwitch } from './ToggleSwitch'
+import { useEditorShortcuts } from './useEditorShortcuts'
 
 type SaveState = { tone: 'idle' | 'success' | 'error'; message: string }
 const initialSaveState: SaveState = { tone: 'idle', message: '' }
@@ -17,6 +18,7 @@ type RuleEditorProps = {
 }
 
 export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps) {
+  const formRef = useEditorShortcuts('/', pending)
   const [draft, setDraft] = useState<RuleDraft>(() =>
     rule ? ruleToDraft(rule) : createRuleDraft(),
   )
@@ -33,6 +35,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (pending) return
     const validationError = validateDraft(draft)
     if (validationError) {
       setSaveState({ tone: 'error', message: validationError })
@@ -59,6 +62,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
         <h1 id="editor-title">{rule ? 'Edit rule' : 'New rule'}</h1>
       </div>
       <form
+        ref={formRef}
         onSubmit={(event) => {
           void handleSubmit(event)
         }}

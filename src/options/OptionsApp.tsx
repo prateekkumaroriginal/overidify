@@ -67,7 +67,7 @@ export function OptionsApp() {
     await persistEntries(existingId
       ? entries.map((current) => current.id === existingId ? entry : current)
       : [...entries, entry])
-    if (!existingId) window.location.hash = entryRoute(entry)
+    window.location.hash = entry.kind === 'switcher' ? '/switchers' : '/'
   }
 
   async function handleSaveRule(draft: RuleDraft, ruleId?: string): Promise<HeaderRule> {
