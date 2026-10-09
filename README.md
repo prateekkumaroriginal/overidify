@@ -81,13 +81,13 @@ The production extension bundle is generated in `dist/`.
 
 - Rules apply their original header set
 - Switchers apply only the selected option’s header set
-- Switchers match request hosts and optional ports on every path, regardless of scheme
-- Switcher domains accept `localhost:4200`, `api.example.com`, `*.example.com`, or `*`
-- Existing switcher URLs such as `http://localhost:4200/messages` become `localhost:4200`
+- Rules and switchers use the same matching logic for HTTP, HTTPS, WS, and WSS requests: hosts and optional ports on every path
+- Both accept `localhost:4200`, `api.example.com`, `*.example.com`, or `*`
+- Existing rule and switcher URLs such as `http://localhost:4200/messages` become `localhost:4200`
 - Existing rules retain their headers and enabled state
 - Switchers with a single option have no dropdown
 
-- `*` matches all URLs
-- Wildcard patterns like `*://api.example.com/*` are supported
+- `*` matches all supported request hosts
+- Legacy wildcard URL patterns like `*://api.example.com/*` become host patterns such as `api.example.com`
 - Later entries have higher priority, across both rules and switchers
 - Header pairs use set semantics, so existing values are replaced and missing headers are added

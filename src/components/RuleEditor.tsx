@@ -2,7 +2,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
 import type { SubmitEvent } from 'react'
-import { isValidUrlPattern } from '../lib/pattern'
+import { isValidDomainPattern } from '../lib/pattern'
 import { createHeaderPair, createRuleDraft, ruleToDraft } from '../lib/rules'
 import type { HeaderPair, HeaderRule, RuleDraft } from '../lib/types'
 import { Icon } from './Icon'
@@ -90,17 +90,19 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
                 />
               </label>
               <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">
-                URL pattern
+                Domain
                 <Input
                   className="font-mono text-[11px]"
                   value={draft.url}
                   onChange={(event) =>
                     setDraft({ ...draft, url: event.target.value })
                   }
-                  placeholder="e.g. *://api.example.com/*"
-                  aria-label="URL pattern"
+                  placeholder="e.g. localhost:4200 or api.example.com"
+                  aria-label="Domain"
+                  aria-describedby="rule-domain-help"
                   required
                 />
+                <span id="rule-domain-help" className="font-normal text-muted-foreground">Matches requests to this host on every path. Include a port to match only that port.</span>
               </label>
             </div>
             <div className="flex items-center justify-between gap-5 border-t py-[17px]">
@@ -218,9 +220,9 @@ function sanitizeHeaders(headers: HeaderPair[]): HeaderPair[] {
 
 function validateDraft(draft: RuleDraft): string | null {
   if (!draft.name.trim()) return 'Rule name is required.'
-  if (!draft.url.trim()) return 'URL pattern is required.'
-  if (!isValidUrlPattern(draft.url.trim()))
-    return 'Use * or a wildcard URL pattern like *://api.example.com/*.'
+  if (!draft.url.trim()) return 'Domain is required.'
+  if (!isValidDomainPattern(draft.url))
+    return 'Use a domain like localhost:4200, api.example.com, *.example.com, or *.'
   const headers = sanitizeHeaders(draft.headers)
   if (headers.length === 0) return 'Add at least one header pair.'
   if (headers.some((header) => !header.key || !header.value))

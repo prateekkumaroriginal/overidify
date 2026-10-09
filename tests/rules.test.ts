@@ -19,11 +19,11 @@ const options = [
   { id: 'guest', name: 'Guest', headers: [{ key: 'X-Role', value: 'guest' }] },
 ]
 
-test('original rules retain their direct headers, identity, matching, and enabled state', () => {
+test('original rules normalize their domains and retain their direct headers, identity, and enabled state', () => {
   const [rule] = normalizeEntries([legacy])
   assert.equal(rule.kind, 'rule')
   assert.equal(rule.id, legacy.id)
-  assert.equal(rule.url, legacy.url)
+  assert.equal(rule.url, 'api.example.com')
   assert.equal(rule.enabled, false)
   assert.deepEqual(getEntryHeaders(rule), legacy.headers)
   assert.equal('options' in rule, false)
@@ -63,6 +63,24 @@ test('existing switchers normalize full URLs to domains without changing headers
   assert.equal(entry.selectedOptionId, 'guest')
   assert.deepEqual(entry.options, options)
   assert.deepEqual(normalizeEntries([entry]), [entry])
+})
+
+test('rules and switchers normalize the same patterns to identical domains', () => {
+  for (const [input, domain] of [
+    ['http://localhost:4200/messages', 'localhost:4200'],
+    [' https://API.EXAMPLE.COM/path?query=1#tab ', 'api.example.com'],
+    ['*://*.example.com/*', '*.example.com'],
+    ['*', '*'],
+    ['http://[::1]:4200/messages', '[::1]:4200'],
+  ]) {
+    const entries = normalizeEntries([
+      { ...legacy, kind: 'rule', url: input },
+      { ...legacy, id: 'switcher', kind: 'switcher', url: input, options },
+    ])
+    assert.deepEqual(entries.map((entry) => entry.url), [domain, domain])
+    assert.deepEqual(getEntryHeaders(entries[0]), legacy.headers)
+    assert.deepEqual(normalizeEntries(entries), entries)
+  }
 })
 
 test('switching a switcher replaces its header set while preserving ordinary rules and priority order', () => {

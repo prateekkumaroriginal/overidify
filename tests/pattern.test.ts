@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { domainPatternToRegexFilter, getDomainPattern, isValidDomainPattern, patternToRegexFilter } from '../src/lib/pattern.ts'
+import { domainPatternToRegexFilter, getDomainPattern, isValidDomainPattern } from '../src/lib/pattern.ts'
 
-test('switcher domains ignore schemes, paths, queries, and fragments', () => {
+test('entry domains ignore schemes, paths, queries, and fragments', () => {
   for (const input of ['localhost:4200', 'http://localhost:4200/messages', 'https://LOCALHOST:4200/other?test=1#tab']) {
     assert.equal(getDomainPattern(input), 'localhost:4200')
     const matches = new RegExp(domainPatternToRegexFilter(input))
@@ -39,11 +39,4 @@ test('invalid domains cannot produce a rule matching every request', () => {
   }
   assert.equal(isValidDomainPattern('http://[::1]:4200/messages'), true)
   assert.equal(new RegExp(domainPatternToRegexFilter('[::1]:4200')).test('http://[::1]:4200/api'), true)
-})
-
-test('ordinary rules retain their full URL pattern matching', () => {
-  const matches = new RegExp(patternToRegexFilter('http://localhost:4200/messages'))
-  assert.equal(matches.test('http://localhost:4200/messages'), true)
-  assert.equal(matches.test('http://localhost:4200/other'), false)
-  assert.equal(matches.test('https://localhost:4200/messages'), false)
 })

@@ -1,6 +1,5 @@
-import { domainPatternToRegexFilter, patternToRegexFilter } from './pattern.ts'
+import { domainPatternToRegexFilter } from './pattern.ts'
 import { getEntryHeaders } from './rules.ts'
-export { isValidUrlPattern, patternToRegexFilter } from './pattern'
 import type { HeaderEntry } from './types'
 
 const DYNAMIC_RULE_OFFSET = 1000
@@ -40,9 +39,7 @@ export function rulesToDynamicRules(
         })),
       },
       condition: {
-        regexFilter: rule.kind === 'switcher'
-          ? domainPatternToRegexFilter(rule.url)
-          : patternToRegexFilter(rule.url),
+        regexFilter: domainPatternToRegexFilter(rule.url),
         resourceTypes: RESOURCE_TYPES,
       },
     }))

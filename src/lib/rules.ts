@@ -90,10 +90,11 @@ function normalizeEntry(input: unknown, index: number): HeaderEntry {
       ? (input as Omit<Partial<HeaderSwitcher>, 'kind'> & { headers?: unknown; kind?: unknown })
       : {}
   const id = typeof candidate.id === 'string' && candidate.id.trim() ? candidate.id : createRuleId()
+  const url = typeof candidate.url === 'string' && candidate.url.trim() ? candidate.url.trim() : '*'
   const base = {
     id,
     name: typeof candidate.name === 'string' ? candidate.name.trim() : '',
-    url: typeof candidate.url === 'string' && candidate.url.trim() ? candidate.url.trim() : '*',
+    url: getDomainPattern(url) || url,
     enabled: typeof candidate.enabled === 'boolean' ? candidate.enabled : true,
     order: typeof candidate.order === 'number' && Number.isFinite(candidate.order) ? candidate.order : index,
   }
@@ -132,7 +133,6 @@ function normalizeEntry(input: unknown, index: number): HeaderEntry {
   return {
     ...base,
     kind: 'switcher',
-    url: getDomainPattern(base.url) || base.url,
     options,
     selectedOptionId: options.find((option) => option.id === candidate.selectedOptionId)?.id ?? options[0].id,
   }

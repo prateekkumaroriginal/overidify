@@ -2,7 +2,7 @@ import { startTransition, useEffect, useState } from 'react'
 
 import { SwitcherOptionSelect } from '../components/SwitcherOptionSelect'
 import { ToggleSwitch } from '../components/ToggleSwitch'
-import { domainPatternToRegexFilter, patternToRegexFilter } from '../lib/pattern'
+import { domainPatternToRegexFilter } from '../lib/pattern'
 import { getEntries, saveEntries, subscribeToEntries } from '../lib/storage'
 import type { HeaderEntry } from '../lib/types'
 
@@ -75,9 +75,7 @@ export function PopupApp() {
 
   const pageRules = /^https?:\/\//i.test(pageUrl)
     ? rules.filter((rule) =>
-        new RegExp(rule.kind === 'switcher'
-          ? domainPatternToRegexFilter(rule.url)
-          : patternToRegexFilter(rule.url)).test(pageUrl),
+        new RegExp(domainPatternToRegexFilter(rule.url)).test(pageUrl),
       )
     : []
 
