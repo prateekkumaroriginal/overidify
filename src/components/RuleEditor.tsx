@@ -102,7 +102,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
                   aria-describedby="rule-domain-help"
                   required
                 />
-                <span id="rule-domain-help" className="font-normal text-muted-foreground">Matches requests to this host on every path. Include a port to match only that port.</span>
+                <span id="rule-domain-help" className="font-normal text-muted-foreground">Matches the page's domain on every path. Applies to requests made from that page, including other API hosts. Include a port to match only that port.</span>
               </label>
             </div>
             <div className="flex items-center justify-between gap-5 border-t py-[17px]">

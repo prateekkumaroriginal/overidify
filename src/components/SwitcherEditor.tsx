@@ -122,7 +122,7 @@ export function SwitcherEditor({ switcher, pending, onSave, onDelete }: Switcher
               </label>
               <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">Domain
                 <Input className="font-mono text-[11px]" value={draft.url} onChange={(event) => setDraft({ ...draft, url: event.target.value })} placeholder="e.g. localhost:4200 or api.example.com" aria-label="Domain" aria-describedby="switcher-domain-help" required />
-                <span id="switcher-domain-help" className="font-normal text-muted-foreground">Matches requests to this host on every path. Include a port to match only that port.</span>
+                <span id="switcher-domain-help" className="font-normal text-muted-foreground">Matches the page's domain on every path. Applies to requests made from that page, including other API hosts. Include a port to match only that port.</span>
               </label>
             </div>
             <div className="flex items-center justify-between gap-5 border-t py-[17px]">

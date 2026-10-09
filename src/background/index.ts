@@ -1,9 +1,14 @@
-import { syncDynamicRules } from '../lib/dnr'
+import { syncSessionRules } from '../lib/dnr'
 import { getEntries, STORAGE_KEY } from '../lib/storage'
 
+const pageUrls = new Map<number, string>()
+
 async function syncFromStorage(): Promise<void> {
-  const rules = await getEntries()
-  await syncDynamicRules(rules)
+  const [rules, tabs] = await Promise.all([getEntries(), chrome.tabs.query({})])
+  await syncSessionRules(rules, tabs.map((tab) => ({
+    id: tab.id,
+    url: tab.id === undefined ? tab.url : pageUrls.get(tab.id) ?? tab.url,
+  })))
 }
 
 let syncing: Promise<void> | undefined
@@ -33,8 +38,42 @@ function queueSync(): Promise<void> {
 }
 
 function requestSync(): void {
-  void queueSync().catch((error) => console.error('Failed to sync dynamic header rules.', error))
+  void queueSync().catch((error) => console.error('Failed to sync page header rules.', error))
 }
+
+function updatePage(tabId: number, url: string): void {
+  pageUrls.set(tabId, url)
+  requestSync()
+}
+
+// Start before the new document loads, so its first API requests use its rules.
+chrome.webNavigation.onBeforeNavigate.addListener(({ tabId, frameId, url }) => {
+  if (frameId === 0) updatePage(tabId, url)
+})
+
+chrome.webNavigation.onCommitted.addListener(({ tabId, frameId, url }) => {
+  if (frameId === 0) updatePage(tabId, url)
+})
+
+chrome.webNavigation.onErrorOccurred.addListener(({ tabId, frameId }) => {
+  if (frameId !== 0) return
+  pageUrls.delete(tabId)
+  requestSync()
+})
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.url !== undefined) updatePage(tabId, changeInfo.url)
+})
+
+chrome.tabs.onCreated.addListener(() => requestSync())
+chrome.tabs.onRemoved.addListener((tabId) => {
+  pageUrls.delete(tabId)
+  requestSync()
+})
+chrome.tabs.onReplaced.addListener((_addedTabId, removedTabId) => {
+  pageUrls.delete(removedTabId)
+  requestSync()
+})
 
 chrome.runtime.onInstalled.addListener(() => {
   requestSync()

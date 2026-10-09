@@ -31,3 +31,8 @@ export function domainPatternToRegexFilter(pattern: string): string {
   const port = /:\d+$/.test(domain) ? '' : '(?::[0-9]+)?'
   return `^(https?|wss?)://${host}${port}([/?#]|$)`
 }
+
+export function matchesPageDomain(pattern: string, pageUrl: string): boolean {
+  return /^https?:\/\//i.test(pageUrl) &&
+    new RegExp(domainPatternToRegexFilter(pattern), 'i').test(pageUrl)
+}

@@ -2,7 +2,7 @@ import { startTransition, useEffect, useState } from 'react'
 
 import { SwitcherOptionSelect } from '../components/SwitcherOptionSelect'
 import { ToggleSwitch } from '../components/ToggleSwitch'
-import { domainPatternToRegexFilter } from '../lib/pattern'
+import { matchesPageDomain } from '../lib/pattern'
 import { getEntries, saveEntries, subscribeToEntries } from '../lib/storage'
 import type { HeaderEntry } from '../lib/types'
 
@@ -73,11 +73,7 @@ export function PopupApp() {
     }
   }
 
-  const pageRules = /^https?:\/\//i.test(pageUrl)
-    ? rules.filter((rule) =>
-        new RegExp(domainPatternToRegexFilter(rule.url)).test(pageUrl),
-      )
-    : []
+  const pageRules = rules.filter((rule) => matchesPageDomain(rule.url, pageUrl))
 
   return (
     <main className="w-full px-[18px] pt-2 pb-3.5">

@@ -31,7 +31,7 @@ Keep the extracted folder in place. Chrome loads the extension from it.
 - Switcher entries open their edit page directly
 - Rule, switcher, and option deletion
 - `chrome.storage.local` persistence
-- Automatic sync into `declarativeNetRequest` dynamic rules
+- Automatic sync into `declarativeNetRequest` session rules for matching website tabs
 - Dark-only, responsive UI with rule search and reduced-motion support
 
 ## Development
@@ -81,13 +81,17 @@ The production extension bundle is generated in `dist/`.
 
 - Rules apply their original header set
 - Switchers apply only the selected option’s header set
-- Rules and switchers use the same matching logic for HTTP, HTTPS, WS, and WSS requests: hosts and optional ports on every path
+- Rules, switchers, and the popup match the website's page domain with the same logic: exact hosts and optional ports on every path
+- Headers apply to HTTP, HTTPS, WS, and WSS requests made in matching website tabs, including requests to other API hosts and requests from embedded frames
+- For example, `localhost:4200` matches a page at `http://localhost:4200/messages` and overrides its requests to `https://backendapi-qa.topfan.dev/`
+- The API's domain does not determine whether a rule or switcher matches
+- Top-level page navigations are excluded; rules are refreshed when tabs open, navigate, or close
 - Both accept `localhost:4200`, `api.example.com`, `*.example.com`, or `*`
 - Existing rule and switcher URLs such as `http://localhost:4200/messages` become `localhost:4200`
 - Existing rules retain their headers and enabled state
 - Switchers with a single option have no dropdown
 
-- `*` matches all supported request hosts
+- `*` matches all HTTP and HTTPS website tabs
 - Legacy wildcard URL patterns like `*://api.example.com/*` become host patterns such as `api.example.com`
 - Later entries have higher priority, across both rules and switchers
 - Header pairs use set semantics, so existing values are replaced and missing headers are added

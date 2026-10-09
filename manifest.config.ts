@@ -5,7 +5,7 @@ export default defineManifest({
   name: 'Overidify',
   version: '0.1.0',
   description: 'Override request headers with ordered browser-wide rules.',
-  permissions: ['storage', 'declarativeNetRequest', 'declarativeNetRequestWithHostAccess'],
+  permissions: ['storage', 'tabs', 'webNavigation', 'declarativeNetRequest', 'declarativeNetRequestWithHostAccess'],
   host_permissions: ['<all_urls>'],
   action: {
     default_title: 'Overidify',
