@@ -28,7 +28,7 @@ Keep the extracted folder in place. Chrome loads the extension from it.
 - Popup showing matching rules and switchers for the current tab, with toggles, switcher dropdowns, and a Settings link
 - Rules and Switchers tabs on the home page, with separate editors
 - Rules apply one header set; switchers provide named options with separate header sets
-- Expandable switcher entries showing the selected option’s headers
+- Switcher entries open their edit page directly
 - Rule, switcher, and option deletion
 - `chrome.storage.local` persistence
 - Automatic sync into `declarativeNetRequest` dynamic rules
@@ -81,6 +81,9 @@ The production extension bundle is generated in `dist/`.
 
 - Rules apply their original header set
 - Switchers apply only the selected option’s header set
+- Switchers match request hosts and optional ports on every path, regardless of scheme
+- Switcher domains accept `localhost:4200`, `api.example.com`, `*.example.com`, or `*`
+- Existing switcher URLs such as `http://localhost:4200/messages` become `localhost:4200`
 - Existing rules retain their headers and enabled state
 - Switchers with a single option have no dropdown
 

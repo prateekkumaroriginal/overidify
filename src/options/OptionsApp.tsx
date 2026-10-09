@@ -130,8 +130,8 @@ export function OptionsApp() {
       await persistEntries(entries.map((current) => current.id === switcher.id && current.kind === 'switcher'
         ? { ...current, selectedOptionId }
         : current))
-    } catch {
-      setError('Could not change the selected option. Try again.')
+    } catch (error) {
+      setError(`Could not apply the selected headers. ${error instanceof Error ? error.message : 'Try again.'}`)
     }
   }
 

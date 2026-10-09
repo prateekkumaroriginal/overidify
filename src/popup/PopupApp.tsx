@@ -2,7 +2,7 @@ import { startTransition, useEffect, useState } from 'react'
 
 import { SwitcherOptionSelect } from '../components/SwitcherOptionSelect'
 import { ToggleSwitch } from '../components/ToggleSwitch'
-import { patternToRegexFilter } from '../lib/pattern'
+import { domainPatternToRegexFilter, patternToRegexFilter } from '../lib/pattern'
 import { getEntries, saveEntries, subscribeToEntries } from '../lib/storage'
 import type { HeaderEntry } from '../lib/types'
 
@@ -66,8 +66,8 @@ export function PopupApp() {
           ),
         ),
       )
-    } catch {
-      setError(`Could not update the ${rule.kind}. Try again.`)
+    } catch (error) {
+      setError(`Could not apply the headers. ${error instanceof Error ? error.message : 'Try again.'}`)
     } finally {
       setPending(false)
     }
@@ -75,7 +75,9 @@ export function PopupApp() {
 
   const pageRules = /^https?:\/\//i.test(pageUrl)
     ? rules.filter((rule) =>
-        new RegExp(patternToRegexFilter(rule.url)).test(pageUrl),
+        new RegExp(rule.kind === 'switcher'
+          ? domainPatternToRegexFilter(rule.url)
+          : patternToRegexFilter(rule.url)).test(pageUrl),
       )
     : []
 

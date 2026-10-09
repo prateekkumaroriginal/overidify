@@ -47,10 +47,10 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
       const savedRule = await onSave(draft)
       setDraft(ruleToDraft(savedRule))
       setSaveState({ tone: 'success', message: 'Rule saved.' })
-    } catch {
+    } catch (error) {
       setSaveState({
         tone: 'error',
-        message: 'Could not save the rule. Try again.',
+        message: `Could not apply the rule. ${error instanceof Error ? error.message : 'Try again.'}`,
       })
     }
   }

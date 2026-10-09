@@ -2,39 +2,46 @@ import { syncDynamicRules } from '../lib/dnr'
 import { getEntries, STORAGE_KEY } from '../lib/storage'
 
 async function syncFromStorage(): Promise<void> {
-  try {
-    const rules = await getEntries()
-    await syncDynamicRules(rules)
-  } catch (error) {
-    console.error('Failed to sync dynamic header rules.', error)
-  }
+  const rules = await getEntries()
+  await syncDynamicRules(rules)
 }
 
-let syncing = false
+let syncing: Promise<void> | undefined
 let syncRequested = false
 
-function queueSync(): void {
+function queueSync(): Promise<void> {
   syncRequested = true
-  if (syncing) return
-  syncing = true
-  void (async () => {
+  if (syncing) return syncing
+  syncing = (async () => {
+    let lastError: unknown
     try {
       while (syncRequested) {
         syncRequested = false
-        await syncFromStorage()
+        try {
+          await syncFromStorage()
+          lastError = undefined
+        } catch (error) {
+          lastError = error
+        }
       }
+      if (lastError) throw lastError
     } finally {
-      syncing = false
+      syncing = undefined
     }
   })()
+  return syncing
+}
+
+function requestSync(): void {
+  void queueSync().catch((error) => console.error('Failed to sync dynamic header rules.', error))
 }
 
 chrome.runtime.onInstalled.addListener(() => {
-  queueSync()
+  requestSync()
 })
 
 chrome.runtime.onStartup.addListener(() => {
-  queueSync()
+  requestSync()
 })
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -42,7 +49,19 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     return
   }
 
-  queueSync()
+  requestSync()
 })
 
-queueSync()
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type !== 'sync-header-rules') return
+  void queueSync().then(
+    () => sendResponse({ ok: true }),
+    (error: unknown) => sendResponse({
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    }),
+  )
+  return true
+})
+
+requestSync()

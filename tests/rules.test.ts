@@ -56,6 +56,15 @@ test('explicit switchers keep their type when one Default option remains', () =>
   assert.deepEqual(getEntryHeaders(switcher), legacy.headers)
 })
 
+test('existing switchers normalize full URLs to domains without changing headers or selection', () => {
+  const [entry] = normalizeEntries([{ ...legacy, kind: 'switcher', url: 'http://localhost:4200/messages', options, selectedOptionId: 'guest' }])
+  if (entry.kind !== 'switcher') throw new Error('Expected switcher')
+  assert.equal(entry.url, 'localhost:4200')
+  assert.equal(entry.selectedOptionId, 'guest')
+  assert.deepEqual(entry.options, options)
+  assert.deepEqual(normalizeEntries([entry]), [entry])
+})
+
 test('switching a switcher replaces its header set while preserving ordinary rules and priority order', () => {
   const entries = normalizeEntries([
     { ...legacy, kind: 'switcher', order: 6, options, selectedOptionId: 'admin' },

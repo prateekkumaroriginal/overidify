@@ -1,3 +1,4 @@
+import { getDomainPattern } from './pattern.ts'
 import type {
   HeaderEntry,
   HeaderPair,
@@ -131,6 +132,7 @@ function normalizeEntry(input: unknown, index: number): HeaderEntry {
   return {
     ...base,
     kind: 'switcher',
+    url: getDomainPattern(base.url) || base.url,
     options,
     selectedOptionId: options.find((option) => option.id === candidate.selectedOptionId)?.id ?? options[0].id,
   }

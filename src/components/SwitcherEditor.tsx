@@ -2,7 +2,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useRef, useState } from 'react'
 import type { SubmitEvent } from 'react'
-import { isValidUrlPattern } from '../lib/pattern'
+import { isValidDomainPattern } from '../lib/pattern'
 import {
   createHeaderPair,
   createSwitcherDraft,
@@ -103,8 +103,8 @@ export function SwitcherEditor({ switcher, pending, onSave, onDelete }: Switcher
       setDraft(switcherToDraft(savedRule))
       setDeletedOption(null)
       setSaveState({ tone: 'success', message: 'Switcher saved.' })
-    } catch {
-      setSaveState({ tone: 'error', message: 'Could not save the switcher. Try again.' })
+    } catch (error) {
+      setSaveState({ tone: 'error', message: `Could not apply the switcher. ${error instanceof Error ? error.message : 'Try again.'}` })
     }
   }
 
@@ -120,8 +120,9 @@ export function SwitcherEditor({ switcher, pending, onSave, onDelete }: Switcher
               <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">Switcher name
                 <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="e.g. Authenticated API" autoFocus required />
               </label>
-              <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">URL pattern
-                <Input className="font-mono text-[11px]" value={draft.url} onChange={(event) => setDraft({ ...draft, url: event.target.value })} placeholder="e.g. *://api.example.com/*" required />
+              <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">Domain
+                <Input className="font-mono text-[11px]" value={draft.url} onChange={(event) => setDraft({ ...draft, url: event.target.value })} placeholder="e.g. localhost:4200 or api.example.com" aria-label="Domain" aria-describedby="switcher-domain-help" required />
+                <span id="switcher-domain-help" className="font-normal text-muted-foreground">Matches requests to this host on every path. Include a port to match only that port.</span>
               </label>
             </div>
             <div className="flex items-center justify-between gap-5 border-t py-[17px]">
@@ -188,8 +189,8 @@ export function SwitcherEditor({ switcher, pending, onSave, onDelete }: Switcher
 
 function validateDraft(draft: SwitcherDraft): { message: string; optionId?: string } | null {
   if (!draft.name.trim()) return { message: 'Switcher name is required.' }
-  if (!draft.url.trim()) return { message: 'URL pattern is required.' }
-  if (!isValidUrlPattern(draft.url.trim())) return { message: 'Use * or a wildcard URL pattern like *://api.example.com/*.' }
+  if (!draft.url.trim()) return { message: 'Domain is required.' }
+  if (!isValidDomainPattern(draft.url)) return { message: 'Use a domain like localhost:4200, api.example.com, *.example.com, or *.' }
   const names = new Set<string>()
   for (const option of draft.options) {
     const name = option.name.trim()
