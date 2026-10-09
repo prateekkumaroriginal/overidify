@@ -70,7 +70,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
         }}
       >
         <fieldset className="m-0 min-w-0 border-0 p-0" disabled={pending}>
-          <div className="mb-5 rounded-[10px] border bg-card px-7 pt-[25px] mobile:px-[17px] mobile:pt-5">
+          <div className="mb-5 rounded-lg border bg-card shadow-panel px-7 pt-[25px] mobile:px-[17px] mobile:pt-5">
             <div className="mb-6 flex items-center justify-between gap-[13px] mobile:flex-wrap mobile:gap-[9px] [&_h2]:text-[13px] [&_h2]:font-bold [&_h2]:tracking-[-0.2px] mobile:[&>div]:flex-1">
               <div>
                 <h2>Rule details</h2>
@@ -112,12 +112,12 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
               />
             </div>
           </div>
-          <div className="mb-5 rounded-[10px] border bg-card px-7 pt-[25px] mobile:px-[17px] mobile:pt-5">
+          <div className="mb-5 rounded-lg border bg-card shadow-panel px-7 pt-[25px] mobile:px-[17px] mobile:pt-5">
             <div className="mb-6 flex items-center justify-between gap-[13px] mobile:flex-wrap mobile:gap-[9px] [&_h2]:text-[13px] [&_h2]:font-bold [&_h2]:tracking-[-0.2px] mobile:[&>div]:flex-1">
               <div>
                 <h2>Request headers</h2>
               </div>
-              <Button variant="outline" className="ml-auto h-auto min-h-[35px] px-2.5 py-[7px] text-[10px] [&_svg]:size-[15px]"
+              <Button variant="secondary" className="ml-auto"
                 type="button"
                 onClick={() =>
                   setDraft({
@@ -132,7 +132,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
             <div className="min-w-0">
               {draft.headers.map((header, index) => (
                 <div className="mb-6 grid grid-cols-[20px_minmax(0,1fr)_minmax(0,1.4fr)_26px] items-end gap-[13px] mobile:gap-3 mobile:grid-cols-[1fr_26px] mobile:items-center mobile:border-b mobile:pb-5 mobile:last:border-b-0 mobile:last:pb-0" key={index}>
-                  <span className="pb-3 font-mono text-[10px] text-[#acacac] mobile:hidden">
+                  <span className="pb-3 font-mono text-[10px] text-muted-foreground mobile:hidden">
                     {String(index + 1).padStart(2, '0')}
                   </span>
                   <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">
@@ -159,7 +159,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
                       aria-label={`Header ${index + 1} value`}
                     />
                   </label>
-                  <Button variant="ghost" className="mb-[7px] size-[26px] text-[#b2b2b2] [&_svg]:size-[15px] mobile:col-start-2 mobile:row-span-2 mobile:row-start-1 mobile:mb-0"
+                  <Button variant="ghost" className="mb-[7px] size-[26px] text-muted-foreground [&_svg]:size-[15px] mobile:col-start-2 mobile:row-span-2 mobile:row-start-1 mobile:mb-0"
                     type="button"
                     aria-label={`Remove header ${index + 1}`}
                     onClick={() =>
@@ -180,7 +180,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
           </div>
           {saveState.message && (
             <p
-              className={`mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 ${saveState.tone === 'error' ? 'border-[#494949] bg-[#2b2b2b] text-[#bebebe]' : 'border-[#515151] bg-[#323232] text-[#cdcdcd]'}`}
+              className={`mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 ${saveState.tone === 'error' ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-input bg-secondary text-secondary-foreground'}`}
               role={saveState.tone === 'error' ? 'alert' : 'status'}
             >
               <Icon name={saveState.tone === 'error' ? 'close' : 'check'} />
@@ -188,22 +188,21 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
             </p>
           )}
           <div className="mt-[25px] mb-10 flex items-center gap-[23px] mobile:gap-[17px]">
-            <Button variant="default" className="h-auto min-h-[46px] px-5 py-[13px] text-xs font-bold mobile:px-[15px] mobile:py-3" type="submit">
-              <Icon name="check" />
-              {pending ? 'Saving...' : 'Save rule'}
-            </Button>
-            <a className="text-[11px] text-muted-foreground no-underline hover:text-foreground" href="#/">
-              Cancel
-            </a>
             {onDelete && (
               <Button variant="ghost"
                 type="button"
-                className="ml-auto h-auto pr-0 pl-3 py-[9px] rounded-none text-[11px] text-[#aeaeae] hover:bg-transparent hover:text-[#bebebe]"
+                className="h-auto px-0 py-[9px] rounded-none text-[11px] text-muted-foreground hover:bg-transparent hover:text-destructive"
                 onClick={onDelete}
               >
                 Delete rule
               </Button>
             )}
+            <a className="ml-auto text-[11px] text-muted-foreground no-underline hover:text-foreground" href="#/">
+              Cancel
+            </a>
+            <Button variant="default" className="mobile:px-3 mobile:text-xs" type="submit">
+              Save
+            </Button>
           </div>
         </fieldset>
       </form>

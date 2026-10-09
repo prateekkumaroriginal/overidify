@@ -82,7 +82,7 @@ export function PopupApp() {
   return (
     <main className="w-full px-[18px] pt-2 pb-3.5">
       {error && (
-        <p className="mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 border-[#494949] bg-[#2b2b2b] text-[#bebebe]" role="alert">
+        <p className="mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 border-destructive/40 bg-destructive/10 text-destructive" role="alert">
           {error}
         </p>
       )}

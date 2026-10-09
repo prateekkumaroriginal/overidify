@@ -143,7 +143,7 @@ export function OptionsApp() {
     <div className="mx-auto max-w-[1240px] px-16 min-[1440px]:max-w-[1280px] min-[1440px]:px-[90px] tablet:px-9 mobile:px-5">
       <header className="flex h-[78px] items-center justify-between gap-5 border-b tablet:h-[72px]"><Brand /></header>
       <main className="pt-[34px] pb-[50px] min-[1440px]:pt-10 tablet:pt-10 mobile:pt-[31px]">
-        {error && <p className="mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 border-[#494949] bg-[#2b2b2b] text-[#bebebe]" role="alert">{error}</p>}
+        {error && <p className="mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 border-destructive/40 bg-destructive/10 text-destructive" role="alert">{error}</p>}
         {loading ? (
           <div className="flex min-h-[300px] items-center justify-center gap-2.5 text-xs text-muted-foreground" role="status"><span className="size-[7px] animate-loading-pulse rounded-full bg-primary" /> Loading...</div>
         ) : loadFailed ? null : isHome ? (
@@ -212,20 +212,20 @@ function Workspace({ entries, view, pending, onToggle, onSelectOption }: Workspa
       <TabsContent value={view}>
         <div className="mb-5 flex items-center justify-between gap-5 mobile:gap-3 [&_h1]:text-xl [&_h1]:font-semibold [&_h1]:flex [&_h1]:items-center [&_h1]:gap-2.5 mobile:[&_h1]:gap-2 mobile:[&_h1]:whitespace-nowrap">
           <h1>{isSwitchers ? 'Switchers' : 'Rules'}</h1>
-          <Button asChild className="h-auto min-h-10 px-4 py-2.5 text-xs font-bold mobile:px-3 mobile:py-[9px] mobile:text-[11px] mobile:shrink-0 mobile:whitespace-nowrap"><a href={newRoute}><Icon name="plus" /> {isSwitchers ? 'New Switcher' : 'New Rule'}</a></Button>
+          <Button asChild className="mobile:px-3 mobile:text-xs mobile:shrink-0 mobile:whitespace-nowrap"><a href={newRoute}><Icon name="plus" /> {isSwitchers ? 'New Switcher' : 'New Rule'}</a></Button>
         </div>
-        <div className="overflow-hidden rounded-[11px] border bg-card shadow-[0_3px_6px_#00000012]">
+        <div className="overflow-hidden rounded-lg border bg-card shadow-panel">
           <div className="flex min-h-[66px] items-center gap-5 border-b px-6 py-[17px] mobile:px-[15px] mobile:py-3.5 mobile:flex-col mobile:items-stretch mobile:gap-2.5">
-            <label className="flex w-full min-w-0 items-center gap-2 text-[#a7a7a7] focus-within:text-foreground focus-within:shadow-[0_1px_0_#737373] [&>svg]:size-[15px]">
+            <label className="flex w-full min-w-0 items-center gap-2 text-muted-foreground focus-within:text-foreground focus-within:shadow-[0_1px_0_var(--ring)] [&>svg]:size-[15px]">
               <Icon name="search" />
-              <Input className="h-auto flex-1 rounded-none border-0 bg-transparent px-0 py-2 text-[11px] shadow-none focus:bg-transparent focus:shadow-none placeholder:text-[#a6a6a6]" aria-label={`Search ${plural}`} placeholder={`Find a ${noun}...`} value={query} onChange={(event) => setQueries({ ...queries, [view]: event.target.value })} />
-              {query && <Button variant="ghost" type="button" className="size-[26px] text-[#b2b2b2] [&_svg]:size-[15px]" aria-label="Clear search" onClick={() => setQueries({ ...queries, [view]: '' })}><Icon name="close" /></Button>}
+              <Input className="h-auto flex-1 rounded-none border-0 bg-transparent px-0 py-2 text-[11px] shadow-none focus:bg-transparent focus:ring-0 placeholder:text-muted-foreground" aria-label={`Search ${plural}`} placeholder={`Find a ${noun}...`} value={query} onChange={(event) => setQueries({ ...queries, [view]: event.target.value })} />
+              {query && <Button variant="ghost" type="button" className="size-[26px] text-muted-foreground [&_svg]:size-[15px]" aria-label="Clear search" onClick={() => setQueries({ ...queries, [view]: '' })}><Icon name="close" /></Button>}
             </label>
           </div>
           {!group.length ? (
             <div className="flex flex-col items-center px-5 pt-[45px] pb-11 text-center mobile:px-4 mobile:py-[33px] [&_h3]:mt-[11px] [&_h3]:text-base [&_h3]:font-semibold [&_h3]:tracking-[-0.3px]">
               <h3>No {plural} yet</h3>
-              <Button asChild className="mt-[23px] h-auto min-h-10 px-4 py-2.5 text-xs font-bold mobile:px-3 mobile:py-[9px] mobile:text-[11px] mobile:shrink-0 mobile:whitespace-nowrap"><a href={newRoute}>
+              <Button asChild className="mt-[23px] mobile:px-3 mobile:text-xs mobile:shrink-0 mobile:whitespace-nowrap"><a href={newRoute}>
                 <Icon name="plus" /> {isSwitchers ? 'New Switcher' : 'New Rule'}
               </a></Button>
             </div>
@@ -234,12 +234,12 @@ function Workspace({ entries, view, pending, onToggle, onSelectOption }: Workspa
               <SwitchersList switchers={visible.filter((entry): entry is HeaderSwitcher => entry.kind === 'switcher')} disabled={pending} switcherHref={(switcher) => `#${entryRoute(switcher)}`} onToggle={onToggle} onSelectOption={onSelectOption} />
             ) : (
               <>
-                <div className="grid grid-cols-[32px_minmax(0,1fr)_92px] gap-4 px-6 pt-[17px] pb-2 text-[8px] tracking-[1.1px] text-[#a9a9a9] tablet:grid-cols-[32px_minmax(0,1fr)_68px] mobile:hidden" aria-hidden="true"><span /><span>RULE / URL PATTERN</span><span>HEADERS</span></div>
+                <div className="grid grid-cols-[32px_minmax(0,1fr)_92px] gap-4 px-6 pt-[17px] pb-2 text-[8px] tracking-[1.1px] text-muted-foreground tablet:grid-cols-[32px_minmax(0,1fr)_68px] mobile:hidden" aria-hidden="true"><span /><span>RULE / URL PATTERN</span><span>HEADERS</span></div>
                 <RulesList rules={visible.filter((entry): entry is HeaderRule => entry.kind === 'rule')} disabled={pending} ruleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} />
               </>
             )
           ) : (
-            <div className="flex flex-col items-center px-5 pt-[45px] pb-11 text-center mobile:px-4 mobile:py-[33px] [&_h3]:mt-[11px] [&_h3]:text-base [&_h3]:font-semibold [&_h3]:tracking-[-0.3px] min-h-[290px] justify-center [&>svg]:size-7 [&>svg]:text-[#b8b8b8] [&>button]:mt-5"><Icon name="search" /><h3>No matching {plural}.</h3><Button variant="outline" className="h-auto min-h-[46px] px-5 py-[13px] text-xs font-bold" onClick={() => setQueries({ ...queries, [view]: '' })}>Show all {plural}</Button></div>
+            <div className="flex flex-col items-center px-5 pt-[45px] pb-11 text-center mobile:px-4 mobile:py-[33px] [&_h3]:mt-[11px] [&_h3]:text-base [&_h3]:font-semibold [&_h3]:tracking-[-0.3px] min-h-[290px] justify-center [&>svg]:size-7 [&>svg]:text-muted-foreground [&>button]:mt-5"><Icon name="search" /><h3>No matching {plural}.</h3><Button variant="outline" className="h-auto min-h-[46px] px-5 py-[13px] text-xs font-bold" onClick={() => setQueries({ ...queries, [view]: '' })}>Show all {plural}</Button></div>
           )}
         </div>
       </TabsContent>

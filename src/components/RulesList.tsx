@@ -20,7 +20,7 @@ export function RulesList({
     <ul className="m-0 list-none p-0">
       {rules.map((rule, index) => (
         <li
-          className="animate-[rise-in_350ms_both] border-b border-[#343434] px-6 transition-colors hover:bg-[#262626] focus-within:bg-[#262626] last:border-b-0 mobile:px-[15px] flex min-h-20 items-center gap-4 mobile:gap-2.5"
+          className="animate-[rise-in_350ms_both] border-b border-border px-6 transition-colors hover:bg-accent focus-within:bg-accent last:border-b-0 mobile:px-[15px] flex min-h-20 items-center gap-4 mobile:gap-2.5"
           key={rule.id}
           style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
         >
@@ -38,9 +38,9 @@ export function RulesList({
           >
             <span className="grid min-w-0 flex-1 gap-[5px]">
               <span className="text-xs font-semibold wrap-anywhere mobile:text-[11px]">{rule.name}</span>
-              <span className="font-mono text-[11px] text-[#ababab] wrap-anywhere">{rule.url}</span>
+              <span className="font-mono text-[11px] text-muted-foreground wrap-anywhere">{rule.url}</span>
             </span>
-            <span className="min-w-[92px] text-[11px] text-[#b4b4b4] [&>span]:text-[10px] tablet:min-w-[68px] mobile:hidden">
+            <span className="min-w-[92px] text-[11px] text-muted-foreground [&>span]:text-[10px] tablet:min-w-[68px] mobile:hidden">
               {rule.headers.length}{' '}
               <span>header{rule.headers.length === 1 ? '' : 's'}</span>
             </span>

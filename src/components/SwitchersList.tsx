@@ -31,7 +31,7 @@ export function SwitchersList({ switchers, switcherHref, onToggle, onSelectOptio
         const detailsId = `rule-headers-${rule.id}`
         return (
           <li
-            className="animate-[rise-in_350ms_both] border-b border-[#343434] px-6 transition-colors hover:bg-[#262626] focus-within:bg-[#262626] last:border-b-0 mobile:px-[15px] mobile:min-h-[86px]"
+            className="animate-[rise-in_350ms_both] border-b border-border px-6 transition-colors hover:bg-accent focus-within:bg-accent last:border-b-0 mobile:px-[15px] mobile:min-h-[86px]"
             key={rule.id}
             style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
           >
@@ -49,7 +49,7 @@ export function SwitchersList({ switchers, switcherHref, onToggle, onSelectOptio
                 onClick={() => toggleDetails(rule.id)}
               >
                 <span className="text-xs font-semibold wrap-anywhere mobile:text-[11px]">{rule.name}</span>
-                <span className="font-mono text-[11px] text-[#ababab] wrap-anywhere">{rule.url}</span>
+                <span className="font-mono text-[11px] text-muted-foreground wrap-anywhere">{rule.url}</span>
               </Button>
               <SwitcherOptionSelect
                 switcher={rule}
@@ -60,13 +60,13 @@ export function SwitchersList({ switchers, switcherHref, onToggle, onSelectOptio
             <div className="border-t pt-[15px] pb-[18px] pl-12 mobile:pl-0" id={detailsId} hidden={!isExpanded}>
               <dl className="m-0">
                 {option.headers.map((header, headerIndex) => (
-                  <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-4 py-[5px] text-xs wrap-anywhere [&_dt]:text-[#aaa] [&_dd]:m-0 [&_dd]:whitespace-pre-wrap" key={headerIndex}>
+                  <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-4 py-[5px] text-xs wrap-anywhere [&_dt]:text-muted-foreground [&_dd]:m-0 [&_dd]:whitespace-pre-wrap" key={headerIndex}>
                     <dt>{header.key}</dt>
                     <dd>{header.value}</dd>
                   </div>
                 ))}
               </dl>
-              <a className="mt-[13px] inline-block text-xs text-[#bcbcbc] no-underline hover:text-foreground" href={switcherHref(rule)}>Edit switcher</a>
+              <a className="mt-[13px] inline-block text-xs text-muted-foreground no-underline hover:text-foreground" href={switcherHref(rule)}>Edit switcher</a>
             </div>
           </li>
         )

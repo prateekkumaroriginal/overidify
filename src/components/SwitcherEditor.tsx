@@ -114,7 +114,7 @@ export function SwitcherEditor({ switcher, pending, onSave, onDelete }: Switcher
       <div className="mt-[27px] mb-[30px] mobile:mt-5 [&_h1]:text-xl [&_h1]:leading-[1.4] [&_h1]:font-semibold"><h1 id="editor-title">{switcher ? 'Edit switcher' : 'New switcher'}</h1></div>
       <form ref={formRef} onSubmit={(event) => { void handleSubmit(event) }}>
         <fieldset className="m-0 min-w-0 border-0 p-0" disabled={pending}>
-          <div className="mb-5 rounded-[10px] border bg-card px-7 pt-[25px] mobile:px-[17px] mobile:pt-5">
+          <div className="mb-5 rounded-lg border bg-card shadow-panel px-7 pt-[25px] mobile:px-[17px] mobile:pt-5">
             <div className="mb-6 flex items-center justify-between gap-[13px] mobile:flex-wrap mobile:gap-[9px] [&_h2]:text-[13px] [&_h2]:font-bold [&_h2]:tracking-[-0.2px]"><h2>Switcher details</h2></div>
             <div className="mb-[22px] grid grid-cols-[1fr_1.35fr] gap-6 mobile:grid-cols-1 mobile:gap-[17px]">
               <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">Switcher name
@@ -129,20 +129,20 @@ export function SwitcherEditor({ switcher, pending, onSave, onDelete }: Switcher
               <ToggleSwitch checked={draft.enabled} label="Switcher enabled" onChange={(enabled) => setDraft({ ...draft, enabled })} />
             </div>
           </div>
-          <div className="mb-5 rounded-[10px] border bg-card px-7 pt-[25px] mobile:px-[17px] mobile:pt-5 pb-6 mobile:pb-5">
+          <div className="mb-5 rounded-lg border bg-card shadow-panel px-7 pt-[25px] mobile:px-[17px] mobile:pt-5 pb-6 mobile:pb-5">
             <div className="mb-6 flex items-center justify-between gap-[13px] mobile:flex-wrap mobile:gap-[9px] [&_h2]:text-[13px] [&_h2]:font-bold [&_h2]:tracking-[-0.2px]">
               <h2>Options</h2>
-              <Button variant="outline" size="sm" className="border-input bg-accent text-foreground [&_svg]:size-3.5" type="button" onClick={addOption}><Icon name="plus" />Add option</Button>
+              <Button variant="secondary" type="button" onClick={addOption}><Icon name="plus" />Add option</Button>
             </div>
             <div className="grid grid-cols-[164px_minmax(0,1fr)] gap-6 mobile:grid-cols-1 mobile:gap-5">
               <div className="flex min-w-0 flex-col gap-1.5 self-start border-r pr-4 mobile:flex-row mobile:flex-wrap mobile:border-r-0 mobile:border-b mobile:pr-0 mobile:pb-4" aria-label="Options to edit">
                 {draft.options.map((option) => (
-                  <div data-selected={option.id === editingOption.id} className="group flex min-w-0 items-center rounded-md border border-transparent hover:bg-[#252525] data-[selected=true]:border-[#404040] data-[selected=true]:bg-accent" key={option.id}>
-                    <Button variant="ghost" className="h-auto min-w-0 flex-1 shrink justify-start p-2.5 text-left rounded-none text-xs text-[#aaa] whitespace-normal wrap-anywhere group-data-[selected=true]:text-foreground hover:bg-transparent" type="button" aria-pressed={option.id === editingOption.id} onClick={() => setEditingId(option.id)}>
+                  <div data-selected={option.id === editingOption.id} className="group flex min-w-0 items-center rounded-md border border-transparent hover:bg-accent data-[selected=true]:border-input data-[selected=true]:bg-selection" key={option.id}>
+                    <Button variant="ghost" className="h-auto min-w-0 flex-1 shrink justify-start p-2.5 text-left rounded-none text-xs text-muted-foreground whitespace-normal wrap-anywhere group-data-[selected=true]:text-primary hover:bg-transparent" type="button" aria-pressed={option.id === editingOption.id} onClick={() => setEditingId(option.id)}>
                       {option.name || 'Untitled'}
                     </Button>
                     {draft.options.length > 1 && (
-                      <Button variant="ghost" className="invisible mr-[3px] size-[26px] text-[#b2b2b2] group-hover:visible group-focus-within:visible group-data-[selected=true]:visible hover:bg-destructive/10 hover:text-destructive [&_svg]:size-[15px]"
+                      <Button variant="ghost" className="invisible mr-[3px] size-[26px] text-muted-foreground group-hover:visible group-focus-within:visible group-data-[selected=true]:visible hover:bg-destructive/10 hover:text-destructive [&_svg]:size-[15px]"
                         type="button"
                         aria-label={`Delete option ${option.name || 'Untitled'}`}
                         title="Delete option"
@@ -165,20 +165,20 @@ export function SwitcherEditor({ switcher, pending, onSave, onDelete }: Switcher
                       <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">{index === 0 && 'Value'}
                         <Input className="font-mono text-[11px]" value={header.value} onChange={(event) => updateHeader(index, 'value', event.target.value)} placeholder="e.g. Bearer token" aria-label={`Header ${index + 1} value`} />
                       </label>
-                      <Button variant="ghost" className="mb-[7px] size-[26px] text-[#b2b2b2] [&_svg]:size-[15px] mobile:col-start-2 mobile:row-span-2 mobile:row-start-1 mobile:mb-0" type="button" aria-label={`Remove header ${index + 1}`} onClick={() => updateOption((option) => ({ ...option, headers: option.headers.filter((_, i) => i !== index) }))}><Icon name="close" /></Button>
+                      <Button variant="ghost" className="mb-[7px] size-[26px] text-muted-foreground [&_svg]:size-[15px] mobile:col-start-2 mobile:row-span-2 mobile:row-start-1 mobile:mb-0" type="button" aria-label={`Remove header ${index + 1}`} onClick={() => updateOption((option) => ({ ...option, headers: option.headers.filter((_, i) => i !== index) }))}><Icon name="close" /></Button>
                     </div>
                   ))}
                 </div>
-                <Button variant="outline" size="sm" className="border-input bg-accent text-foreground [&_svg]:size-3.5" type="button" onClick={() => updateOption((option) => ({ ...option, headers: [...option.headers, createHeaderPair()] }))}><Icon name="plus" />Add header</Button>
+                <Button variant="secondary" type="button" onClick={() => updateOption((option) => ({ ...option, headers: [...option.headers, createHeaderPair()] }))}><Icon name="plus" />Add header</Button>
               </div>
             </div>
-            {deletedOption && <div className="mt-[18px] flex items-center gap-3 border-t pt-4 text-xs text-[#aaa]" role="status"><span>{deletedOption.option.name} deleted</span><Button variant="link" className="min-h-0 min-w-0 rounded-none px-1.5 py-[1px] text-xs underline" type="button" onClick={undoDelete}>Undo</Button></div>}
+            {deletedOption && <div className="mt-[18px] flex items-center gap-3 border-t pt-4 text-xs text-muted-foreground" role="status"><span>{deletedOption.option.name} deleted</span><Button variant="link" className="min-h-0 min-w-0 rounded-none px-1.5 py-[1px] text-xs underline" type="button" onClick={undoDelete}>Undo</Button></div>}
           </div>
-          {saveState.message && <p className={`mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 ${saveState.tone === 'error' ? 'border-[#494949] bg-[#2b2b2b] text-[#bebebe]' : 'border-[#515151] bg-[#323232] text-[#cdcdcd]'}`} role={saveState.tone === 'error' ? 'alert' : 'status'}>{saveState.message}</p>}
+          {saveState.message && <p className={`mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 ${saveState.tone === 'error' ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-input bg-secondary text-secondary-foreground'}`} role={saveState.tone === 'error' ? 'alert' : 'status'}>{saveState.message}</p>}
           <div className="mt-[25px] mb-10 flex items-center gap-[23px] mobile:gap-[17px]">
-            {onDelete && <Button variant="ghost" type="button" className="h-auto px-0 py-[9px] rounded-none text-[11px] text-[#aeaeae] hover:bg-transparent hover:text-[#bebebe]" onClick={onDelete}>Delete switcher</Button>}
+            {onDelete && <Button variant="ghost" type="button" className="h-auto px-0 py-[9px] rounded-none text-[11px] text-muted-foreground hover:bg-transparent hover:text-destructive" onClick={onDelete}>Delete switcher</Button>}
             <a className="ml-auto text-[11px] text-muted-foreground no-underline hover:text-foreground" href="#/switchers">Cancel</a>
-            <Button variant="default" className="h-auto min-h-[46px] px-5 py-[13px] text-xs font-bold mobile:px-[15px] mobile:py-3" type="submit">{pending ? 'Saving...' : 'Save switcher'}</Button>
+            <Button variant="default" className="mobile:px-3 mobile:text-xs" type="submit">Save</Button>
           </div>
         </fieldset>
       </form>

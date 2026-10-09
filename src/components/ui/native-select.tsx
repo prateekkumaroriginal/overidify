@@ -15,7 +15,7 @@ function NativeSelect({
         data-slot="native-select"
         data-size={size}
         className={cn(
-          "w-full min-w-0 cursor-pointer rounded-md border border-[#3a3a3a] bg-[#202020] px-2 py-1.5 text-xs leading-normal text-foreground text-ellipsis disabled:cursor-wait disabled:opacity-50",
+          "w-full min-w-0 cursor-pointer rounded-md border border-input bg-field px-2 py-1.5 text-xs leading-normal text-foreground text-ellipsis disabled:cursor-wait disabled:opacity-50",
           className
         )}
         {...props}
@@ -32,7 +32,7 @@ function NativeSelectOption({
   return (
     <option
       data-slot="native-select-option"
-      className={cn("bg-[Canvas] text-[CanvasText]", className)}
+      className={cn("bg-card text-foreground", className)}
       {...props}
     />
   )
@@ -45,7 +45,7 @@ function NativeSelectOptGroup({
   return (
     <optgroup
       data-slot="native-select-optgroup"
-      className={cn("bg-[Canvas] text-[CanvasText]", className)}
+      className={cn("bg-card text-foreground", className)}
       {...props}
     />
   )

@@ -4,29 +4,42 @@
 @import '@fontsource/manrope/latin-600.css';
 @import '@fontsource/manrope/latin-700.css';
 
+@font-face {
+  font-family: 'Clerk Suisse';
+  src: url('./assets/fonts/suisse-intl-medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
 @custom-variant dark (&:is(.dark *));
 @custom-variant tablet (@media (max-width: 900px));
 @custom-variant mobile (@media (max-width: 620px));
 
 :root {
   color-scheme: dark;
-  --background: #121212;
-  --foreground: #ededed;
-  --card: #1b1b1b;
-  --card-foreground: #ededed;
-  --primary: #d4d4d4;
-  --primary-foreground: #161616;
-  --secondary: #323232;
-  --secondary-foreground: #cdcdcd;
-  --muted: #1b1b1b;
-  --muted-foreground: #999999;
-  --accent: #303030;
-  --accent-foreground: #ededed;
+  --background: #131316;
+  --foreground: #d9d9de;
+  --card: #212126;
+  --card-foreground: var(--foreground);
+  --field: #212126;
+  --primary: #ffffff;
+  --primary-foreground: #131316;
+  --action: #6c47ff;
+  --action-foreground: #ffffff;
+  --secondary: #2f3037;
+  --secondary-foreground: #d9d9de;
+  --secondary-action: #2b2b31;
+  --muted: var(--card);
+  --muted-foreground: #9394a1;
+  --accent: #2f3037;
+  --selection: #27272d;
+  --accent-foreground: var(--foreground);
   --destructive: #f87171;
-  --border: #303030;
-  --input: #484848;
-  --ring: #d4d4d4;
-  --radius: 7px;
+  --border: rgb(255 255 255 / 0.1);
+  --input: rgb(255 255 255 / 0.1);
+  --ring: var(--primary);
+  --radius: 8px;
 }
 
 @theme inline {
@@ -34,13 +47,18 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-field: var(--field);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-action: var(--action);
+  --color-action-foreground: var(--action-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-action: var(--secondary-action);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
+  --color-selection: var(--selection);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-border: var(--border);
@@ -54,6 +72,7 @@
 }
 
 @theme {
+  --shadow-panel: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 3px 6px rgb(0 0 0 / 0.15);
   --spacing: 4px;
   --text-xs: 12px;
   --text-xs--line-height: 1.6;
@@ -80,6 +99,7 @@
   * { @apply border-border; }
   html { font-size: 14px; }
   body { @apply bg-background font-sans text-foreground; line-height: 1.6; font-synthesis: none; }
+  h1, h2, h3 { @apply text-primary; }
   button, a, input, select {
     -webkit-tap-highlight-color: transparent;
     transition: background-color 180ms, color 180ms, border-color 180ms, box-shadow 180ms, transform 180ms;
@@ -91,6 +111,90 @@
     outline: 2px solid var(--ring);
     outline-offset: 4px;
   }
+}
+
+/* Clerk's Copy prompt and Ask AI controls. Pixel units keep their dimensions
+   independent of this app's 14px root font size. Source: clerk.com/docs. */
+.clerk-button {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 12px;
+  gap: 6px;
+  border: 0;
+  border-radius: 6px;
+  background-color: var(--button-background);
+  color: var(--action-foreground);
+  font-family: 'Clerk Suisse', Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 24px;
+  text-align: left;
+  white-space: nowrap;
+  box-shadow:
+    0 0 0 var(--button-ring-width) var(--button-background),
+    inset 0 1px 0 rgb(255 255 255 / 0.07),
+    0 1px 3px rgb(33 33 38 / 0.2);
+  transition: color 300ms, background-color 300ms, border-color 300ms,
+    outline-color 300ms, box-shadow 300ms, opacity 300ms;
+  transition-timing-function: cubic-bezier(0.4, 0.36, 0, 1);
+}
+
+.clerk-button-primary {
+  --button-background: var(--action);
+  --button-ring-width: 0.5px;
+}
+
+.clerk-button-secondary {
+  --button-background: var(--secondary-action);
+  --button-ring-width: 1px;
+  padding-block: 3px;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.08),
+    inset 0 1px 0 rgb(255 255 255 / 0.07),
+    0 2px 3px rgb(0 0 0 / 0.25);
+}
+
+.clerk-button:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+
+.clerk-button::before,
+.clerk-button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.clerk-button::before {
+  background-image: linear-gradient(to bottom in oklab, rgb(255 255 255 / 0.2), transparent);
+  opacity: 0.5;
+  transition: opacity 300ms cubic-bezier(0.4, 0.36, 0, 1);
+}
+
+.clerk-button::after {
+  background-image: linear-gradient(to bottom in oklab, rgb(255 255 255 / 0.1) 46%, transparent 54%);
+  mix-blend-mode: overlay;
+}
+
+.clerk-button:not(:disabled):not([aria-disabled='true']):hover::before {
+  opacity: 1;
+}
+
+.clerk-button > svg {
+  width: 16px;
+  height: 16px;
+  padding: 1px;
+  stroke-width: 2;
 }
 
 @media (prefers-reduced-motion: reduce) {
