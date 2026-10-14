@@ -46,25 +46,24 @@ export function installNetworkInterceptors(page: PageWindow) {
   }
 
   page.fetch = async function(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-    const request = input instanceof page.Request ? input : undefined
-    const method = (init?.method ?? request?.method ?? 'GET').toUpperCase()
-    const url = request?.url ?? String(input)
-    const signal = init && Object.hasOwn(init, 'signal') ? init.signal : request?.signal
+    // Native normalization accepts cross-frame Requests and handles undefined
+    // versus null signals, getters, methods and body ownership consistently.
+    const request = new page.Request(input, init)
+    const { method, url, signal } = request
     // An initialized request captures its settings before yielding to any work.
     let selected = initialized ? selectNetworkOverride(overrides, url, method, page.document.baseURI) : undefined
     if (!initialized) {
       await withAbort(ready, signal)
       selected = selectNetworkOverride(overrides, url, method, page.document.baseURI)
     }
-    if (!selected) return Reflect.apply(originalFetch, page, [input, init])
+    if (!selected) return Reflect.apply(originalFetch, page, [request])
     if (signal?.aborted) throw signal.reason
-    const validRequest = new page.Request(input, init)
     if (selected.mode === 'call-server') {
       // Use the page's native request so credentials, CORS and DNR header rules
       // still apply. A rejected call is never replaced with a successful mock.
-      const realResponse = await Reflect.apply(originalFetch, page, [validRequest]) as Response
+      const realResponse = await Reflect.apply(originalFetch, page, [request]) as Response
       if (signal?.aborted) throw signal.reason
-      const response = mockResponse(selected, method, realResponse.url || validRequest.url)
+      const response = mockResponse(selected, method, realResponse.url || url)
       // Finish the real download without retaining its body. Cancelling here
       // would abort the server request and truncate its DevTools entry.
       if (realResponse.body) {
@@ -77,17 +76,16 @@ export function installNetworkInterceptors(page: PageWindow) {
       }
       return response
     }
-    return mockResponse(selected, method, validRequest.url)
+    return mockResponse(selected, method, url)
   }
 
-  function createXHR(): XMLHttpRequest {
-    const xhr = new NativeXHR()
-    const nativeOpen = xhr.open.bind(xhr)
-    const nativeSend = xhr.send.bind(xhr)
-    const nativeAbort = xhr.abort.bind(xhr)
-    const nativeHeader = xhr.getResponseHeader.bind(xhr)
-    const nativeHeaders = xhr.getAllResponseHeaders.bind(xhr)
-    const nativeMime = xhr.overrideMimeType.bind(xhr)
+  function initializeXHR(xhr: XMLHttpRequest): PropertyDescriptorMap {
+    const nativeOpen = NativeXHR.prototype.open.bind(xhr)
+    const nativeSend = NativeXHR.prototype.send.bind(xhr)
+    const nativeAbort = NativeXHR.prototype.abort.bind(xhr)
+    const nativeHeader = NativeXHR.prototype.getResponseHeader.bind(xhr)
+    const nativeHeaders = NativeXHR.prototype.getAllResponseHeaders.bind(xhr)
+    const nativeMime = NativeXHR.prototype.overrideMimeType.bind(xhr)
     const nativeValue = (key: string) => Object.getOwnPropertyDescriptor(NativeXHR.prototype, key)?.get?.call(xhr)
     let method = 'GET'
     let url = ''
@@ -196,7 +194,6 @@ export function installNetworkInterceptors(page: PageWindow) {
         return state === 4 && !failed && result instanceof page.Document ? result : null
       } },
     }
-    Object.defineProperties(xhr, properties)
 
     for (const type of ['readystatechange', 'loadstart', 'progress', 'load', 'loadend', 'error', 'timeout', 'abort']) {
       xhr.addEventListener(type, current => {
@@ -210,7 +207,7 @@ export function installNetworkInterceptors(page: PageWindow) {
       }, true)
     }
 
-    xhr.open = function(nextMethod: string, nextUrl: string | URL, async: boolean = true, username?: string | null, password?: string | null) {
+    properties.open = { value: function(nextMethod: string, nextUrl: string | URL, async: boolean = true, username?: string | null, password?: string | null) {
       generation++
       clearTimers()
       entry = undefined
@@ -227,7 +224,7 @@ export function installNetworkInterceptors(page: PageWindow) {
       url = new page.URL(String(nextUrl), page.document.baseURI).href
       asynchronous = async !== false
       nativeOpen(nextMethod, nextUrl, async, username, password)
-    }
+    } }
 
     function send(body: Document | XMLHttpRequestBodyInit | null | undefined, selected?: NetworkOverride) {
       entry = selected
@@ -243,7 +240,15 @@ export function installNetworkInterceptors(page: PageWindow) {
       if (asynchronous) event('loadstart', true)
       if (generation !== version || finished) return
       if (entry.mode === 'call-server') {
-        nativeSend(body)
+        try { nativeSend(body) } catch (error) {
+          if (generation === version) {
+            clearTimers()
+            intercepting = false
+            pending = false
+            sent = false
+          }
+          throw error
+        }
         if (!asynchronous && !finished) {
           if (value('status') === 0) finishFailure('error')
           else finishResponse()
@@ -252,7 +257,7 @@ export function installNetworkInterceptors(page: PageWindow) {
       else finishResponse()
     }
 
-    xhr.send = function(body?: Document | XMLHttpRequestBodyInit | null) {
+    properties.send = { value: function(body?: Document | XMLHttpRequestBodyInit | null) {
       if (pending || (intercepting && sent)) throw new page.DOMException('The request has already been sent.', 'InvalidStateError')
       if (value('readyState') !== 1) { nativeSend(body); return }
       sent = true
@@ -270,32 +275,58 @@ export function installNetworkInterceptors(page: PageWindow) {
         if (!initialized) missedSyncRequest = true
         send(body, initialized ? selectNetworkOverride(overrides, url, method) : undefined)
       }
-    }
+    } }
 
-    xhr.abort = function() {
+    properties.abort = { value: function() {
       if (!intercepting) { nativeAbort(); return }
+      const version = generation
       nativeAbort()
+      if (generation !== version) return
       if (!finished) finishFailure('abort')
+      if (generation !== version) return
       generation++
       pending = false
       state = 0
-    }
-    xhr.getResponseHeader = name => intercepting
+    } }
+    properties.getResponseHeader = { value: (name: string) => intercepting
       ? state >= 2 && !failed ? headers.get(name) : null
-      : nativeHeader(name)
-    xhr.getAllResponseHeaders = () => intercepting
+      : nativeHeader(name) }
+    properties.getAllResponseHeaders = { value: () => intercepting
       ? state >= 2 && !failed ? [...headers].map(([key, value]) => `${key}: ${value}\r\n`).join('') : ''
-      : nativeHeaders()
-    xhr.overrideMimeType = next => {
+      : nativeHeaders() }
+    properties.overrideMimeType = { value: (next: string) => {
       if (intercepting && state >= 3) throw new page.DOMException('The MIME type cannot change after loading begins.', 'InvalidStateError')
       nativeMime(next); mime = next
-    }
-    return xhr
+    } }
+    properties.setRequestHeader = { value: (name: string, value: string) => {
+      if (intercepting && sent) throw new page.DOMException('Headers cannot change after the request is sent.', 'InvalidStateError')
+      NativeXHR.prototype.setRequestHeader.call(xhr, name, value)
+    } }
+    return properties
   }
 
-  // Return native instances: instanceof, constants, upload and native setters
-  // continue to work without a second public XHR object.
-  page.XMLHttpRequest = new Proxy(NativeXHR, { construct: () => createXHR() })
+  // Prototype dispatch lets subclasses override methods and use super without
+  // losing interception. Each native instance owns an independent context.
+  const contexts = new WeakMap<XMLHttpRequest, PropertyDescriptorMap>()
+  class InterceptedXHR extends NativeXHR {
+    constructor() { super(); contexts.set(this, initializeXHR(this)) }
+  }
+  const keys = ['responseType', 'readyState', 'status', 'statusText', 'responseURL', 'response', 'responseText', 'responseXML',
+    'open', 'send', 'abort', 'getResponseHeader', 'getAllResponseHeaders', 'overrideMimeType', 'setRequestHeader']
+  for (const key of keys) {
+    const native = Object.getOwnPropertyDescriptor(NativeXHR.prototype, key)!
+    Object.defineProperty(InterceptedXHR.prototype, key, {
+      ...native,
+      ...(native.value ? { value: function(this: XMLHttpRequest, ...args: unknown[]) {
+        return Reflect.apply(contexts.get(this)?.[key].value ?? native.value, this, args)
+      } } : {
+        get: function(this: XMLHttpRequest) { return (contexts.get(this)?.[key].get ?? native.get)?.call(this) },
+        ...(native.set ? { set: function(this: XMLHttpRequest, next: unknown) { (contexts.get(this)?.[key].set ?? native.set)?.call(this, next) } } : {}),
+      }),
+    })
+  }
+  Object.defineProperty(InterceptedXHR, 'name', { value: 'XMLHttpRequest' })
+  page.XMLHttpRequest = InterceptedXHR
 
   return {
     setOverrides(next: NetworkOverride[]) {

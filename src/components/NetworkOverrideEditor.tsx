@@ -49,7 +49,7 @@ export function NetworkOverrideEditor({ override, pending, onSave, onDelete }: P
             </div>
             <p id="network-target-help" className="mt-3 text-[11px] text-muted-foreground">The full API URL must match. Query parameter order is ignored; parameter names and values must be the same.</p>
             <label className={`${fieldClass} mt-5`}>Server behavior<NativeSelect className="py-[11px]" {...form.register('mode')}><option value="bypass">Bypass server</option><option value="call-server">Call server, then replace response</option></NativeSelect></label>
-            <p className="mt-3 text-[11px] text-muted-foreground">{mode === 'bypass' ? 'Return the mock without making the target API call.' : 'Make the real call with your Rules and Switchers headers, then return the mock once response headers arrive. Failures before headers stay failures.'}</p>
+            <p className="mt-3 text-[11px] text-muted-foreground">{mode === 'bypass' ? 'Return the mock without making the target API call.' : 'Make the real call with your Rules and Switchers headers, then return the mock once response headers arrive. Failures before headers stay failures. Synchronous XHR waits for native completion and preserves native failures.'}</p>
             <div className="mt-5 flex items-center justify-between border-t pt-4"><span className="text-[11px] font-semibold">Enabled</span><Controller control={form.control} name="enabled" render={({ field }) => <ToggleSwitch checked={field.value} label="Network override enabled" onChange={field.onChange} />} /></div>
           </div>
           <div className={panelClass}>

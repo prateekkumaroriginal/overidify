@@ -33,7 +33,7 @@ The example target is GET `https://backendapi-qa.topfan.dev/api/get-chatGroups-a
 
 Bypass server returns the configured mock without making the target network call.
 
-Call server makes the original request, preserving normal matching header Rules and Switchers. Once real response headers arrive, replace its entire response body, status, and header set delivered to the caller with the configured mock. Do not inherit fields from the real response. A transport failure before headers remains a failure, with no mock fallback. A failure while downloading the real body after headers does not undo the delivered mock. Fetch and XHR use the same boundary. An HTTP error that supplies a response is distinct from a transport failure.
+Call server makes the original request, preserving normal matching header Rules and Switchers. Fetch and asynchronous XHR deliver the entire configured mock once real response headers arrive. Do not inherit fields from the real response. A transport failure before headers remains a failure, with no mock fallback. A failure while downloading the real body after headers does not undo the delivered mock. An HTTP error that supplies a response is distinct from a transport failure.
 
 Capture the selected override configuration when the request starts. Subsequent edits or toggles affect later requests, while the in-progress request retains its starting configuration.
 
@@ -54,6 +54,8 @@ Use the existing extension installation and normal browser profile, with no loca
 Version 1 covers page and iframe fetch/XHR. Worker-originated calls, request redirects, response capture, uploaded response files, artificial delay, and replacement of navigation or asset requests are outside the accepted first-version scope.
 
 The installed extension supports synchronous XHR after settings initialization. A synchronous call made before settings arrive cannot wait for asynchronous extension messaging and passes through to the server. The bridge reports this condition as requiring reload. Asynchronous startup calls wait for settings, with a three-second fallback to native requests if initialization fails.
+
+Initialized synchronous bypass calls return the configured mock. Synchronous call-server XHR waits for native completion, then replaces a successful native response. Any native failure preserves its exception and native response state, including a truncated body after server headers. Chrome does not expose intermediate headers during synchronous send; the page interceptor cannot apply the asynchronous headers boundary to these calls. This is a limitation of the chosen mechanism, clarified during compatibility review. The [XHR synchronous send algorithm](https://xhr.spec.whatwg.org/#the-send()-method) consumes the native response body before exposing a response.
 
 Response statuses must be integers from 200 to 599. HEAD and statuses 204, 205, and 304 have no returned body, while the saved body remains editable. Headers must satisfy browser header validation. Mock Set-Cookie headers are rejected because page-level interception does not set browser cookies.
 

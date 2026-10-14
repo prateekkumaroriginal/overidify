@@ -21,7 +21,7 @@ pnpm test:e2e
 
 `pnpm test:e2e` builds the extension and typechecks the test files before launching Chromium. GitHub Actions installs browser system dependencies and runs unit tests, lint, and the same browser command. Failures retain traces and error context in `test-results/`.
 
-All 16 browser tests pass, covering:
+All 24 browser tests pass, covering:
 
 - The first inline fetch waited for configuration and returned the bypass mock without a target server request.
 - An unmatched startup XHR completed once without a stale configuration timeout. Sending inside an OPENED callback matched the new URL.
@@ -42,6 +42,11 @@ All 16 browser tests pass, covering:
 - The Rule editor preserved dynamic header values and its one-empty-row behavior. Switcher editing preserved inactive fields, option IDs, selected option, deletion undo, duplicate-name validation, and added options. Enter, Ctrl+Enter, and Escape retained their intended behavior.
 - The popup listed eligible overrides and its toggles affected the website's next request.
 - Screenshots confirmed Network Override editor and list layout at 1280 and 360 pixels, with no horizontal overflow. Popup controls affected eligible page requests live.
+- XHR subclasses retain identity, custom methods, and open/send overrides calling super, both with no overrides and with mocks.
+- Fetch accepts Requests from another frame, preserves their URL and signal, rejects inherited cancellation when options contain signal: undefined, and allows explicit signal: null detachment.
+- Abort handlers can reopen and complete the same XHR in either server mode. Header edits after a bypass send are rejected with InvalidStateError.
+- Disabling and deleting the last override report reload requirements when configuration delivery fails and the old mock stays active. Reloading clears the stale mock and notice.
+- Synchronous call-server transport and truncated-body failures match native Chromium exceptions and response state; successful native completion still receives the configured mock.
 
 The stale startup timeout, OPENED callback, responseType timing, and truncated-body regression checks failed against the original interceptor before its fixes and passed afterward. Reentrant abort coverage now runs in both modes.
 
@@ -49,14 +54,16 @@ The stale startup timeout, OPENED callback, responseType timing, and truncated-b
 
 Zod 4.6.7 supplies schemas and inferred types for header entries, override entries, drafts, migration inputs, and settings messages. Runtime consumers use `zod/mini`. React Hook Form 7.90.0 and `@hookform/resolvers` 5.9.1 share form submission, validation, and field-array handling across all three editors. Playwright is a development dependency. Effect is deferred.
 
-Compared with commit 9d7939b, the three editor files shrink from 524 to 395 lines, with a new 51-line shared form helper. Including schemas, migration parsing, protocol checks, and interceptor fixes, application TypeScript grows from 2,596 to 2,629 lines. These counts include blank lines and exclude tests and configuration; they do not imply a net application LOC reduction.
+The package integration in commit 6df817f, compared with 9d7939b, shrank the three editor files from 524 to 395 lines, with a new 51-line shared form helper. Including schemas, migration parsing, protocol checks, and its interceptor fixes, application TypeScript grew from 2,596 to 2,629 lines. These historical counts include blank lines and exclude tests and configuration; they do not imply a net application LOC reduction.
 
-The standalone `network-page.js` grows from 8,219 to 35,648 bytes (3,575 to 11,854 bytes gzipped). This adds validation to code installed in website pages. React Hook Form and its resolver run in the settings UI, and Playwright is excluded from extension runtime bundles. Header migration schemas stay outside the page entry point.
+At package integration, standalone `network-page.js` grew from 8,219 to 35,648 bytes (3,575 to 11,854 bytes gzipped). After the compatibility fixes it is 36,521 bytes, or 12,059 bytes gzipped. React Hook Form and its resolver run in the settings UI, and Playwright is excluded from extension runtime bundles. Header migration schemas stay outside the page entry point.
 
 ## Limits of these checks
 
 The browser checks used local HTTP endpoints. They do not establish coverage for every website's CSP, service worker, streaming request body, or instrumentation library. Worker-originated calls remain outside version 1.
 
 A synchronous XHR made before settings initialization passes through. The editor and popup report reload requirements through the bridge. Reloading cannot guarantee interception of a synchronous call that always runs before settings arrive. Asynchronous startup calls wait up to three seconds before falling back to the original browser APIs.
+
+Synchronous call-server XHR exposes a response only after native body consumption. It preserves native failures, including a truncated real body after headers. The asynchronous headers boundary is unavailable through native synchronous XHR, so the editor and specification now state this limitation. Failure getters delegate to native XHR instead of retaining the wrapper's OPENED state.
 
 Mock responses are visible to page fetch/XHR callers. Native DevTools Network records actual network traffic, as accepted in ADR 0007.

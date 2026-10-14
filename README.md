@@ -94,7 +94,7 @@ Choose a method or **Any**, enter the response body, and adjust its status and h
 - Request URL matching ignores query parameter order but requires identical parameters and values, including duplicates. Paths and query values remain case-sensitive.
 - The later enabled entry wins when multiple network overrides match.
 - **Bypass server** returns the mock without making the API request.
-- **Call server, then replace response** makes the original request with matching Rules and Switchers headers. Once response headers arrive, it delivers the entire configured mock to the page. A network failure before headers remains a failure; a later failure while downloading the real body does not replace the delivered mock.
+- **Call server, then replace response** makes the original request with matching Rules and Switchers headers. Fetch and asynchronous XHR receive the entire configured mock once response headers arrive. A network failure before headers remains a failure; a later failure while downloading the real body does not replace the delivered mock. Synchronous XHR waits for native completion and preserves native failures, including a truncated real body.
 - Saved edits and toggles apply to subsequent requests. In-flight requests keep the settings captured when they started. Reload a website when the settings page or popup asks you to.
 - HEAD and statuses 204, 205, and 304 return no body. The editor retains your entered text. Mock response headers cannot set browser cookies.
 
