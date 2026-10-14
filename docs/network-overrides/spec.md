@@ -55,7 +55,7 @@ Version 1 covers page and iframe fetch/XHR. Worker-originated calls, request red
 
 Chrome omits MAIN scripts from sandbox frames without allow-scripts. An accessible same-origin parent installs those frames' APIs as they are inserted or loaded and supplies live settings. Opaque script-disabled frames cannot execute page calls or expose their APIs to a parent and do not require an activation acknowledgement. Frames running a MAIN interceptor are tracked by browser document ID to keep live updates and reload notices tied to the current document.
 
-Frame discovery watches accessible sandbox documents and open or closed shadow roots created through attachShadow, including nested frame insertions. Each cloned fetch body retains independent cancellation until its own consumer finishes, even after another branch has consumed the response.
+Frame discovery watches accessible sandbox documents and open or closed shadow roots created through attachShadow, including nested frame insertions. Parser-created roots are registered when accessed through the native Element or ElementInternals shadowRoot getters, before parent code receives the root. Each cloned fetch body retains independent cancellation until its own consumer finishes, even after another branch has consumed the response.
 
 The installed extension supports synchronous XHR after settings initialization. A synchronous call made before settings arrive cannot wait for asynchronous extension messaging and passes through to the server. The bridge reports this condition as requiring reload. Asynchronous startup calls wait for settings, with a three-second fallback to native requests if initialization fails.
 

@@ -31,6 +31,17 @@ if (!page.__overidifyNetwork) {
       watchRoot(root)
       return root
     }
+    // Parser-created roots bypass attachShadow. Register them when a parent
+    // accesses an open root, or a custom element accesses a closed root.
+    for (const owner of [prototype, target.ElementInternals.prototype]) {
+      const descriptor = Object.getOwnPropertyDescriptor(owner, 'shadowRoot')
+      if (!descriptor?.get) continue
+      Object.defineProperty(owner, 'shadowRoot', { ...descriptor, get: function() {
+        const root = descriptor.get!.call(this) as ShadowRoot | null
+        if (root) { watchRoot(root); applySandboxFrames() }
+        return root
+      } })
+    }
   }
   // Chrome omits MAIN scripts from sandboxed frames without allow-scripts.
   // A same-origin parent can still use that frame's fetch/XHR APIs, so install

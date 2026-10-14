@@ -49,7 +49,8 @@ export const test = base.extend<Fixtures>({
         'Content-Security-Policy': "script-src 'nonce-test'; connect-src *; frame-src *",
       })
       const frame = url.pathname === '/sandbox' ? '<iframe sandbox srcdoc="<h1>No scripts</h1>"></iframe>' : ''
-      response.end(`<!doctype html><title>Extension test</title><script nonce="test">${script}</script><h1>Extension test</h1>${frame}`)
+      const shadow = url.pathname === '/declarative-shadow' ? '<div id="shadow-host"><template shadowrootmode="open"><iframe sandbox="allow-same-origin" srcdoc="<h1>No scripts</h1>"></iframe></template></div>' : ''
+      response.end(`<!doctype html><title>Extension test</title><script nonce="test">${script}</script><h1>Extension test</h1>${frame}${shadow}`)
     })
     await new Promise<void>(done => server.listen(0, '0.0.0.0', done))
     const address = server.address()

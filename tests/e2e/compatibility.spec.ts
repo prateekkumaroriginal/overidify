@@ -133,6 +133,19 @@ test('sandbox discovery covers open and closed shadow roots and nested documents
   expect(server.hits).toHaveLength(0)
 })
 
+test('parser-created shadow frame APIs are mocked on first parent access', async ({ site, server, override, seed }) => {
+  await seed([override]); await site.goto(`${server.origin}/declarative-shadow`)
+  await site.evaluate(() => Reflect.get(window, 'firstFetch'))
+  const result = await site.evaluate(async () => {
+    const frame = document.querySelector('#shadow-host')!.shadowRoot!.querySelector('iframe')!
+    const target = frame.contentWindow!
+    const response = await (Reflect.get(target, 'fetch') as typeof fetch).call(target, '/api/start?b=2&a=1')
+    return { status: response.status, body: await response.text() }
+  })
+  expect(result).toEqual({ status: 201, body: override.body })
+  expect(server.hits).toHaveLength(0)
+})
+
 test('mock XHR rejects no malformed header names and skips LOADING for HEAD', async ({ browser, site, server, override, seed }) => {
   await site.goto(server.origin); await site.evaluate(() => Reflect.get(window, 'firstFetch'))
   const native = await browser.newPage(); await native.goto(server.origin)
