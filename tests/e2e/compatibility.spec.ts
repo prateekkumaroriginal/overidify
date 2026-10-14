@@ -34,9 +34,15 @@ for (const mode of ['bypass', 'call-server'] as const) {
       const clone = response.clone()
       later.abort('cancelled')
       const bodies = await Promise.all([response, clone].map(body => body.text().then(() => 'success', reason => reason)))
-      return { request, status: response.status, bodies }
+      const buffered = new AbortController()
+      const original = await fetch('/api/start?b=2&a=1', { signal: buffered.signal })
+      const branch = original.clone()
+      await original.text(); await new Promise(resolve => setTimeout(resolve, 0))
+      buffered.abort('buffered-cancelled')
+      const reader = await branch.body!.getReader().read().then(() => 'success', reason => reason)
+      return { request, status: response.status, bodies, reader }
     })
-    expect(result).toEqual({ request: 'cancelled', status: 201, bodies: ['cancelled', 'cancelled'] })
+    expect(result).toEqual({ request: 'cancelled', status: 201, bodies: ['cancelled', 'cancelled'], reader: 'buffered-cancelled' })
   })
 }
 
@@ -99,6 +105,32 @@ test('parent calls to same-origin script-disabled iframe APIs receive live mocks
     const expected = { status: mode === 'disabled' ? 200 : 201, body: mode === 'disabled' ? '{"real":true}' : override.body }
     expect(result).toEqual({ fetch: expected, xhr: expected })
   }
+})
+
+test('sandbox discovery covers open and closed shadow roots and nested documents', async ({ site, server, override, seed }) => {
+  await seed([override]); await site.goto(server.origin)
+  await site.evaluate(() => Reflect.get(window, 'firstFetch'))
+  const result = await site.evaluate(async () => {
+    const create = (root: Node, doc = document) => new Promise<HTMLIFrameElement>(resolve => {
+      const frame = doc.createElement('iframe'); frame.sandbox.value = 'allow-same-origin'; frame.srcdoc = '<h1>No scripts</h1>'
+      frame.onload = () => resolve(frame); root.appendChild(frame)
+    })
+    const frames: HTMLIFrameElement[] = []
+    for (const mode of ['open', 'closed'] as const) {
+      const host = document.createElement('div'); document.body.append(host)
+      frames.push(await create(host.attachShadow({ mode })))
+    }
+    const outer = await create(document.body)
+    frames.push(await create(outer.contentDocument!.body, outer.contentDocument!))
+    await new Promise(resolve => setTimeout(resolve, 100))
+    return Promise.all(frames.map(async frame => {
+      const target = frame.contentWindow!
+      const response = await (Reflect.get(target, 'fetch') as typeof fetch).call(target, '/api/start?b=2&a=1')
+      return { status: response.status, body: await response.text() }
+    }))
+  })
+  expect(result).toEqual(Array.from({ length: 3 }, () => ({ status: 201, body: override.body })))
+  expect(server.hits).toHaveLength(0)
 })
 
 test('mock XHR rejects no malformed header names and skips LOADING for HEAD', async ({ browser, site, server, override, seed }) => {

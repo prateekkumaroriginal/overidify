@@ -28,25 +28,42 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
     })
   }
 
-  function mockResponse(entry: NetworkOverride, method: string, url: string, signal: AbortSignal): Response {
-    let delivered = false
+  function abortableBody(source: ReadableStream<Uint8Array>, signal: AbortSignal): ReadableStream<Uint8Array> {
+    const reader = source.getReader()
+    let ended = false
     let detach = () => undefined as void
-    const body = nullBody(method, entry.status) ? null : new page.ReadableStream<Uint8Array>({
+    return new page.ReadableStream<Uint8Array>({
       start(controller) {
         const abort = () => {
+          if (ended) return
+          ended = true
           controller.error(signal.reason)
           detach()
+          void reader.cancel(signal.reason).catch(() => undefined).finally(() => reader.releaseLock())
         }
         detach = () => signal.removeEventListener('abort', abort)
         signal.addEventListener('abort', abort, { once: true })
         if (signal.aborted) abort()
       },
-      pull(controller) {
-        if (delivered) { controller.close(); detach() }
-        else { delivered = true; controller.enqueue(new page.TextEncoder().encode(entry.body)) }
+      async pull(controller) {
+        try {
+          const chunk = await reader.read()
+          if (ended) return
+          if (chunk.done) { ended = true; controller.close(); detach(); reader.releaseLock() }
+          else controller.enqueue(chunk.value)
+        } catch (error) {
+          if (!ended) { ended = true; controller.error(error); detach(); reader.releaseLock() }
+        }
       },
-      cancel() { detach() },
+      cancel(reason) { ended = true; detach(); return reader.cancel(reason).finally(() => reader.releaseLock()) },
     }, { highWaterMark: 0 })
+  }
+
+  function mockResponse(entry: NetworkOverride, method: string, url: string, signal: AbortSignal): Response {
+    const source = new page.ReadableStream<Uint8Array>({ start(controller) {
+      controller.enqueue(new page.TextEncoder().encode(entry.body)); controller.close()
+    } })
+    const body = nullBody(method, entry.status) ? null : abortableBody(source, signal)
     const response = new page.Response(body, {
       status: entry.status, headers: entry.headers.map(({ key, value }) => [key, value]),
     })
@@ -58,7 +75,14 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
       const clone = value.clone.bind(value)
       Object.defineProperties(value, {
         url: { configurable: true, value: url },
-        clone: { configurable: true, value: () => annotate(clone()) },
+        clone: { configurable: true, value: () => {
+          const branch = clone()
+          // A tee branch can buffer the whole body while another branch drains.
+          // Keep this branch abortable until its own consumer finishes.
+          return annotate(new page.Response(branch.body ? abortableBody(branch.body, signal) : null, {
+            status: branch.status, statusText: branch.statusText, headers: branch.headers,
+          }))
+        } },
       })
       // Chromium's synthetic Response consumers convert stream errors into
       // TypeError. Preserve the request's abort reason for native body methods.

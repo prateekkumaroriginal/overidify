@@ -21,7 +21,7 @@ pnpm test:e2e
 
 `pnpm test:e2e` builds the extension and typechecks the test files before launching Chromium. GitHub Actions installs browser system dependencies and runs unit tests, lint, and the same browser command. Failures retain traces and error context in `test-results/`.
 
-All 35 browser tests pass, covering:
+All 36 browser tests pass, covering:
 
 - The first inline fetch waited for configuration and returned the bypass mock without a target server request.
 - An unmatched startup XHR completed once without a stale configuration timeout. Sending inside an OPENED callback matched the new URL.
@@ -50,9 +50,10 @@ All 35 browser tests pass, covering:
 - Disabling and deleting the last override report reload requirements when configuration delivery fails and the old mock stays active. These warnings survive an actual extension-worker restart, verified by loss of its global marker, then disappear after page reload and acknowledged removal. Activation IDs are validated and retained in session storage, with serialized writes and cleanup after committed navigation, tab closure, or replacement.
 - Synchronous call-server transport and truncated-body failures match native Chromium exceptions and response state; successful native completion still receives the configured mock.
 - Failed XHR open calls preserve pending and completed responses, timers, and the original override snapshot. Method and URL arguments convert once, including pass-through requests.
-- Immediate fetch cancellation rejects bypass calls. Aborting unread mocked bodies and clones preserves the request's abort reason in both modes.
+- Immediate fetch cancellation rejects bypass calls. Aborting unread mocked bodies and clones preserves the request's abort reason in both modes, including a direct reader of a buffered clone after the original branch was consumed.
 - HEAD XHR skips LOADING, malformed response-header names return null, and MIME overrides persist across open and instance reuse.
 - Script-disabled sandbox frames do not cause permanent reload warnings. Same-origin parent calls to their fetch/XHR APIs receive mocks and live changes in both modes. Frame activation follows the MAIN handshake and browser document ID, with state retained across worker restarts.
+- Sandbox discovery covers frames inside open and closed shadow roots, plus frames inserted into an already-installed script-disabled document. Watched roots use weak references; frame discovery does not poll.
 
 The stale startup timeout, OPENED callback, responseType timing, and truncated-body regression checks failed against the original interceptor before its fixes and passed afterward. Reentrant abort coverage now runs in both modes.
 
@@ -62,7 +63,7 @@ Zod 4.6.7 supplies schemas and inferred types for header entries, override entri
 
 The package integration in commit 6df817f, compared with 9d7939b, shrank the three editor files from 524 to 395 lines, with a new 51-line shared form helper. Including schemas, migration parsing, protocol checks, and its interceptor fixes, application TypeScript grew from 2,596 to 2,629 lines. These historical counts include blank lines and exclude tests and configuration; they do not imply a net application LOC reduction.
 
-At package integration, standalone `network-page.js` grew from 8,219 to 35,648 bytes (3,575 to 11,854 bytes gzipped). After the compatibility fixes it is 38,341 bytes, or 12,773 bytes gzipped. React Hook Form and its resolver run in the settings UI, and Playwright is excluded from extension runtime bundles. Header migration schemas stay outside the page entry point.
+At package integration, standalone `network-page.js` grew from 8,219 to 35,648 bytes (3,575 to 11,854 bytes gzipped). After the compatibility fixes it is 39,024 bytes, or 12,957 bytes gzipped. React Hook Form and its resolver run in the settings UI, and Playwright is excluded from extension runtime bundles. Header migration schemas stay outside the page entry point.
 
 ## Limits of these checks
 

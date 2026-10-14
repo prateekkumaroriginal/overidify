@@ -8,15 +8,42 @@ if (!page.__overidifyNetwork) {
   const interceptor = installNetworkInterceptors(page)
   let entries = normalizeNetworkOverrides([])
   const children = new WeakMap<Window, ReturnType<typeof installNetworkInterceptors>>()
+  const watched = new WeakSet<Node>()
+  const roots = new Set<WeakRef<Document | ShadowRoot>>()
+  const watchedPrototypes = new WeakSet<object>()
+  const watchRoot = (root: Document | ShadowRoot) => {
+    if (watched.has(root)) return
+    watched.add(root)
+    roots.add(new WeakRef(root))
+    root.addEventListener('load', () => applySandboxFrames(), true)
+    new MutationObserver(records => {
+      if (records.some(record => record.addedNodes.length)) applySandboxFrames()
+    }).observe(root, { childList: true, subtree: true })
+  }
+  const watchDocument = (target: typeof page) => {
+    watchRoot(target.document)
+    const prototype = target.Element.prototype
+    if (watchedPrototypes.has(prototype)) return
+    watchedPrototypes.add(prototype)
+    const attachShadow = prototype.attachShadow
+    prototype.attachShadow = function(init: ShadowRootInit) {
+      const root = attachShadow.call(this, init)
+      watchRoot(root)
+      return root
+    }
+  }
   // Chrome omits MAIN scripts from sandboxed frames without allow-scripts.
   // A same-origin parent can still use that frame's fetch/XHR APIs, so install
   // those accessible APIs from the parent and deliver its scoped settings.
-  function applySandboxFrames(parent: Window = page) {
-    for (let index = 0; index < parent.frames.length; index++) {
-      const child = parent.frames[index] as typeof page
-      try {
-        const sandbox = child.frameElement?.getAttribute('sandbox')
-        if (sandbox !== null && sandbox !== undefined && !sandbox.split(/\s+/).includes('allow-scripts')) {
+  const applySandboxFrames = () => {
+    for (const reference of roots) {
+      const root = reference.deref()
+      if (!root) { roots.delete(reference); continue }
+      for (const frame of root.querySelectorAll<HTMLIFrameElement | HTMLFrameElement>('iframe, frame')) {
+        try {
+          const sandbox = frame.getAttribute('sandbox')
+          const child = frame.contentWindow as typeof page | null
+          if (!child || sandbox === null || sandbox.split(/\s+/).includes('allow-scripts')) continue
           let controller = children.get(child)
           if (!child.__overidifyNetwork) {
             controller = installNetworkInterceptors(child, page)
@@ -24,16 +51,12 @@ if (!page.__overidifyNetwork) {
             children.set(child, controller)
           }
           controller?.setOverrides(entries)
-        }
-        applySandboxFrames(child)
-      } catch { /* Opaque/cross-origin frames cannot be called by this parent. */ }
+          watchDocument(child)
+        } catch { /* Opaque/cross-origin frames cannot be called by this parent. */ }
+      }
     }
   }
-  document.addEventListener('load', () => applySandboxFrames(), true)
-  new MutationObserver(records => {
-    if (records.some(record => [...record.addedNodes].some(node => node instanceof Element &&
-      (node.matches('iframe, frame') || node.querySelector('iframe, frame'))))) applySandboxFrames()
-  }).observe(document, { childList: true, subtree: true })
+  watchDocument(page)
   window.addEventListener('message', event => {
     if (event.source !== window) return
     const parsed = NetworkBridgeMessageSchema.safeParse(event.data)
