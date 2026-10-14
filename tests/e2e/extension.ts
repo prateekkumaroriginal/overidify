@@ -48,7 +48,8 @@ export const test = base.extend<Fixtures>({
         'Content-Type': 'text/html',
         'Content-Security-Policy': "script-src 'nonce-test'; connect-src *; frame-src *",
       })
-      response.end(`<!doctype html><title>Extension test</title><script nonce="test">${script}</script><h1>Extension test</h1>`)
+      const frame = url.pathname === '/sandbox' ? '<iframe sandbox srcdoc="<h1>No scripts</h1>"></iframe>' : ''
+      response.end(`<!doctype html><title>Extension test</title><script nonce="test">${script}</script><h1>Extension test</h1>${frame}`)
     })
     await new Promise<void>(done => server.listen(0, '0.0.0.0', done))
     const address = server.address()

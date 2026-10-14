@@ -4,14 +4,14 @@ import type { NetworkOverride } from '../lib/network-overrides'
 type PageWindow = Window & typeof globalThis
 const nullBody = (method: string, status: number) => method === 'HEAD' || [204, 205, 304].includes(status)
 
-export function installNetworkInterceptors(page: PageWindow) {
+export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWindow, 'setTimeout' | 'clearTimeout'> = page) {
   let overrides: NetworkOverride[] = []
   let initialized = false
   let missedSyncRequest = false
   let release: () => void = () => undefined
   const ready = new Promise<void>(resolve => { release = resolve })
   // Fail open if the extension was unloaded or its bridge could not initialize.
-  const startup = page.setTimeout(() => { missedSyncRequest = true; initialized = true; release() }, 3000)
+  const startup = timers.setTimeout(() => { missedSyncRequest = true; initialized = true; release() }, 3000)
   const originalFetch = page.fetch
   const NativeXHR = page.XMLHttpRequest
   const nativeAddListener = page.EventTarget.prototype.addEventListener
@@ -28,8 +28,26 @@ export function installNetworkInterceptors(page: PageWindow) {
     })
   }
 
-  function mockResponse(entry: NetworkOverride, method: string, url: string): Response {
-    const response = new page.Response(nullBody(method, entry.status) ? null : entry.body, {
+  function mockResponse(entry: NetworkOverride, method: string, url: string, signal: AbortSignal): Response {
+    let delivered = false
+    let detach = () => undefined as void
+    const body = nullBody(method, entry.status) ? null : new page.ReadableStream<Uint8Array>({
+      start(controller) {
+        const abort = () => {
+          controller.error(signal.reason)
+          detach()
+        }
+        detach = () => signal.removeEventListener('abort', abort)
+        signal.addEventListener('abort', abort, { once: true })
+        if (signal.aborted) abort()
+      },
+      pull(controller) {
+        if (delivered) { controller.close(); detach() }
+        else { delivered = true; controller.enqueue(new page.TextEncoder().encode(entry.body)) }
+      },
+      cancel() { detach() },
+    }, { highWaterMark: 0 })
+    const response = new page.Response(body, {
       status: entry.status, headers: entry.headers.map(({ key, value }) => [key, value]),
     })
     // Response adds text/plain for string bodies. Only configured headers belong
@@ -42,6 +60,13 @@ export function installNetworkInterceptors(page: PageWindow) {
         url: { configurable: true, value: url },
         clone: { configurable: true, value: () => annotate(clone()) },
       })
+      // Chromium's synthetic Response consumers convert stream errors into
+      // TypeError. Preserve the request's abort reason for native body methods.
+      for (const key of ['text', 'json', 'blob', 'arrayBuffer', 'formData', 'bytes'] as const) {
+        const consume = value[key]
+        if (consume) Object.defineProperty(value, key, { configurable: true, value: () => signal.aborted
+          ? Promise.reject(signal.reason) : withAbort(consume.call(value) as Promise<unknown>, signal) })
+      }
       return value
     }
     return annotate(response)
@@ -65,7 +90,7 @@ export function installNetworkInterceptors(page: PageWindow) {
       // still apply. A rejected call is never replaced with a successful mock.
       const realResponse = await Reflect.apply(originalFetch, page, [request]) as Response
       if (signal?.aborted) throw signal.reason
-      const response = mockResponse(selected, method, realResponse.url || url)
+      const response = mockResponse(selected, method, realResponse.url || url, signal)
       // Finish the real download without retaining its body. Cancelling here
       // would abort the server request and truncate its DevTools entry.
       if (realResponse.body) {
@@ -78,7 +103,10 @@ export function installNetworkInterceptors(page: PageWindow) {
       }
       return response
     }
-    return mockResponse(selected, method, url)
+    // Complete in a task so same-turn cancellation can reject the request,
+    // just as it can before a native fetch has received response headers.
+    await withAbort(new Promise<void>(resolve => timers.setTimeout(resolve, 0)), signal)
+    return mockResponse(selected, method, url, signal)
   }
 
   function initializeXHR(xhr: XMLHttpRequest): PropertyDescriptorMap {
@@ -111,7 +139,7 @@ export function installNetworkInterceptors(page: PageWindow) {
     const event = (type: string, progress = false) => {
       nativeDispatch.call(xhr, progress ? new page.ProgressEvent(type) : new page.Event(type))
     }
-    const clearTimers = () => { page.clearTimeout(timer); page.clearTimeout(timeout) }
+    const clearTimers = () => { timers.clearTimeout(timer); timers.clearTimeout(timeout) }
 
     function finishFailure(type: 'error' | 'abort' | 'timeout') {
       if (finished) return
@@ -155,9 +183,9 @@ export function installNetworkInterceptors(page: PageWindow) {
       finalUrl = value('responseURL') || url
       headers = new page.Headers(entry.headers.map(({ key, value }) => [key, value]))
       text = nullBody(method, entry.status) ? '' : entry.body
-      for (const phase of asynchronous ? [2, 3, 4] : [4]) {
+      for (const phase of asynchronous ? nullBody(method, entry.status) ? [2, 4] : [2, 3, 4] : [4]) {
         // HEADERS_RECEIVED callbacks may still choose a response type or MIME.
-        if (phase === 3 || (!asynchronous && phase === 4)) decodeResponse()
+        if (phase === 3 || (phase === 4 && (!asynchronous || nullBody(method, entry.status)))) decodeResponse()
         state = phase
         if (phase === 4) finished = true
         event('readystatechange')
@@ -209,9 +237,23 @@ export function installNetworkInterceptors(page: PageWindow) {
       }, true)
     }
 
-    properties.open = { value: function(nextMethod: string, nextUrl: string | URL, async?: boolean, username?: string | null, password?: string | null) {
+    properties.open = { value: function(...args: [method?: string, url?: string | URL, async?: boolean, username?: string | null, password?: string | null]) {
+      if (args.length < 2) return Reflect.apply(NativeXHR.prototype.open, xhr, args)
+      const [nextMethod, nextUrl, async, username, password] = args
+      // WebIDL converts strings once, before open validates or changes state.
+      const nextMethodText = `${nextMethod}`
+      const nextUrlText = `${nextUrl}`
+      const nextUsername = username == null ? null : `${username}`
+      const nextPassword = password == null ? null : `${password}`
+      const nextAsync = args.length < 3 || Boolean(async)
+      let nextHref: string
+      try { nextHref = new page.URL(nextUrlText, page.document.baseURI).href }
+      catch { return nativeOpen(nextMethodText, nextUrlText, nextAsync, nextUsername, nextPassword) }
+      const previous = { generation, entry, intercepting, pending, finished, sent, failed, result, text,
+        state, method, url, asynchronous, timer, timeout }
       generation++
-      clearTimers()
+      timer = undefined
+      timeout = undefined
       entry = undefined
       intercepting = false
       pending = false
@@ -220,12 +262,20 @@ export function installNetworkInterceptors(page: PageWindow) {
       failed = false
       result = null
       text = ''
-      mime = ''
       state = 1
-      method = nextMethod.toUpperCase()
-      url = new page.URL(String(nextUrl), page.document.baseURI).href
-      asynchronous = arguments.length < 3 || Boolean(async)
-      nativeOpen(nextMethod, nextUrl, asynchronous, username, password)
+      method = nextMethodText.toUpperCase()
+      url = nextHref
+      asynchronous = nextAsync
+      try { nativeOpen(nextMethodText, nextUrlText, nextAsync, nextUsername, nextPassword) }
+      catch (error) {
+        ({ generation, entry, intercepting, pending, finished, sent, failed, result, text,
+          state, method, url, asynchronous, timer, timeout } = previous)
+        throw error
+      }
+      // OPENED callbacks may already have started another request. Clear only
+      // the old request's timers, after native validation has succeeded.
+      timers.clearTimeout(previous.timer)
+      timers.clearTimeout(previous.timeout)
     } }
 
     function send(body: Document | XMLHttpRequestBodyInit | null | undefined, selected?: NetworkOverride) {
@@ -234,7 +284,7 @@ export function installNetworkInterceptors(page: PageWindow) {
       pending = false
       // The startup timer owns only the wait for configuration. Native XHR
       // takes over timeout handling when a request is handed off.
-      page.clearTimeout(timeout)
+      timers.clearTimeout(timeout)
       timeout = undefined
       if (!entry) { nativeSend(body); return }
       const version = generation
@@ -255,7 +305,7 @@ export function installNetworkInterceptors(page: PageWindow) {
           if (value('status') === 0) finishFailure('error')
           else finishResponse()
         }
-      } else if (asynchronous) timer = page.setTimeout(finishResponse, 0)
+      } else if (asynchronous) timer = timers.setTimeout(finishResponse, 0)
       else finishResponse()
     }
 
@@ -267,7 +317,7 @@ export function installNetworkInterceptors(page: PageWindow) {
         const version = generation
         pending = true
         intercepting = true
-        if (xhr.timeout > 0) timeout = page.setTimeout(() => finishFailure('timeout'), xhr.timeout)
+        if (xhr.timeout > 0) timeout = timers.setTimeout(() => finishFailure('timeout'), xhr.timeout)
         void ready.then(() => {
           if (version !== generation || finished) return
           try { send(body, selectNetworkOverride(overrides, url, method)) }
@@ -290,9 +340,13 @@ export function installNetworkInterceptors(page: PageWindow) {
       pending = false
       state = 0
     } }
-    properties.getResponseHeader = { value: (name: string) => intercepting
-      ? state >= 2 && !failed ? headers.get(name) : null
-      : nativeHeader(name) }
+    properties.getResponseHeader = { value: (name: string) => {
+      const converted = `${name}`
+      const native = nativeHeader(converted)
+      if (!intercepting) return native
+      try { return state >= 2 && !failed ? headers.get(converted) : null }
+      catch { return null }
+    } }
     properties.getAllResponseHeaders = { value: () => intercepting
       ? state >= 2 && !failed ? [...headers].map(([key, value]) => `${key}: ${value}\r\n`).join('') : ''
       : nativeHeaders() }
@@ -334,7 +388,7 @@ export function installNetworkInterceptors(page: PageWindow) {
     setOverrides(next: NetworkOverride[]) {
       overrides = next.map(entry => ({ ...entry, headers: entry.headers.map(header => ({ ...header })) }))
       initialized = true
-      page.clearTimeout(startup)
+      timers.clearTimeout(startup)
       release()
     },
     get needsReload() { return missedSyncRequest },

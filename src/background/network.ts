@@ -1,15 +1,19 @@
 import { getNetworkOverrides, NETWORK_STORAGE_KEY } from '../lib/network-storage'
 import { networkOverridesForPage, normalizeNetworkOverrides } from '../lib/network-overrides'
 import { matchesPageDomain } from '../lib/pattern'
-import { NetworkActiveTabsSchema, NetworkAppliedSchema, NetworkRuntimeMessageSchema } from '../lib/settings-messages'
+import { NetworkActiveTabsSchema, NetworkBridgeFramesSchema, NetworkAppliedSchema, NetworkRuntimeMessageSchema } from '../lib/settings-messages'
 
 const pageUrls = new Map<number, string>()
 const possiblyActiveTabs = new Set<number>()
 const previousPatterns = new Set<string>()
 const ACTIVE_TABS_KEY = 'networkOverrideActiveTabs'
-const activationReady = chrome.storage.session.get(ACTIVE_TABS_KEY).then(stored => {
+const BRIDGE_FRAMES_KEY = 'networkOverrideBridgeFrames'
+const bridgeFrames = new Map<number, Map<number, string>>()
+const activationReady = chrome.storage.session.get([ACTIVE_TABS_KEY, BRIDGE_FRAMES_KEY]).then(stored => {
   const parsed = NetworkActiveTabsSchema.safeParse(stored[ACTIVE_TABS_KEY])
   if (parsed.success) for (const id of parsed.data) possiblyActiveTabs.add(id)
+  const frames = NetworkBridgeFramesSchema.safeParse(stored[BRIDGE_FRAMES_KEY])
+  if (frames.success) for (const frame of frames.data) bridgeFrames.set(frame.tabId, new Map(frame.frames.map(item => [item.frameId, item.documentId])))
 })
 let activationWrite: Promise<void> = Promise.resolve()
 
@@ -19,12 +23,16 @@ async function rememberActiveTab(tabId: number, active: boolean) {
   else possiblyActiveTabs.delete(tabId)
   // Serialize writes from concurrent tab updates. Session storage survives
   // worker suspension, and contains no user settings or response bodies.
-  activationWrite = activationWrite.catch(() => undefined).then(() => chrome.storage.session.set({ [ACTIVE_TABS_KEY]: [...possiblyActiveTabs] }))
+  activationWrite = activationWrite.catch(() => undefined).then(() => chrome.storage.session.set({
+    [ACTIVE_TABS_KEY]: [...possiblyActiveTabs],
+    [BRIDGE_FRAMES_KEY]: [...bridgeFrames].map(([tabId, frames]) => ({ tabId, frames: [...frames].map(([frameId, documentId]) => ({ frameId, documentId })) })),
+  }))
   await activationWrite
 }
 
 function forgetTab(tabId: number) {
   pageUrls.delete(tabId)
+  bridgeFrames.delete(tabId)
   void rememberActiveTab(tabId, false).catch(error => console.error('Failed to clear network activation state.', error))
 }
 
@@ -36,9 +44,16 @@ async function updateTab(tab: chrome.tabs.Tab, priorPatterns: string[]) {
   const enabled = entries.some(entry => entry.enabled)
   if (enabled || priorPatterns.some(pattern => matchesPageDomain(pattern, url))) await rememberActiveTab(tab.id, true)
   const frames = await chrome.webNavigation.getAllFrames({ tabId: tab.id }).catch(() => null)
-  const applied = await Promise.all((frames?.length ? frames : [{ frameId: 0 }]).map(async frame => {
+  // Register frames only after their MAIN script's ready handshake. An isolated
+  // bridge alone cannot acknowledge config in a script-disabled frame.
+  // Accessible script-disabled APIs are configured by their parent MAIN script.
+  const targets = (frames?.length ? frames : [{ frameId: 0, documentId: undefined }]).filter(frame => frame.frameId === 0 ||
+    frame.documentId !== undefined && bridgeFrames.get(tab.id!)?.get(frame.frameId) === frame.documentId)
+  const applied = await Promise.all(targets.map(async frame => {
     try {
-      const response = NetworkAppliedSchema.safeParse(await chrome.tabs.sendMessage(tab.id!, { type: 'update-network-overrides', entries }, { frameId: frame.frameId }))
+      const response = NetworkAppliedSchema.safeParse(await chrome.tabs.sendMessage(tab.id!, { type: 'update-network-overrides', entries }, {
+        frameId: frame.frameId, ...(frame.documentId ? { documentId: frame.documentId } : {}),
+      }))
       return response.success && response.data.ok && !response.data.needsReload
     } catch { return false }
   }))
@@ -74,6 +89,17 @@ const requestSync = () => { void sync().catch(error => console.error('Failed to 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   const parsed = NetworkRuntimeMessageSchema.safeParse(message)
   if (!parsed.success) return
+  if (parsed.data.type === 'network-page-ready') {
+    void activationReady.then(async () => {
+      if (sender.tab?.id !== undefined && sender.frameId !== undefined && sender.documentId !== undefined) {
+        const frames = bridgeFrames.get(sender.tab.id) ?? new Map<number, string>()
+        frames.set(sender.frameId, sender.documentId)
+        bridgeFrames.set(sender.tab.id, frames)
+        await rememberActiveTab(sender.tab.id, possiblyActiveTabs.has(sender.tab.id))
+      }
+    }).then(() => respond({ ok: true }), () => respond({ ok: false }))
+    return true
+  }
   if (parsed.data.type === 'get-network-overrides') {
     // Scope comes from the browser's tab metadata, never a page-supplied URL.
     const url = sender.tab?.id === undefined ? '' : pageUrls.get(sender.tab.id) ?? sender.tab.url ?? ''

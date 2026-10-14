@@ -34,7 +34,10 @@ if (!bridgeWindow.__overidifyNetworkBridge) {
     const parsed = NetworkPageMessageSchema.safeParse(event.data)
     if (!parsed.success) return
     const message = parsed.data
-    if (message.type === 'ready') { pageReady = true; void refresh() }
+    if (message.type === 'ready') {
+      pageReady = true
+      void chrome.runtime.sendMessage({ type: 'network-page-ready' }).then(refresh).catch(() => { pageReady = false })
+    }
     else if (message.type === 'applied') {
       pageReady = true
       pending.get(message.id)?.({ ok: true, needsReload: message.needsReload })
