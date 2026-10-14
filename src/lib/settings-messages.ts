@@ -3,6 +3,7 @@ import { NetworkOverrideSchema } from './network-schemas.ts'
 
 const entries = z.array(NetworkOverrideSchema)
 const id = z.int().check(z.minimum(0))
+export const NetworkActiveTabsSchema = z.array(id)
 export const NetworkSettingsResponseSchema = z.object({ entries })
 export const ActivationResultSchema = z.discriminatedUnion('ok', [
   z.object({ ok: z.literal(true), reloadTabIds: z.optional(z.array(id)) }),

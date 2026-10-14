@@ -25,6 +25,30 @@ test('XHR subclasses retain identity, methods and native method overrides withou
   }
 })
 
+test('XHR internal listeners and events do not invoke subclass public overrides', async ({ site, server, override, seed }) => {
+  await site.goto(server.origin)
+  await site.evaluate(() => Reflect.get(window, 'firstFetch'))
+  for (const mode of ['disabled', 'bypass', 'call-server'] as const) {
+    await seed(mode === 'disabled' ? [] : [{ ...override, mode }])
+    const result = await site.evaluate(() => new Promise(resolve => {
+      class CustomXHR extends XMLHttpRequest {
+        calls: string[] = []
+        override addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions) {
+          this.calls.push(type); super.addEventListener(type, listener, options)
+        }
+        override dispatchEvent(event: Event): boolean { throw new Error(`public dispatch ${event.type}`) }
+      }
+      const xhr = new CustomXHR()
+      const initialCalls = [...xhr.calls]
+      let explicitError = ''
+      try { xhr.dispatchEvent(new Event('explicit')) } catch (error) { explicitError = (error as Error).message }
+      xhr.addEventListener('load', () => resolve({ initialCalls, calls: xhr.calls, explicitError, status: xhr.status }))
+      xhr.open('GET', '/api/start?b=2&a=1'); xhr.send()
+    }))
+    expect(result).toEqual({ initialCalls: [], calls: ['load'], explicitError: 'public dispatch explicit', status: mode === 'disabled' ? 200 : 201 })
+  }
+})
+
 test('fetch matches Request objects from another frame and respects inherited signals', async ({ site, server, override, seed }) => {
   await seed([override]); await site.goto(server.origin)
   await site.evaluate(() => Reflect.get(window, 'firstFetch'))
@@ -78,7 +102,7 @@ for (const mode of ['bypass', 'call-server'] as const) {
   })
 }
 
-test('failed disabling and deletion of the final override keep reporting that a reload is needed', async ({ site, server, override, seed }) => {
+test('failed disable and delete warnings survive a worker restart until the page reloads', async ({ extension, site, server, override, seed }) => {
   await site.addInitScript(() => window.addEventListener('message', event => {
     if (Reflect.get(window, 'blockNetworkConfig') && event.data?.source === 'overidify-network-bridge' && event.data?.type === 'config') event.stopImmediatePropagation()
   }))
@@ -91,10 +115,46 @@ test('failed disabling and deletion of the final override keep reporting that a 
     expect(result.ok).toBe(true)
     expect((await fetchResult(site)).status).toBe(201)
     expect(result.reloadTabIds).toHaveLength(1)
+    if (entries.length) {
+      const worker = extension.context.serviceWorkers().find(worker => worker.url().startsWith(`chrome-extension://${extension.id}/`))!
+      await worker.evaluate(() => Reflect.set(globalThis, 'restartMarker', true))
+      const protocol = await extension.context.newCDPSession(extension.settings)
+      const { targetInfos } = await protocol.send('Target.getTargets')
+      const target = targetInfos.find(target => target.type === 'service_worker' && target.url.startsWith(`chrome-extension://${extension.id}/`))!
+      expect((await protocol.send('Target.closeTarget', { targetId: target.targetId })).success).toBe(true)
+      const restarted = await seed(entries)
+      const replacement = extension.context.serviceWorkers().find(worker => worker.url().startsWith(`chrome-extension://${extension.id}/`))!
+      expect(await replacement.evaluate(() => Reflect.get(globalThis, 'restartMarker'))).toBeUndefined()
+      expect(restarted.reloadTabIds).toHaveLength(1)
+      expect((await fetchResult(site)).status).toBe(201)
+    }
   }
   await site.reload()
   expect((await fetchResult(site)).status).toBe(200)
   expect((await seed([])).reloadTabIds).toEqual([])
+  expect((await extension.settings.evaluate(() => chrome.storage.session.get('networkOverrideActiveTabs'))).networkOverrideActiveTabs).toEqual([])
+})
+
+test('XHR async arguments use native boolean conversion and defaults in both modes', async ({ browser, site, server, override, seed }) => {
+  await site.goto(server.origin)
+  await site.evaluate(() => Reflect.get(window, 'firstFetch'))
+  const native = await browser.newPage(); await native.goto(server.origin)
+  for (const mode of ['bypass', 'call-server'] as const) {
+    await seed([{ ...override, mode }])
+    for (const args of [[], [false], [null], [0], [''], [undefined], [true]]) {
+      const results = await Promise.all([native, site].map(page => page.evaluate(args => {
+        const xhr = new XMLHttpRequest(); const states: number[] = []
+        xhr.onreadystatechange = () => states.push(xhr.readyState)
+        Reflect.apply(xhr.open, xhr, ['GET', '/api/start?b=2&a=1', ...args]); xhr.send()
+        return { states, state: xhr.readyState, status: xhr.status, body: xhr.responseText }
+      }, args)))
+      expect(results[1].states, `${mode}, async=${args.length ? String(args[0]) : 'omitted'}`).toEqual(results[0].states)
+      expect(results[1].state).toBe(results[0].state)
+      expect(results[1].status).toBe(results[0].status === 200 ? 201 : 0)
+      expect(results[1].body).toBe(results[0].state === 4 ? override.body : '')
+    }
+  }
+  await native.close()
 })
 
 test('bypass XHR rejects header edits after send just like native XHR', async ({ site, server, override, seed }) => {

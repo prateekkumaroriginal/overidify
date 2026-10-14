@@ -14,6 +14,8 @@ export function installNetworkInterceptors(page: PageWindow) {
   const startup = page.setTimeout(() => { missedSyncRequest = true; initialized = true; release() }, 3000)
   const originalFetch = page.fetch
   const NativeXHR = page.XMLHttpRequest
+  const nativeAddListener = page.EventTarget.prototype.addEventListener
+  const nativeDispatch = page.EventTarget.prototype.dispatchEvent
 
   function withAbort<T>(work: Promise<T>, signal?: AbortSignal | null): Promise<T> {
     if (!signal) return work
@@ -107,7 +109,7 @@ export function installNetworkInterceptors(page: PageWindow) {
     let headers = new page.Headers()
     const value = (key: string) => nativeValue(key)
     const event = (type: string, progress = false) => {
-      xhr.dispatchEvent(progress ? new page.ProgressEvent(type) : new page.Event(type))
+      nativeDispatch.call(xhr, progress ? new page.ProgressEvent(type) : new page.Event(type))
     }
     const clearTimers = () => { page.clearTimeout(timer); page.clearTimeout(timeout) }
 
@@ -196,7 +198,7 @@ export function installNetworkInterceptors(page: PageWindow) {
     }
 
     for (const type of ['readystatechange', 'loadstart', 'progress', 'load', 'loadend', 'error', 'timeout', 'abort']) {
-      xhr.addEventListener(type, current => {
+      nativeAddListener.call(xhr, type, current => {
         // Synthetic and page-dispatched events are already page-visible.
         // Using event identity avoids confusing a nested native abort with the
         // surrounding synthetic HEADERS_RECEIVED callback.
@@ -207,7 +209,7 @@ export function installNetworkInterceptors(page: PageWindow) {
       }, true)
     }
 
-    properties.open = { value: function(nextMethod: string, nextUrl: string | URL, async: boolean = true, username?: string | null, password?: string | null) {
+    properties.open = { value: function(nextMethod: string, nextUrl: string | URL, async?: boolean, username?: string | null, password?: string | null) {
       generation++
       clearTimers()
       entry = undefined
@@ -222,8 +224,8 @@ export function installNetworkInterceptors(page: PageWindow) {
       state = 1
       method = nextMethod.toUpperCase()
       url = new page.URL(String(nextUrl), page.document.baseURI).href
-      asynchronous = async !== false
-      nativeOpen(nextMethod, nextUrl, async, username, password)
+      asynchronous = arguments.length < 3 || Boolean(async)
+      nativeOpen(nextMethod, nextUrl, asynchronous, username, password)
     } }
 
     function send(body: Document | XMLHttpRequestBodyInit | null | undefined, selected?: NetworkOverride) {

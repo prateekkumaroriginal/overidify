@@ -1,6 +1,6 @@
 # Network Overrides validation
 
-Verified on 2026-10-14 against the production build in `dist/`.
+Verified on 2026-10-15 against the production build in `dist/`.
 
 ## Automated checks
 
@@ -21,7 +21,7 @@ pnpm test:e2e
 
 `pnpm test:e2e` builds the extension and typechecks the test files before launching Chromium. GitHub Actions installs browser system dependencies and runs unit tests, lint, and the same browser command. Failures retain traces and error context in `test-results/`.
 
-All 24 browser tests pass, covering:
+All 26 browser tests pass, covering:
 
 - The first inline fetch waited for configuration and returned the bypass mock without a target server request.
 - An unmatched startup XHR completed once without a stale configuration timeout. Sending inside an OPENED callback matched the new URL.
@@ -43,9 +43,11 @@ All 24 browser tests pass, covering:
 - The popup listed eligible overrides and its toggles affected the website's next request.
 - Screenshots confirmed Network Override editor and list layout at 1280 and 360 pixels, with no horizontal overflow. Popup controls affected eligible page requests live.
 - XHR subclasses retain identity, custom methods, and open/send overrides calling super, both with no overrides and with mocks.
+- Internal XHR event registration and dispatch use captured native EventTarget methods, preserving public subclass overrides without invoking them during construction or native-style completion.
+- XHR open preserves native boolean conversion for false, null, zero, and empty strings. Omitted async is asynchronous; explicitly supplied undefined is synchronous, matching Chromium's overload behavior.
 - Fetch accepts Requests from another frame, preserves their URL and signal, rejects inherited cancellation when options contain signal: undefined, and allows explicit signal: null detachment.
 - Abort handlers can reopen and complete the same XHR in either server mode. Header edits after a bypass send are rejected with InvalidStateError.
-- Disabling and deleting the last override report reload requirements when configuration delivery fails and the old mock stays active. Reloading clears the stale mock and notice.
+- Disabling and deleting the last override report reload requirements when configuration delivery fails and the old mock stays active. These warnings survive an actual extension-worker restart, verified by loss of its global marker, then disappear after page reload and acknowledged removal. Activation IDs are validated and retained in session storage, with serialized writes and cleanup after committed navigation, tab closure, or replacement.
 - Synchronous call-server transport and truncated-body failures match native Chromium exceptions and response state; successful native completion still receives the configured mock.
 
 The stale startup timeout, OPENED callback, responseType timing, and truncated-body regression checks failed against the original interceptor before its fixes and passed afterward. Reentrant abort coverage now runs in both modes.
@@ -56,7 +58,7 @@ Zod 4.6.7 supplies schemas and inferred types for header entries, override entri
 
 The package integration in commit 6df817f, compared with 9d7939b, shrank the three editor files from 524 to 395 lines, with a new 51-line shared form helper. Including schemas, migration parsing, protocol checks, and its interceptor fixes, application TypeScript grew from 2,596 to 2,629 lines. These historical counts include blank lines and exclude tests and configuration; they do not imply a net application LOC reduction.
 
-At package integration, standalone `network-page.js` grew from 8,219 to 35,648 bytes (3,575 to 11,854 bytes gzipped). After the compatibility fixes it is 36,521 bytes, or 12,059 bytes gzipped. React Hook Form and its resolver run in the settings UI, and Playwright is excluded from extension runtime bundles. Header migration schemas stay outside the page entry point.
+At package integration, standalone `network-page.js` grew from 8,219 to 35,648 bytes (3,575 to 11,854 bytes gzipped). After the compatibility fixes it is 36,606 bytes, or 12,086 bytes gzipped. React Hook Form and its resolver run in the settings UI, and Playwright is excluded from extension runtime bundles. Header migration schemas stay outside the page entry point.
 
 ## Limits of these checks
 
