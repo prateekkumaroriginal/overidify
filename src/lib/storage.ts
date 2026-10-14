@@ -1,5 +1,6 @@
 import type { HeaderEntry } from './types'
 import { normalizeEntries } from './rules'
+import { ActivationResultSchema } from './settings-messages'
 
 export const STORAGE_KEY = 'headerRules'
 
@@ -18,9 +19,9 @@ export async function saveEntries(rules: HeaderEntry[]): Promise<HeaderEntry[]> 
     window.dispatchEvent(new Event('rules-updated'))
   } else {
     await chrome.storage.local.set({ [STORAGE_KEY]: normalized })
-    const result = await chrome.runtime.sendMessage({ type: 'sync-header-rules' }) as { ok?: boolean; error?: string } | undefined
-    if (!result?.ok) {
-      throw new Error(result?.error ?? 'The extension did not confirm that the headers were applied. Reload the extension and try again.')
+    const result = ActivationResultSchema.safeParse(await chrome.runtime.sendMessage({ type: 'sync-header-rules' }))
+    if (!result.success || !result.data.ok) {
+      throw new Error((result.success && !result.data.ok ? result.data.error : undefined) ?? 'The extension did not confirm that the headers were applied. Reload the extension and try again.')
     }
   }
   return normalized

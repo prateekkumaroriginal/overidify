@@ -100,7 +100,6 @@ export function installNetworkInterceptors(page: PageWindow) {
     let failed = false
     let state = 1
     let generation = 0
-    let synthetic = false
     let finalUrl = ''
     let mime = ''
     let result: unknown = null
@@ -110,9 +109,7 @@ export function installNetworkInterceptors(page: PageWindow) {
     let headers = new page.Headers()
     const value = (key: string) => nativeValue(key)
     const event = (type: string, progress = false) => {
-      synthetic = true
-      try { xhr.dispatchEvent(progress ? new page.ProgressEvent(type) : new page.Event(type)) }
-      finally { synthetic = false }
+      xhr.dispatchEvent(progress ? new page.ProgressEvent(type) : new page.Event(type))
     }
     const clearTimers = () => { page.clearTimeout(timer); page.clearTimeout(timeout) }
 
@@ -133,14 +130,7 @@ export function installNetworkInterceptors(page: PageWindow) {
       if (generation === version) event('loadend', true)
     }
 
-    function finishResponse() {
-      if (!entry || finished) return
-      clearTimers()
-      const version = generation
-      pending = false
-      finalUrl = value('responseURL') || url
-      headers = new page.Headers(entry.headers.map(({ key, value }) => [key, value]))
-      text = nullBody(method, entry.status) ? '' : entry.body
+    function decodeResponse() {
       const responseType = xhr.responseType
       const contentType = mime || headers.get('content-type') || ''
       if (responseType === 'json') {
@@ -155,7 +145,19 @@ export function installNetworkInterceptors(page: PageWindow) {
           result = parsed.querySelector('parsererror') ? null : parsed
         }
       } else result = text
+    }
+
+    function finishResponse() {
+      if (!entry || finished) return
+      clearTimers()
+      const version = generation
+      pending = false
+      finalUrl = value('responseURL') || url
+      headers = new page.Headers(entry.headers.map(({ key, value }) => [key, value]))
+      text = nullBody(method, entry.status) ? '' : entry.body
       for (const phase of asynchronous ? [2, 3, 4] : [4]) {
+        // HEADERS_RECEIVED callbacks may still choose a response type or MIME.
+        if (phase === 3 || (!asynchronous && phase === 4)) decodeResponse()
         state = phase
         if (phase === 4) finished = true
         event('readystatechange')
@@ -167,6 +169,13 @@ export function installNetworkInterceptors(page: PageWindow) {
     }
 
     const properties: PropertyDescriptorMap = {
+      responseType: {
+        get: () => value('responseType'),
+        set: next => {
+          if (intercepting && state >= 3) throw new page.DOMException('The response type cannot change after loading begins.', 'InvalidStateError')
+          Object.getOwnPropertyDescriptor(NativeXHR.prototype, 'responseType')?.set?.call(xhr, next)
+        },
+      },
       readyState: { get: () => intercepting ? state : value('readyState') },
       status: { get: () => intercepting ? state >= 2 && !failed ? entry?.status ?? 0 : 0 : value('status') },
       statusText: { get: () => intercepting ? '' : value('statusText') },
@@ -191,9 +200,12 @@ export function installNetworkInterceptors(page: PageWindow) {
 
     for (const type of ['readystatechange', 'loadstart', 'progress', 'load', 'loadend', 'error', 'timeout', 'abort']) {
       xhr.addEventListener(type, current => {
-        if (!intercepting || synthetic) return
+        // Synthetic and page-dispatched events are already page-visible.
+        // Using event identity avoids confusing a nested native abort with the
+        // surrounding synthetic HEADERS_RECEIVED callback.
+        if (!intercepting || !current.isTrusted) return
         current.stopImmediatePropagation()
-        if (type === 'readystatechange' && value('readyState') === 4 && value('status') !== 0) finishResponse()
+        if (type === 'readystatechange' && value('readyState') >= 2 && value('status') !== 0) finishResponse()
         else if (type === 'error' || type === 'timeout' || type === 'abort') finishFailure(type)
       }, true)
     }
@@ -211,16 +223,20 @@ export function installNetworkInterceptors(page: PageWindow) {
       text = ''
       mime = ''
       state = 1
-      nativeOpen(nextMethod, nextUrl, async, username, password)
       method = nextMethod.toUpperCase()
       url = new page.URL(String(nextUrl), page.document.baseURI).href
       asynchronous = async !== false
+      nativeOpen(nextMethod, nextUrl, async, username, password)
     }
 
     function send(body: Document | XMLHttpRequestBodyInit | null | undefined, selected?: NetworkOverride) {
       entry = selected
       intercepting = Boolean(entry)
       pending = false
+      // The startup timer owns only the wait for configuration. Native XHR
+      // takes over timeout handling when a request is handed off.
+      page.clearTimeout(timeout)
+      timeout = undefined
       if (!entry) { nativeSend(body); return }
       const version = generation
       state = 1
@@ -270,7 +286,10 @@ export function installNetworkInterceptors(page: PageWindow) {
     xhr.getAllResponseHeaders = () => intercepting
       ? state >= 2 && !failed ? [...headers].map(([key, value]) => `${key}: ${value}\r\n`).join('') : ''
       : nativeHeaders()
-    xhr.overrideMimeType = next => { nativeMime(next); mime = next }
+    xhr.overrideMimeType = next => {
+      if (intercepting && state >= 3) throw new page.DOMException('The MIME type cannot change after loading begins.', 'InvalidStateError')
+      nativeMime(next); mime = next
+    }
     return xhr
   }
 

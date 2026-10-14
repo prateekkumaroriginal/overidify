@@ -1,16 +1,12 @@
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { useState } from 'react'
-import type { SubmitEvent } from 'react'
-import { isValidDomainPattern } from '../lib/pattern'
+import { Controller, useFieldArray } from 'react-hook-form'
+import { RuleDraftSchema } from '../lib/header-schemas'
 import { createHeaderPair, createRuleDraft, ruleToDraft } from '../lib/rules'
-import type { HeaderPair, HeaderRule, RuleDraft } from '../lib/types'
+import type { HeaderRule, RuleDraft } from '../lib/types'
 import { Icon } from './Icon'
 import { ToggleSwitch } from './ToggleSwitch'
-import { useEditorShortcuts } from './useEditorShortcuts'
-
-type SaveState = { tone: 'idle' | 'success' | 'error'; message: string }
-const initialSaveState: SaveState = { tone: 'idle', message: '' }
+import { useEditorForm } from './useEditorForm'
 
 type RuleEditorProps = {
   rule?: HeaderRule
@@ -20,40 +16,13 @@ type RuleEditorProps = {
 }
 
 export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps) {
-  const formRef = useEditorShortcuts('/', pending)
-  const [draft, setDraft] = useState<RuleDraft>(() =>
-    rule ? ruleToDraft(rule) : createRuleDraft(),
-  )
-  const [saveState, setSaveState] = useState<SaveState>(initialSaveState)
-
-  function updateHeader(index: number, field: keyof HeaderPair, value: string) {
-    setDraft((current) => ({
-      ...current,
-      headers: current.headers.map((header, i) =>
-        i === index ? { ...header, [field]: value } : header,
-      ),
-    }))
-  }
-
-  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (pending) return
-    const validationError = validateDraft(draft)
-    if (validationError) {
-      setSaveState({ tone: 'error', message: validationError })
-      return
-    }
-    try {
-      const savedRule = await onSave(draft)
-      setDraft(ruleToDraft(savedRule))
-      setSaveState({ tone: 'success', message: 'Rule saved.' })
-    } catch (error) {
-      setSaveState({
-        tone: 'error',
-        message: `Could not apply the rule. ${error instanceof Error ? error.message : 'Try again.'}`,
-      })
-    }
-  }
+  const { form, formRef, onSubmit, busy, error, success } = useEditorForm({
+    schema: RuleDraftSchema, initial: () => rule ? ruleToDraft(rule) : createRuleDraft(),
+    pending, returnRoute: '/', successMessage: 'Rule saved.',
+    onSave: async draft => ruleToDraft(await onSave(draft)),
+  })
+  const { fields, append, remove, replace } = useFieldArray({ control: form.control, name: 'headers' })
+  const saveState = { tone: error ? 'error' : 'success', message: error || success }
 
   return (
     <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="editor-title">
@@ -65,11 +34,9 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
       </div>
       <form
         ref={formRef}
-        onSubmit={(event) => {
-          void handleSubmit(event)
-        }}
+        onSubmit={onSubmit}
       >
-        <fieldset className="m-0 min-w-0 border-0 p-0" disabled={pending}>
+        <fieldset className="m-0 min-w-0 border-0 p-0" disabled={busy}>
           <div className="mb-5 rounded-lg border bg-card shadow-panel px-7 pt-[25px] mobile:px-[17px] mobile:pt-5">
             <div className="mb-6 flex items-center justify-between gap-[13px] mobile:flex-wrap mobile:gap-[9px] [&_h2]:text-[13px] [&_h2]:font-bold [&_h2]:tracking-[-0.2px] mobile:[&>div]:flex-1">
               <div>
@@ -80,10 +47,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
               <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">
                 Rule name
                 <Input
-                  value={draft.name}
-                  onChange={(event) =>
-                    setDraft({ ...draft, name: event.target.value })
-                  }
+                  {...form.register('name')}
                   placeholder="e.g. Authenticated API"
                   autoFocus
                   required
@@ -93,10 +57,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
                 Domain
                 <Input
                   className="font-mono text-[11px]"
-                  value={draft.url}
-                  onChange={(event) =>
-                    setDraft({ ...draft, url: event.target.value })
-                  }
+                  {...form.register('url')}
                   placeholder="e.g. localhost:4200 or api.example.com"
                   aria-label="Domain"
                   aria-describedby="rule-domain-help"
@@ -107,11 +68,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
             </div>
             <div className="flex items-center justify-between gap-5 border-t py-[17px]">
               <span className="text-[11px] font-semibold">Enabled</span>
-              <ToggleSwitch
-                checked={draft.enabled}
-                label="Rule enabled"
-                onChange={(enabled) => setDraft({ ...draft, enabled })}
-              />
+              <Controller control={form.control} name="enabled" render={({ field }) => <ToggleSwitch checked={field.value} label="Rule enabled" onChange={field.onChange} />} />
             </div>
           </div>
           <div className="mb-5 rounded-lg border bg-card shadow-panel px-7 pt-[25px] mobile:px-[17px] mobile:pt-5">
@@ -121,19 +78,14 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
               </div>
               <Button variant="secondary" className="ml-auto"
                 type="button"
-                onClick={() =>
-                  setDraft({
-                    ...draft,
-                    headers: [...draft.headers, createHeaderPair()],
-                  })
-                }
+                onClick={() => append(createHeaderPair())}
               >
                 <Icon name="plus" /> Add header
               </Button>
             </div>
             <div className="min-w-0">
-              {draft.headers.map((header, index) => (
-                <div className="mb-6 grid grid-cols-[20px_minmax(0,1fr)_minmax(0,1.4fr)_26px] items-end gap-[13px] mobile:gap-3 mobile:grid-cols-[1fr_26px] mobile:items-center mobile:border-b mobile:pb-5 mobile:last:border-b-0 mobile:last:pb-0" key={index}>
+              {fields.map((header, index) => (
+                <div className="mb-6 grid grid-cols-[20px_minmax(0,1fr)_minmax(0,1.4fr)_26px] items-end gap-[13px] mobile:gap-3 mobile:grid-cols-[1fr_26px] mobile:items-center mobile:border-b mobile:pb-5 mobile:last:border-b-0 mobile:last:pb-0" key={header.id}>
                   <span className="pb-3 font-mono text-[10px] text-muted-foreground mobile:hidden">
                     {String(index + 1).padStart(2, '0')}
                   </span>
@@ -141,10 +93,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
                     {index === 0 && 'Name'}
                     <Input
                       className="font-mono text-[11px]"
-                      value={header.key}
-                      onChange={(event) =>
-                        updateHeader(index, 'key', event.target.value)
-                      }
+                      {...form.register(`headers.${index}.key`)}
                       placeholder="e.g. Authorization"
                       aria-label={`Header ${index + 1} name`}
                     />
@@ -153,10 +102,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
                     {index === 0 && 'Value'}
                     <Input
                       className="font-mono text-[11px]"
-                      value={header.value}
-                      onChange={(event) =>
-                        updateHeader(index, 'value', event.target.value)
-                      }
+                      {...form.register(`headers.${index}.value`)}
                       placeholder="e.g. Bearer token"
                       aria-label={`Header ${index + 1} value`}
                     />
@@ -164,15 +110,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
                   <Button variant="ghost" className="mb-[7px] size-[26px] text-muted-foreground [&_svg]:size-[15px] mobile:col-start-2 mobile:row-span-2 mobile:row-start-1 mobile:mb-0"
                     type="button"
                     aria-label={`Remove header ${index + 1}`}
-                    onClick={() =>
-                      setDraft({
-                        ...draft,
-                        headers:
-                          draft.headers.length === 1
-                            ? [createHeaderPair()]
-                            : draft.headers.filter((_, i) => i !== index),
-                      })
-                    }
+                    onClick={() => fields.length === 1 ? replace([createHeaderPair()]) : remove(index)}
                   >
                     <Icon name="close" />
                   </Button>
@@ -210,22 +148,4 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
       </form>
     </section>
   )
-}
-
-function sanitizeHeaders(headers: HeaderPair[]): HeaderPair[] {
-  return headers
-    .map((header) => ({ key: header.key.trim(), value: header.value.trim() }))
-    .filter((header) => header.key || header.value)
-}
-
-function validateDraft(draft: RuleDraft): string | null {
-  if (!draft.name.trim()) return 'Rule name is required.'
-  if (!draft.url.trim()) return 'Domain is required.'
-  if (!isValidDomainPattern(draft.url))
-    return 'Use a domain like localhost:4200, api.example.com, *.example.com, or *.'
-  const headers = sanitizeHeaders(draft.headers)
-  if (headers.length === 0) return 'Add at least one header pair.'
-  if (headers.some((header) => !header.key || !header.value))
-    return 'Each header row needs both a name and a value.'
-  return null
 }

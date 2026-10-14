@@ -9,20 +9,25 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "pnpm build && tsc -p tsconfig.e2e.json && playwright test"
   },
   "dependencies": {
     "@fontsource/manrope": "^5.2.8",
+    "@hookform/resolvers": "^5.9.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "radix-ui": "^1.7.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "tailwind-merge": "^3.7.0"
+    "react-hook-form": "^7.90.0",
+    "tailwind-merge": "^3.7.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.4.0",
     "@eslint/js": "^9.39.4",
+    "@playwright/test": "^1.64.0",
     "@tailwindcss/vite": "^4.2.2",
     "@types/chrome": "^0.1.38",
     "@types/node": "^24.12.0",

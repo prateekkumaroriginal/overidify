@@ -1,5 +1,6 @@
 import { getNetworkOverrides, NETWORK_STORAGE_KEY } from '../lib/network-storage'
 import { networkOverridesForPage } from '../lib/network-overrides'
+import { NetworkAppliedSchema, NetworkRuntimeMessageSchema } from '../lib/settings-messages'
 
 const pageUrls = new Map<number, string>()
 
@@ -9,8 +10,8 @@ async function updateTab(tab: chrome.tabs.Tab) {
   const frames = await chrome.webNavigation.getAllFrames({ tabId: tab.id }).catch(() => null)
   const applied = await Promise.all((frames ?? [{ frameId: 0 }]).map(async frame => {
     try {
-      const response = await chrome.tabs.sendMessage(tab.id!, { type: 'update-network-overrides', entries }, { frameId: frame.frameId }) as { ok?: boolean; needsReload?: boolean } | undefined
-      return response?.ok === true && !response.needsReload
+      const response = NetworkAppliedSchema.safeParse(await chrome.tabs.sendMessage(tab.id!, { type: 'update-network-overrides', entries }, { frameId: frame.frameId }))
+      return response.success && response.data.ok && !response.data.needsReload
     } catch { return false }
   }))
   return entries.some(entry => entry.enabled) && applied.some(ok => !ok)
@@ -38,13 +39,15 @@ function sync(): Promise<number[]> {
 const requestSync = () => { void sync().catch(error => console.error('Failed to update network overrides.', error)) }
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
-  if (message?.type === 'get-network-overrides') {
+  const parsed = NetworkRuntimeMessageSchema.safeParse(message)
+  if (!parsed.success) return
+  if (parsed.data.type === 'get-network-overrides') {
     // Scope comes from the browser's tab metadata, never a page-supplied URL.
     const url = sender.tab?.id === undefined ? '' : pageUrls.get(sender.tab.id) ?? sender.tab.url ?? ''
     void getNetworkOverrides().then(entries => respond({ entries: networkOverridesForPage(entries, url) }), () => respond({ entries: [] }))
     return true
   }
-  if (message?.type === 'sync-network-overrides') {
+  if (parsed.data.type === 'sync-network-overrides') {
     void sync().then(reloadTabIds => respond({ ok: true, reloadTabIds }), error => respond({ ok: false, error: String(error) }))
     return true
   }

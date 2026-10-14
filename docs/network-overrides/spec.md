@@ -33,7 +33,7 @@ The example target is GET `https://backendapi-qa.topfan.dev/api/get-chatGroups-a
 
 Bypass server returns the configured mock without making the target network call.
 
-Call server makes the original request, preserving normal matching header Rules and Switchers. Once a real response exists, replace its entire response body, status, and header set delivered to the caller with the configured mock. Do not inherit fields from the real response. A transport failure before a response exists remains a failure, with no mock fallback. An HTTP error that supplies a response is distinct from a transport failure.
+Call server makes the original request, preserving normal matching header Rules and Switchers. Once real response headers arrive, replace its entire response body, status, and header set delivered to the caller with the configured mock. Do not inherit fields from the real response. A transport failure before headers remains a failure, with no mock fallback. A failure while downloading the real body after headers does not undo the delivered mock. Fetch and XHR use the same boundary. An HTTP error that supplies a response is distinct from a transport failure.
 
 Capture the selected override configuration when the request starts. Subsequent edits or toggles affect later requests, while the in-progress request retains its starting configuration.
 

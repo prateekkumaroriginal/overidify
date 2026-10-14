@@ -1,8 +1,9 @@
 import { normalizeNetworkOverrides, validateNetworkOverride } from './network-overrides'
 import type { NetworkOverride } from './network-overrides'
+import { ActivationResultSchema } from './settings-messages'
+export type { NetworkApplyResult } from './settings-messages'
 
 export const NETWORK_STORAGE_KEY = 'networkOverrides'
-export type NetworkApplyResult = { ok: boolean; reloadTabIds?: number[]; error?: string }
 const isPreview = () => import.meta.env.DEV && !globalThis.chrome?.storage?.local
 
 export async function getNetworkOverrides(): Promise<NetworkOverride[]> {
@@ -26,9 +27,9 @@ export async function saveNetworkOverrides(entries: NetworkOverride[]): Promise<
     return { entries: normalized, reloadTabIds: [] }
   }
   await chrome.storage.local.set({ [NETWORK_STORAGE_KEY]: normalized })
-  const result = await chrome.runtime.sendMessage({ type: 'sync-network-overrides' }) as NetworkApplyResult | undefined
-  if (!result?.ok) throw new Error(result?.error ?? 'Settings were saved, but activation was not confirmed. Reload the extension and website.')
-  return { entries: normalized, reloadTabIds: result.reloadTabIds ?? [] }
+  const parsed = ActivationResultSchema.safeParse(await chrome.runtime.sendMessage({ type: 'sync-network-overrides' }))
+  if (!parsed.success || !parsed.data.ok) throw new Error((parsed.success && !parsed.data.ok ? parsed.data.error : undefined) ?? 'Settings were saved, but activation was not confirmed. Reload the extension and website.')
+  return { entries: normalized, reloadTabIds: parsed.data.reloadTabIds ?? [] }
 }
 
 export function subscribeToNetworkOverrides(onChange: (entries: NetworkOverride[]) => void): () => void {

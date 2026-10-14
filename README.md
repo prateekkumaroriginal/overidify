@@ -16,6 +16,7 @@ Keep the extracted folder in place. Chrome loads the extension from it.
 
 - React
 - TypeScript
+- Zod schemas and React Hook Form with Zod resolvers
 - Vite
 - Tailwind CSS v4
 - shadcn/ui with Radix primitives
@@ -59,9 +60,13 @@ Styling uses Tailwind utilities and local shadcn components in `src/components/u
 ```bash
 pnpm test
 pnpm lint
+pnpm exec playwright install chromium
+pnpm test:e2e
 ```
 
-Matching, migration, priority, and validation tests run with Node's TypeScript stripping support.
+Matching, migration, priority, and validation tests run with Node's TypeScript stripping support. Use Node.js 24 for development and CI.
+
+`pnpm test:e2e` builds the production extension, typechecks the browser tests, and runs Playwright against bundled Chromium with the unpacked extension installed. Each test owns a temporary profile and local HTTP server. The suite covers all three editors, popup toggles, early requests under CSP, fetch/XHR behavior, live updates, iframe scope, and native DevTools. On Linux, install browser system dependencies with `pnpm exec playwright install --with-deps chromium` if needed. CI runs the same checks.
 
 ## Build
 
@@ -89,7 +94,7 @@ Choose a method or **Any**, enter the response body, and adjust its status and h
 - Request URL matching ignores query parameter order but requires identical parameters and values, including duplicates. Paths and query values remain case-sensitive.
 - The later enabled entry wins when multiple network overrides match.
 - **Bypass server** returns the mock without making the API request.
-- **Call server, then replace response** makes the original request with matching Rules and Switchers headers. It replaces the entire response delivered to the page. A network failure before receiving a response remains a failure.
+- **Call server, then replace response** makes the original request with matching Rules and Switchers headers. Once response headers arrive, it delivers the entire configured mock to the page. A network failure before headers remains a failure; a later failure while downloading the real body does not replace the delivered mock.
 - Saved edits and toggles apply to subsequent requests. In-flight requests keep the settings captured when they started. Reload a website when the settings page or popup asks you to.
 - HEAD and statuses 204, 205, and 304 return no body. The editor retains your entered text. Mock response headers cannot set browser cookies.
 

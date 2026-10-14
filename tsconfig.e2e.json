@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "target": "ES2023", "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext", "moduleResolution": "bundler", "allowImportingTsExtensions": true,
+    "noEmit": true, "strict": true, "skipLibCheck": true,
+    "types": ["node", "chrome", "@playwright/test"]
+  },
+  "include": ["playwright.config.ts", "tests/e2e/**/*.ts"]
+}

@@ -1,4 +1,6 @@
 import type { NetworkOverride } from '../lib/network-overrides'
+import { NetworkPageMessageSchema, NetworkRuntimeMessageSchema, NetworkSettingsResponseSchema } from '../lib/settings-messages'
+import type { NetworkApplied } from '../lib/settings-messages'
 
 const bridgeWindow = window as Window & { __overidifyNetworkBridge?: boolean }
 if (!bridgeWindow.__overidifyNetworkBridge) {
@@ -6,9 +8,9 @@ if (!bridgeWindow.__overidifyNetworkBridge) {
   let pageReady = false
   let entries: NetworkOverride[] = []
   let sequence = 0
-  const pending = new Map<number, (result: { ok: boolean; needsReload?: boolean }) => void>()
+  const pending = new Map<number, (result: NetworkApplied) => void>()
 
-  function apply(next: NetworkOverride[]): Promise<{ ok: boolean; needsReload?: boolean }> {
+  function apply(next: NetworkOverride[]): Promise<NetworkApplied> {
     entries = next
     const id = ++sequence
     return new Promise(resolve => {
@@ -21,25 +23,29 @@ if (!bridgeWindow.__overidifyNetworkBridge) {
   async function refresh() {
     const version = ++sequence
     try {
-      const result = await chrome.runtime.sendMessage({ type: 'get-network-overrides' }) as { entries?: NetworkOverride[] }
+      const result = NetworkSettingsResponseSchema.parse(await chrome.runtime.sendMessage({ type: 'get-network-overrides' }))
       if (version !== sequence) return
       await apply(result.entries ?? [])
     } catch { pageReady = false }
   }
 
   window.addEventListener('message', event => {
-    if (event.source !== window || event.data?.source !== 'overidify-network-page') return
-    if (event.data.type === 'ready') { pageReady = true; void refresh() }
-    else if (event.data.type === 'applied') {
+    if (event.source !== window) return
+    const parsed = NetworkPageMessageSchema.safeParse(event.data)
+    if (!parsed.success) return
+    const message = parsed.data
+    if (message.type === 'ready') { pageReady = true; void refresh() }
+    else if (message.type === 'applied') {
       pageReady = true
-      pending.get(event.data.id)?.({ ok: true, needsReload: Boolean(event.data.needsReload) })
-      pending.delete(event.data.id)
+      pending.get(message.id)?.({ ok: true, needsReload: message.needsReload })
+      pending.delete(message.id)
     }
   })
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (message?.type !== 'update-network-overrides') return
+    const parsed = NetworkRuntimeMessageSchema.safeParse(message)
+    if (!parsed.success || parsed.data.type !== 'update-network-overrides') return
     if (!pageReady) window.postMessage({ source: 'overidify-network-bridge', type: 'hello' }, '*')
-    void apply(message.entries ?? []).then(sendResponse)
+    void apply(parsed.data.entries).then(sendResponse)
     return true
   })
   window.postMessage({ source: 'overidify-network-bridge', type: 'hello' }, '*')
