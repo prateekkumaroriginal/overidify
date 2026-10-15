@@ -1,13 +1,24 @@
+import { Settings } from 'lucide-react'
 import { startTransition, useEffect, useState } from 'react'
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
+import { Button } from '../components/ui/button'
+import { Icon } from '../components/Icon'
 import { SwitchRuleOptionSelect } from '../components/SwitchRuleOptionSelect'
 import { ToggleSwitch } from '../components/ToggleSwitch'
-import { matchesPageDomain } from '../lib/pattern'
+import { getDomainPattern, matchesPageDomain } from '../lib/pattern'
 import { getRequestHeaderRules, saveRequestHeaderRules, subscribeToRequestHeaderRules } from '../lib/request-header-storage'
 import type { RequestHeaderRule } from '../lib/types'
 import { networkRulesForPage } from '../lib/network-rules'
 import type { NetworkRule } from '../lib/network-rules'
 import { getNetworkRules, saveNetworkRules, subscribeToNetworkRules } from '../lib/network-storage'
+
+const ruleTabs = [
+  { value: 'all', label: 'All' },
+  { value: 'header-rule', label: 'Header Rules' },
+  { value: 'switch-rule', label: 'Switch Rules' },
+  { value: 'network-rule', label: 'Network Rules' },
+] as const
 
 async function getCurrentPageUrl(): Promise<string> {
   if (import.meta.env.DEV && !globalThis.chrome?.tabs?.query) {
@@ -99,50 +110,87 @@ export function PopupApp() {
   }
 
   return (
-    <main className="w-full px-[18px] pt-2 pb-3.5">
+    <main className="w-full p-4">
+      <header className="mb-2.5 flex items-center justify-between gap-3">
+        <span className="min-w-0 flex-1 truncate text-xs" title={pageUrl}>
+          {getDomainPattern(pageUrl) || pageUrl}
+        </span>
+        <Button variant="ghost" size="icon" asChild>
+          <a href="options.html#/header-rules" target="_blank" rel="noreferrer" aria-label="Settings">
+            <Icon icon={Settings} />
+          </a>
+        </Button>
+      </header>
       {error && (
         <p className="mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 border-destructive/40 bg-destructive/10 text-destructive" role="alert">
           {error}
         </p>
       )}
-      {loading ? (
-        <p className="py-4 text-xs text-muted-foreground" role="status">
-          Loading...
-        </p>
-      ) : (
-        pageRules.length || pageNetworkRules.length ? (
-          <ul className="m-0 max-h-[400px] list-none overflow-y-auto p-0">
-            {pageRules.map((rule) => (
-              <li className="flex min-h-12 items-center gap-3 border-b py-3 last:border-b-0" key={rule.id}>
-                <ToggleSwitch
-                  checked={rule.enabled}
-                  label={`Enable ${rule.name}`}
-                  disabled={pending}
-                  onChange={(enabled) => {
-                    void handleUpdate(rule, { enabled })
-                  }}
-                />
-                <span className="min-w-0 flex-1 text-[13px] wrap-anywhere">{rule.name}</span>
-                {rule.kind === 'switch-rule' && <SwitchRuleOptionSelect
-                  switchRule={rule}
-                  disabled={pending}
-                  onChange={(selectedOptionId) => { void handleUpdate(rule, { selectedOptionId }) }}
-                />}
-              </li>
-            ))}
-            {pageNetworkRules.length > 0 && <li className="pt-3 pb-1 text-[10px] text-muted-foreground">Network Rules</li>}
-            {pageNetworkRules.map(networkRule => <li key={networkRule.id} className="flex min-h-12 items-center gap-3 border-b py-3 last:border-b-0"><ToggleSwitch checked={networkRule.enabled} label={`Enable ${networkRule.name}`} disabled={pending} onChange={enabled => { void toggleNetworkRule(networkRule, enabled) }} /><span className="min-w-0 flex-1 text-[13px] wrap-anywhere">{networkRule.name}</span></li>)}
-          </ul>
-        ) : (
-          <p className="py-4 text-xs text-muted-foreground">No matches for this page</p>
-        )
-      )}
+      <Tabs defaultValue="all" className="gap-[3px]">
+        <TabsList className="w-full gap-0.5" aria-label="Rule types">
+          {ruleTabs.map(tab => (
+            <TabsTrigger key={tab.value} value={tab.value} size="sm" className="flex-1">
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        {ruleTabs.map(tab => {
+          const visibleRules = pageRules.filter(rule => tab.value === 'all' || rule.kind === tab.value)
+          const visibleNetworkRules = tab.value === 'all' || tab.value === 'network-rule' ? pageNetworkRules : []
+
+          return (
+            <TabsContent key={tab.value} value={tab.value}>
+              {loading ? (
+                <p className="py-4 text-xs text-muted-foreground" role="status">
+                  Loading...
+                </p>
+              ) : (
+                visibleRules.length || visibleNetworkRules.length ? (
+                  <ul className="m-0 max-h-[400px] list-none overflow-y-auto p-0">
+                    {visibleRules.map((rule) => (
+                      <li className="flex min-h-[43px] items-center gap-2.5 border-b py-[9px] last:border-b-0" key={rule.id}>
+                        <ToggleSwitch
+                          size="sm"
+                          checked={rule.enabled}
+                          label={`Enable ${rule.name}`}
+                          disabled={pending}
+                          onChange={(enabled) => {
+                            void handleUpdate(rule, { enabled })
+                          }}
+                        />
+                        <span className="min-w-0 flex-1 text-xs wrap-anywhere">{rule.name}</span>
+                        {rule.kind === 'switch-rule' && <SwitchRuleOptionSelect
+                          size="sm"
+                          switchRule={rule}
+                          disabled={pending}
+                          onChange={(selectedOptionId) => { void handleUpdate(rule, { selectedOptionId }) }}
+                        />}
+                      </li>
+                    ))}
+                    {visibleNetworkRules.map(networkRule => (
+                      <li key={networkRule.id} className="flex min-h-[43px] items-center gap-2.5 border-b py-[9px] last:border-b-0">
+                        <ToggleSwitch
+                          size="sm"
+                          checked={networkRule.enabled}
+                          label={`Enable ${networkRule.name}`}
+                          disabled={pending}
+                          onChange={enabled => { void toggleNetworkRule(networkRule, enabled) }}
+                        />
+                        <span className="min-w-0 flex-1 text-xs wrap-anywhere">{networkRule.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="py-4 text-xs text-muted-foreground">
+                    {tab.value === 'all' ? 'No matches for this page' : `No ${tab.label} match this page`}
+                  </p>
+                )
+              )}
+            </TabsContent>
+          )
+        })}
+      </Tabs>
       {notice && <p className="mt-3 text-[11px] text-muted-foreground" role="status">{notice}</p>}
-      <footer className="mt-2 flex justify-end border-t pt-3 [&_a]:text-xs [&_a]:text-muted-foreground [&_a]:no-underline [&_a:hover]:text-foreground">
-        <a href="options.html#/header-rules" target="_blank" rel="noreferrer">
-          Settings
-        </a>
-      </footer>
     </main>
   )
 }

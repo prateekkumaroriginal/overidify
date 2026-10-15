@@ -1,3 +1,4 @@
+import { Plus, Trash2, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useRef, useState } from 'react'
@@ -91,7 +92,7 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
                   <Input {...form.register('name')} placeholder="e.g. Authenticated API" autoFocus required />
                 </label>
                 <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">Domain
-                  <Input className="font-mono text-[11px]" {...form.register('url')} placeholder="e.g. localhost:4200 or api.example.com" aria-label="Domain" aria-describedby="switch-rule-domain-help" required />
+                  <Input className="font-sans text-[11px]" {...form.register('url')} placeholder="e.g. localhost:4200 or api.example.com" aria-label="Domain" aria-describedby="switch-rule-domain-help" required />
                   <span id="switch-rule-domain-help" className="font-normal text-muted-foreground">Matches the page's domain on every path. Applies to requests made from that page, including other API hosts. Include a port to match only that port.</span>
                 </label>
               </div>
@@ -103,7 +104,7 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
             <div className="mb-5 rounded-lg border bg-card shadow-panel px-7 pt-[25px] mobile:px-[17px] mobile:pt-5 pb-6 mobile:pb-5">
               <div className="mb-6 flex items-center justify-between gap-[13px] mobile:flex-wrap mobile:gap-[9px] [&_h2]:text-[13px] [&_h2]:font-bold [&_h2]:tracking-[-0.2px]">
                 <h2>Options</h2>
-                <Button variant="secondary" type="button" onClick={addOption}><Icon name="plus" />Add option</Button>
+                <Button variant="secondary" type="button" onClick={addOption}><Icon icon={Plus} />Add option</Button>
               </div>
               <div className="grid grid-cols-[164px_minmax(0,1fr)] gap-6 mobile:grid-cols-1 mobile:gap-5">
                 <div className="flex min-w-0 flex-col gap-1.5 self-start border-r pr-4 mobile:flex-row mobile:flex-wrap mobile:border-r-0 mobile:border-b mobile:pr-0 mobile:pb-4" aria-label="Options to edit">
@@ -118,7 +119,7 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
                           aria-label={`Delete option ${option.name || 'Untitled'}`}
                           title="Delete option"
                           onClick={() => deleteOption(option.id)}
-                        ><Icon name="trash" /></Button>
+                        ><Icon icon={Trash2} /></Button>
                       )}
                     </div>
                   ))}
@@ -154,16 +155,16 @@ function SwitchRuleOptionEditor({ index: optionIndex, nameRef, onEdit }: {
         {fields.map((header, index) => (
           <div className="mb-4 grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_26px] items-end gap-3 mobile:grid-cols-[1fr_26px] mobile:items-center mobile:border-b mobile:pb-5 mobile:last:border-b-0 mobile:last:pb-0" key={header.id}>
             <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">{index === 0 && 'Header'}
-              <Input className="font-mono text-[11px]" {...register(`options.${optionIndex}.headers.${index}.key`, { onChange: onEdit })} placeholder="e.g. Authorization" aria-label={`Header ${index + 1} name`} />
+              <Input className="font-sans text-[11px]" {...register(`options.${optionIndex}.headers.${index}.key`, { onChange: onEdit })} placeholder="e.g. Authorization" aria-label={`Header ${index + 1} name`} />
             </label>
             <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">{index === 0 && 'Value'}
-              <Input className="font-mono text-[11px]" {...register(`options.${optionIndex}.headers.${index}.value`, { onChange: onEdit })} placeholder="e.g. Bearer token" aria-label={`Header ${index + 1} value`} />
+              <Input className="font-sans text-[11px]" {...register(`options.${optionIndex}.headers.${index}.value`, { onChange: onEdit })} placeholder="e.g. Bearer token" aria-label={`Header ${index + 1} value`} />
             </label>
-            <Button variant="ghost" className="mb-[7px] size-[26px] text-muted-foreground [&_svg]:size-[15px] mobile:col-start-2 mobile:row-span-2 mobile:row-start-1 mobile:mb-0" type="button" aria-label={`Remove header ${index + 1}`} onClick={() => { remove(index); onEdit() }}><Icon name="close" /></Button>
+            <Button variant="ghost" className="mb-[7px] size-[26px] text-muted-foreground [&_svg]:size-[15px] mobile:col-start-2 mobile:row-span-2 mobile:row-start-1 mobile:mb-0" type="button" aria-label={`Remove header ${index + 1}`} onClick={() => { remove(index); onEdit() }}><Icon icon={X} /></Button>
           </div>
         ))}
       </div>
-      <Button variant="secondary" type="button" onClick={() => { append(createHeaderPair()); onEdit() }}><Icon name="plus" />Add header</Button>
+      <Button variant="secondary" type="button" onClick={() => { append(createHeaderPair()); onEdit() }}><Icon icon={Plus} />Add header</Button>
     </div>
   )
 }

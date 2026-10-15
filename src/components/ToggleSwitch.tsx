@@ -5,6 +5,7 @@ type ToggleSwitchProps = {
   label: string
   onChange: (nextValue: boolean) => void
   disabled?: boolean
+  size?: 'sm' | 'default'
 }
 
 export function ToggleSwitch({
@@ -12,9 +13,11 @@ export function ToggleSwitch({
   label,
   onChange,
   disabled = false,
+  size = 'default',
 }: ToggleSwitchProps) {
   return (
     <Switch
+      size={size}
       checked={checked}
       aria-label={label}
       disabled={disabled}

@@ -57,13 +57,18 @@ function TabsList({
 
 function TabsTrigger({
   className,
+  size = "default",
   ...props
-}: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
+}: React.ComponentProps<typeof TabsPrimitive.Trigger> & {
+  size?: "sm" | "default"
+}) {
   return (
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
+      data-size={size}
       className={cn(
         "inline-flex cursor-pointer items-center justify-center rounded-md border-0 px-4 py-2 text-xs font-normal text-muted-foreground focus:outline-none hover:bg-accent hover:text-foreground data-[state=active]:bg-selection data-[state=active]:text-primary",
+        size === "sm" && "px-1 py-[7px] text-[11px]",
         className
       )}
       {...props}

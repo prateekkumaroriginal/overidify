@@ -38,7 +38,7 @@ export function HeaderRulesList({
           >
             <span className="grid min-w-0 flex-1 gap-[5px]">
               <span className="text-xs font-semibold wrap-anywhere mobile:text-[11px]">{headerRule.name}</span>
-              <span className="font-mono text-[11px] text-muted-foreground wrap-anywhere">{headerRule.url}</span>
+              <span className="font-sans text-[11px] text-muted-foreground wrap-anywhere">{headerRule.url}</span>
             </span>
             <span className="min-w-[92px] text-[11px] text-muted-foreground [&>span]:text-[10px] tablet:min-w-[68px] mobile:hidden">
               {headerRule.headers.length}{' '}

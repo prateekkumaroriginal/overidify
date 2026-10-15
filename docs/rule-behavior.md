@@ -57,7 +57,7 @@ Chrome DevTools can stay open. In call-server mode, its native Network panel sho
 
 ## Applying changes
 
-The popup lists rules matching the current website. Use it to toggle rules and select Switch Rule options. Open **Settings** to edit responses and headers, search rules, or delete entries and options.
+The popup shows the current website's domain and lists matching rules. It opens on **All**. Use the **Header Rules**, **Switch Rules**, and **Network Rules** tabs to filter by type. Use it to toggle rules and select Switch Rule options. Open **Settings** from the icon beside the domain to edit responses and headers, search rules, or delete entries and options.
 
 All three rule editors place a ghost Back arrow beside the title and a **Delete rule** button with a trash icon at the top right for saved rules. **Cancel** and **Save** remain below the form.
 
