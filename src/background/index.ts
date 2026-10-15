@@ -1,5 +1,6 @@
 import { syncSessionRules } from '../lib/dnr'
 import { getEntries, STORAGE_KEY } from '../lib/storage'
+import './network'
 
 const pageUrls = new Map<number, string>()
 

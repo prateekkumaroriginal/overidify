@@ -4,7 +4,8 @@ export default defineManifest({
   manifest_version: 3,
   name: 'Overidify',
   version: '0.1.0',
-  description: 'Override request headers with ordered browser-wide rules.',
+  minimum_chrome_version: '119',
+  description: 'Override request headers and mock API responses with website-scoped rules.',
   permissions: ['storage', 'tabs', 'webNavigation', 'declarativeNetRequest', 'declarativeNetRequestWithHostAccess'],
   host_permissions: ['<all_urls>'],
   action: {
@@ -19,4 +20,18 @@ export default defineManifest({
     service_worker: 'src/background/index.ts',
     type: 'module',
   },
+  content_scripts: [
+    {
+      matches: ['http://*/*', 'https://*/*'],
+      js: ['src/network/page.ts'],
+      world: 'MAIN', run_at: 'document_start', all_frames: true,
+      match_about_blank: true, ...{ match_origin_as_fallback: true },
+    },
+    {
+      matches: ['http://*/*', 'https://*/*'],
+      js: ['src/network/bridge.ts'],
+      run_at: 'document_start', all_frames: true,
+      match_about_blank: true, ...{ match_origin_as_fallback: true },
+    },
+  ],
 })

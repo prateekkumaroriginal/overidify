@@ -5,6 +5,9 @@ import { ToggleSwitch } from '../components/ToggleSwitch'
 import { matchesPageDomain } from '../lib/pattern'
 import { getEntries, saveEntries, subscribeToEntries } from '../lib/storage'
 import type { HeaderEntry } from '../lib/types'
+import { networkOverridesForPage } from '../lib/network-overrides'
+import type { NetworkOverride } from '../lib/network-overrides'
+import { getNetworkOverrides, saveNetworkOverrides, subscribeToNetworkOverrides } from '../lib/network-storage'
 
 async function getCurrentPageUrl(): Promise<string> {
   if (import.meta.env.DEV && !globalThis.chrome?.tabs?.query) {
@@ -16,6 +19,8 @@ async function getCurrentPageUrl(): Promise<string> {
 
 export function PopupApp() {
   const [rules, setRules] = useState<HeaderEntry[]>([])
+  const [overrides, setOverrides] = useState<NetworkOverride[]>([])
+  const [notice, setNotice] = useState('')
   const [pageUrl, setPageUrl] = useState('')
   const [loading, setLoading] = useState(true)
   const [pending, setPending] = useState(false)
@@ -25,13 +30,15 @@ export function PopupApp() {
     let alive = true
     async function load() {
       try {
-        const [nextRules, currentPageUrl] = await Promise.all([
+        const [nextRules, currentPageUrl, nextOverrides] = await Promise.all([
           getEntries(),
           getCurrentPageUrl(),
+          getNetworkOverrides(),
         ])
         if (alive) {
           startTransition(() => {
             setRules(nextRules)
+            setOverrides(nextOverrides)
             setPageUrl(currentPageUrl)
             setLoading(false)
           })
@@ -47,9 +54,13 @@ export function PopupApp() {
     const unsubscribe = subscribeToEntries((nextRules) => {
       if (alive) startTransition(() => setRules(nextRules))
     })
+    const unsubscribeNetwork = subscribeToNetworkOverrides(next => {
+      if (alive) startTransition(() => setOverrides(next))
+    })
     return () => {
       alive = false
       unsubscribe()
+      unsubscribeNetwork()
     }
   }, [])
 
@@ -74,6 +85,18 @@ export function PopupApp() {
   }
 
   const pageRules = rules.filter((rule) => matchesPageDomain(rule.url, pageUrl))
+  const pageOverrides = networkOverridesForPage(overrides, pageUrl)
+
+  async function toggleOverride(override: NetworkOverride, enabled: boolean) {
+    setPending(true)
+    setError('')
+    try {
+      const result = await saveNetworkOverrides(overrides.map(entry => entry.id === override.id ? { ...entry, enabled } : entry))
+      setOverrides(result.entries)
+      setNotice(result.reloadTabIds.length ? 'Reload matching website tabs to activate the latest overrides.' : 'Changes apply to the next request.')
+    } catch (reason) { setError(`Could not apply the override. ${reason instanceof Error ? reason.message : 'Try again.'}`) }
+    finally { setPending(false) }
+  }
 
   return (
     <main className="w-full px-[18px] pt-2 pb-3.5">
@@ -87,7 +110,7 @@ export function PopupApp() {
           Loading...
         </p>
       ) : (
-        pageRules.length ? (
+        pageRules.length || pageOverrides.length ? (
           <ul className="m-0 max-h-[400px] list-none overflow-y-auto p-0">
             {pageRules.map((rule) => (
               <li className="flex min-h-12 items-center gap-3 border-b py-3 last:border-b-0" key={rule.id}>
@@ -107,11 +130,14 @@ export function PopupApp() {
                 />}
               </li>
             ))}
+            {pageOverrides.length > 0 && <li className="pt-3 pb-1 text-[10px] text-muted-foreground">Network Overrides</li>}
+            {pageOverrides.map(override => <li key={override.id} className="flex min-h-12 items-center gap-3 border-b py-3 last:border-b-0"><ToggleSwitch checked={override.enabled} label={`Enable ${override.name}`} disabled={pending} onChange={enabled => { void toggleOverride(override, enabled) }} /><span className="min-w-0 flex-1 text-[13px] wrap-anywhere">{override.name}</span></li>)}
           </ul>
         ) : (
           <p className="py-4 text-xs text-muted-foreground">No matches for this page</p>
         )
       )}
+      {notice && <p className="mt-3 text-[11px] text-muted-foreground" role="status">{notice}</p>}
       <footer className="mt-2 flex justify-end border-t pt-3 [&_a]:text-xs [&_a]:text-muted-foreground [&_a]:no-underline [&_a:hover]:text-foreground">
         <a href="options.html#/" target="_blank" rel="noreferrer">
           Settings

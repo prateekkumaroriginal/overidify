@@ -1,34 +1,11 @@
-export type HeaderPair = {
-  key: string
-  value: string
-}
+import type * as z from 'zod/mini'
+import type { HeaderPairSchema } from './schema-fields.ts'
+import type { HeaderEntrySchema, HeaderRuleSchema, HeaderSwitcherSchema, RuleDraftSchema, SwitcherDraftSchema, SwitcherOptionSchema } from './header-schemas.ts'
 
-type EntryBase = {
-  id: string
-  name: string
-  url: string
-  enabled: boolean
-  order: number
-}
-
-export type HeaderRule = EntryBase & {
-  kind: 'rule'
-  headers: HeaderPair[]
-}
-
-export type SwitcherOption = {
-  id: string
-  name: string
-  headers: HeaderPair[]
-}
-
-export type HeaderSwitcher = EntryBase & {
-  kind: 'switcher'
-  options: SwitcherOption[]
-  selectedOptionId: string
-}
-
-export type HeaderEntry = HeaderRule | HeaderSwitcher
-
-export type RuleDraft = Pick<HeaderRule, 'name' | 'url' | 'enabled' | 'headers'>
-export type SwitcherDraft = Pick<HeaderSwitcher, 'name' | 'url' | 'enabled' | 'options' | 'selectedOptionId'>
+export type HeaderPair = z.infer<typeof HeaderPairSchema>
+export type HeaderRule = z.infer<typeof HeaderRuleSchema>
+export type HeaderSwitcher = z.infer<typeof HeaderSwitcherSchema>
+export type SwitcherOption = z.infer<typeof SwitcherOptionSchema>
+export type HeaderEntry = z.infer<typeof HeaderEntrySchema>
+export type RuleDraft = z.infer<typeof RuleDraftSchema>
+export type SwitcherDraft = z.infer<typeof SwitcherDraftSchema>

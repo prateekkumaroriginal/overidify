@@ -1,6 +1,6 @@
 # Overidify
 
-Chrome extension for overriding request headers with rules and named switchers.
+Chrome extension for overriding request headers with rules and named switchers, and mocking API responses with Network Overrides.
 
 ## Install
 
@@ -16,6 +16,7 @@ Keep the extracted folder in place. Chrome loads the extension from it.
 
 - React
 - TypeScript
+- Zod schemas and React Hook Form with Zod resolvers
 - Vite
 - Tailwind CSS v4
 - shadcn/ui with Radix primitives
@@ -25,13 +26,14 @@ Keep the extracted folder in place. Chrome loads the extension from it.
 ## Features
 
 - Browser-wide request header override rules
-- Popup showing matching rules and switchers for the current tab, with toggles, switcher dropdowns, and a Settings link
-- Rules and Switchers tabs on the home page, with separate editors
+- Popup showing matching rules, switchers, and network overrides for the current tab, with toggles, switcher dropdowns, and a Settings link
+- Rules, Switchers, and Network Overrides tabs on the home page, with separate editors
 - Rules apply one header set; switchers provide named options with separate header sets
 - Switcher entries open their edit page directly
 - Rule, switcher, and option deletion
 - `chrome.storage.local` persistence
 - Automatic sync into `declarativeNetRequest` session rules for matching website tabs
+- Configurable fetch/XHR response bodies, statuses, and headers, with bypass-server and call-server modes
 - Dark-only, responsive UI with rule search and reduced-motion support
 
 ## Development
@@ -58,9 +60,13 @@ Styling uses Tailwind utilities and local shadcn components in `src/components/u
 ```bash
 pnpm test
 pnpm lint
+pnpm exec playwright install chromium
+pnpm test:e2e
 ```
 
-The migration and option-selection tests run with Node’s TypeScript stripping support.
+Matching, migration, priority, and validation tests run with Node's TypeScript stripping support. Use Node.js 24 for development and CI.
+
+`pnpm test:e2e` builds the production extension, typechecks the browser tests, and runs Playwright against bundled Chromium with the unpacked extension installed. Each test owns a temporary profile and local HTTP server. The suite covers all three editors, popup toggles, early requests under CSP, fetch/XHR behavior, live updates, iframe scope, and native DevTools. On Linux, install browser system dependencies with `pnpm exec playwright install --with-deps chromium` if needed. CI runs the same checks.
 
 ## Build
 
@@ -76,6 +82,25 @@ The production extension bundle is generated in `dist/`.
 2. Enable Developer mode
 3. Click `Load unpacked`
 4. Select the `dist/` folder
+
+The current source requires Chrome 119 or newer. After updating or reloading the extension, reload already-open website tabs to install its response interceptors.
+
+## Network overrides
+
+Open **Network Overrides** and click **New Override**. Set the website domain using the same patterns as Rules and Switchers, then enter the complete API request URL. The website domain determines which tabs are eligible. Requests from their iframes use the top-level website's scope.
+
+Choose a method or **Any**, enter the response body, and adjust its status and headers. New overrides use GET, status 200, `Content-Type: application/json`, bypass-server mode, and an enabled state. Invalid JSON shows a warning but can still be saved exactly as entered.
+
+- Request URL matching ignores query parameter order but requires identical parameters and values, including duplicates. Paths and query values remain case-sensitive.
+- The later enabled entry wins when multiple network overrides match.
+- **Bypass server** returns the mock without making the API request.
+- **Call server, then replace response** makes the original request with matching Rules and Switchers headers. Fetch and asynchronous XHR receive the entire configured mock once response headers arrive. A network failure before headers remains a failure; a later failure while downloading the real body does not replace the delivered mock. Synchronous XHR waits for native completion and preserves native failures, including a truncated real body.
+- Saved edits and toggles apply to subsequent requests. In-flight requests keep the settings captured when they started. Reload a website when the settings page or popup asks you to.
+- HEAD and statuses 204, 205, and 304 return no body. The editor retains your entered text. Mock response headers cannot set browser cookies.
+
+Chrome DevTools can stay open. Its native Network panel shows the actual server response in call-server mode; bypassed calls have no target network request to display. The page receives the configured mock through its fetch/XHR APIs. No companion app, proxy, or certificate setup is required.
+
+Version 1 covers page and iframe fetch/XHR calls. Worker calls, page navigations, and asset requests are outside its scope. A synchronous XHR made before the extension's settings arrive passes through to the server; later synchronous calls can use mocks. See the [feature specification](docs/network-overrides/spec.md) for the accepted behavior and decisions.
 
 ## Rule Behavior
 
