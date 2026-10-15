@@ -2,6 +2,10 @@
 
 - Rules, Switchers, Network Overrides website eligibility, and the popup must use the same matching logic.
 
+# Documentation
+
+- Documentation and source code must stay in sync at all times. If you find a mismatch, ask the developer which behavior is intended before resolving it.
+
 # Releases
 
 - Main and stable releases evolve independently. Nightly ZIPs track the latest main commit that passes CI; stable ZIPs stay tied to their version tags.
