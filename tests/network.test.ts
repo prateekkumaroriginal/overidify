@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createNetworkOverrideDraft, jsonBodyWarning, matchesNetworkRequest, networkOverridesForPage, normalizeNetworkOverrides, requestUrlKey, selectNetworkOverride, validateNetworkOverride } from '../src/lib/network-overrides.ts'
+import { createNetworkOverrideDraft, jsonBodyWarning, matchesNetworkRequest, networkOverridesForPage, normalizeNetworkOverrides, requestUrlKey, selectNetworkOverride, validateNetworkOverride } from '../src/lib/network-rules.ts'
 import { matchesPageDomain } from '../src/lib/pattern.ts'
-import type { NetworkOverride } from '../src/lib/network-overrides.ts'
+import type { NetworkOverride } from '../src/lib/network-rules.ts'
 
 function override(patch: Partial<NetworkOverride> = {}): NetworkOverride {
   return { ...createNetworkOverrideDraft(), id: 'chat', name: 'Chats', order: 0,

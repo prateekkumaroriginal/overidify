@@ -19,10 +19,10 @@ const RequestHeadersSchema = z.array(HeaderPairSchema).check(
   }),
 )
 export const RuleDraftSchema = z.object({
-  name: requiredName('Rule name'), url: WebsiteSchema, enabled: z.boolean(), headers: RequestHeadersSchema,
+  name: requiredName('Header rule name'), url: WebsiteSchema, enabled: z.boolean(), headers: RequestHeadersSchema,
 })
 export const SwitcherDraftSchema = z.object({
-  name: requiredName('Switcher name'), url: WebsiteSchema, enabled: z.boolean(), selectedOptionId: z.string(),
+  name: requiredName('Switch rule name'), url: WebsiteSchema, enabled: z.boolean(), selectedOptionId: z.string(),
   options: z.array(z.object({ id: z.string(), name: requiredName('Option name'), headers: RequestHeadersSchema })).check(z.minLength(1)),
 }).check(z.superRefine((draft, context) => {
   const names = new Set<string>()

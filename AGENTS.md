@@ -1,6 +1,6 @@
 # Shared matching
 
-- Rules, Switchers, Network Overrides website eligibility, and the popup must use the same matching logic.
+- Header Rules, Switch Rules, Network Rules website eligibility, and the popup must use the same matching logic.
 
 # Documentation
 

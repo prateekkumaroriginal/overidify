@@ -2,13 +2,13 @@ import { Select } from 'radix-ui'
 import type { HeaderSwitcher } from '../lib/types'
 import { Icon } from './Icon'
 
-type SwitcherOptionSelectProps = {
+type SwitchRuleOptionSelectProps = {
   switcher: HeaderSwitcher
   disabled?: boolean
   onChange: (optionId: string) => void
 }
 
-export function SwitcherOptionSelect({ switcher, disabled, onChange }: SwitcherOptionSelectProps) {
+export function SwitchRuleOptionSelect({ switcher, disabled, onChange }: SwitchRuleOptionSelectProps) {
   if (switcher.options.length < 2) return null
   return (
     <Select.Root

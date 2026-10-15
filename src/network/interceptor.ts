@@ -1,5 +1,5 @@
-import { selectNetworkOverride } from '../lib/network-overrides'
-import type { NetworkOverride } from '../lib/network-overrides'
+import { selectNetworkOverride } from '../lib/network-rules'
+import type { NetworkOverride } from '../lib/network-rules'
 
 type PageWindow = Window & typeof globalThis
 const nullBody = (method: string, status: number) => method === 'HEAD' || [204, 205, 304].includes(status)

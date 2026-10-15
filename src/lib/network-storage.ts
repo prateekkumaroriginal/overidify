@@ -1,5 +1,5 @@
-import { normalizeNetworkOverrides, validateNetworkOverride } from './network-overrides'
-import type { NetworkOverride } from './network-overrides'
+import { normalizeNetworkOverrides, validateNetworkOverride } from './network-rules'
+import type { NetworkOverride } from './network-rules'
 import { ActivationResultSchema } from './settings-messages'
 export type { NetworkApplyResult } from './settings-messages'
 

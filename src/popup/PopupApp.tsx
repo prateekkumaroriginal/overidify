@@ -1,12 +1,12 @@
 import { startTransition, useEffect, useState } from 'react'
 
-import { SwitcherOptionSelect } from '../components/SwitcherOptionSelect'
+import { SwitchRuleOptionSelect } from '../components/SwitchRuleOptionSelect'
 import { ToggleSwitch } from '../components/ToggleSwitch'
 import { matchesPageDomain } from '../lib/pattern'
 import { getEntries, saveEntries, subscribeToEntries } from '../lib/storage'
 import type { HeaderEntry } from '../lib/types'
-import { networkOverridesForPage } from '../lib/network-overrides'
-import type { NetworkOverride } from '../lib/network-overrides'
+import { networkOverridesForPage } from '../lib/network-rules'
+import type { NetworkOverride } from '../lib/network-rules'
 import { getNetworkOverrides, saveNetworkOverrides, subscribeToNetworkOverrides } from '../lib/network-storage'
 
 async function getCurrentPageUrl(): Promise<string> {
@@ -93,8 +93,8 @@ export function PopupApp() {
     try {
       const result = await saveNetworkOverrides(overrides.map(entry => entry.id === override.id ? { ...entry, enabled } : entry))
       setOverrides(result.entries)
-      setNotice(result.reloadTabIds.length ? 'Reload matching website tabs to activate the latest overrides.' : 'Changes apply to the next request.')
-    } catch (reason) { setError(`Could not apply the override. ${reason instanceof Error ? reason.message : 'Try again.'}`) }
+      setNotice(result.reloadTabIds.length ? 'Reload matching website tabs to activate the latest network rules.' : '')
+    } catch (reason) { setError(`Could not apply the network rule. ${reason instanceof Error ? reason.message : 'Try again.'}`) }
     finally { setPending(false) }
   }
 
@@ -123,14 +123,14 @@ export function PopupApp() {
                   }}
                 />
                 <span className="min-w-0 flex-1 text-[13px] wrap-anywhere">{rule.name}</span>
-                {rule.kind === 'switcher' && <SwitcherOptionSelect
+                {rule.kind === 'switcher' && <SwitchRuleOptionSelect
                   switcher={rule}
                   disabled={pending}
                   onChange={(selectedOptionId) => { void handleUpdate(rule, { selectedOptionId }) }}
                 />}
               </li>
             ))}
-            {pageOverrides.length > 0 && <li className="pt-3 pb-1 text-[10px] text-muted-foreground">Network Overrides</li>}
+            {pageOverrides.length > 0 && <li className="pt-3 pb-1 text-[10px] text-muted-foreground">Network Rules</li>}
             {pageOverrides.map(override => <li key={override.id} className="flex min-h-12 items-center gap-3 border-b py-3 last:border-b-0"><ToggleSwitch checked={override.enabled} label={`Enable ${override.name}`} disabled={pending} onChange={enabled => { void toggleOverride(override, enabled) }} /><span className="min-w-0 flex-1 text-[13px] wrap-anywhere">{override.name}</span></li>)}
           </ul>
         ) : (

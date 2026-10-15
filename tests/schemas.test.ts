@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { RuleDraftSchema, SwitcherDraftSchema } from '../src/lib/header-schemas.ts'
 import { NetworkOverrideDraftSchema } from '../src/lib/network-schemas.ts'
 import { createRuleDraft, createSwitcherDraft } from '../src/lib/rules.ts'
-import { createNetworkOverrideDraft, normalizeNetworkOverrides } from '../src/lib/network-overrides.ts'
+import { createNetworkOverrideDraft, normalizeNetworkOverrides } from '../src/lib/network-rules.ts'
 import { NetworkBridgeMessageSchema, NetworkPageMessageSchema, NetworkRuntimeMessageSchema, NetworkSettingsResponseSchema, ActivationResultSchema } from '../src/lib/settings-messages.ts'
 
 test('draft schemas preserve response text and distinguish request and response header validation', () => {

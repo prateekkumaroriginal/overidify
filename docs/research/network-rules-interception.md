@@ -1,6 +1,6 @@
-# Network Overrides interception feasibility
+# Network Rules interception feasibility
 
-Researched 2026-10-14. The research agent reviewed sources; the parent agent subsequently ran isolated Chrome probes described below. Requirements are in [the interview](../network-overrides/interview.md). This investigation originally evaluated Round 5's native Network visibility requirement. The user later accepted extension-only page interception in [ADR 0007](../network-overrides/adr/0007-extension-only-page-interception.md), superseding that requirement.
+Researched 2026-10-14. The research agent reviewed sources; the parent agent subsequently ran isolated Chrome probes described below. Requirements are in [the interview](../network-rules/interview.md). This investigation originally evaluated Round 5's native Network visibility requirement. The user later accepted extension-only page interception in [ADR 0007](../network-rules/adr/0007-extension-only-page-interception.md), superseding that requirement.
 
 ## Conclusion under the original native Network requirement
 

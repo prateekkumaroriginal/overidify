@@ -4,11 +4,11 @@ Status: accepted from the user's Round 4 answers on 2026-10-14.
 
 ## Decision
 
-- New overrides start with method GET. The user can choose another method or Any.
+- New network rules start with method GET. The user can choose another method or Any.
 - Saved edits and enabled-state changes apply to subsequent requests live where possible. Show a clear reload requirement when live activation cannot work.
-- A call-server request retains a snapshot of the selected override taken when the request starts. Later edits, deletion, or disablement do not change that request's selected mock.
-- Existing matching header Rules and Switchers continue to apply normally to real requests in call-server mode.
-- Overrides must remain active while Chrome DevTools is open.
+- A call-server request retains a snapshot of the selected network rule taken when the request starts. Later edits, deletion, or disablement do not change that request's selected mock.
+- Existing matching Header Rules and Switch Rules continue to apply normally to real requests in call-server mode.
+- Network rules must remain active while Chrome DevTools is open.
 
 ## Consequences
 

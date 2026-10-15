@@ -8,17 +8,17 @@ import { Icon } from './Icon'
 import { ToggleSwitch } from './ToggleSwitch'
 import { useEditorForm } from './useEditorForm'
 
-type RuleEditorProps = {
+type HeaderRuleEditorProps = {
   rule?: HeaderRule
   pending: boolean
   onSave: (draft: RuleDraft) => Promise<HeaderRule>
   onDelete?: () => void
 }
 
-export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps) {
+export function HeaderRuleEditor({ rule, pending, onSave, onDelete }: HeaderRuleEditorProps) {
   const { form, formRef, onSubmit, busy, error, success } = useEditorForm({
     schema: RuleDraftSchema, initial: () => rule ? ruleToDraft(rule) : createRuleDraft(),
-    pending, returnRoute: '/', successMessage: 'Rule saved.',
+    pending, returnRoute: '/', successMessage: 'Header rule saved.',
     onSave: async draft => ruleToDraft(await onSave(draft)),
   })
   const { fields, append, remove, replace } = useFieldArray({ control: form.control, name: 'headers' })
@@ -27,10 +27,10 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
   return (
     <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="editor-title">
       <a className="inline-flex items-center gap-2 text-[11px] text-muted-foreground no-underline hover:text-primary [&_svg]:w-[15px]" href="#/">
-        <Icon name="back" /> Back to rules
+        <Icon name="back" /> Back to header rules
       </a>
       <div className="mt-[27px] mb-[30px] mobile:mt-5 [&_h1]:text-xl [&_h1]:leading-[1.4] [&_h1]:font-semibold">
-        <h1 id="editor-title">{rule ? 'Edit rule' : 'New rule'}</h1>
+        <h1 id="editor-title">{rule ? 'Edit header rule' : 'New header rule'}</h1>
       </div>
       <form
         ref={formRef}
@@ -40,12 +40,12 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
           <div className="mb-5 rounded-lg border bg-card shadow-panel px-7 pt-[25px] mobile:px-[17px] mobile:pt-5">
             <div className="mb-6 flex items-center justify-between gap-[13px] mobile:flex-wrap mobile:gap-[9px] [&_h2]:text-[13px] [&_h2]:font-bold [&_h2]:tracking-[-0.2px] mobile:[&>div]:flex-1">
               <div>
-                <h2>Rule details</h2>
+                <h2>Header rule details</h2>
               </div>
             </div>
             <div className="mb-[22px] grid grid-cols-[1fr_1.35fr] gap-6 mobile:grid-cols-1 mobile:gap-[17px]">
               <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">
-                Rule name
+                Header rule name
                 <Input
                   {...form.register('name')}
                   placeholder="e.g. Authenticated API"
@@ -68,7 +68,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
             </div>
             <div className="flex items-center justify-between gap-5 border-t py-[17px]">
               <span className="text-[11px] font-semibold">Enabled</span>
-              <Controller control={form.control} name="enabled" render={({ field }) => <ToggleSwitch checked={field.value} label="Rule enabled" onChange={field.onChange} />} />
+              <Controller control={form.control} name="enabled" render={({ field }) => <ToggleSwitch checked={field.value} label="Header rule enabled" onChange={field.onChange} />} />
             </div>
           </div>
           <div className="mb-5 rounded-lg border bg-card shadow-panel px-7 pt-[25px] mobile:px-[17px] mobile:pt-5">
@@ -134,7 +134,7 @@ export function RuleEditor({ rule, pending, onSave, onDelete }: RuleEditorProps)
                 className="h-auto px-0 py-[9px] rounded-none text-[11px] text-muted-foreground hover:bg-transparent hover:text-destructive"
                 onClick={onDelete}
               >
-                Delete rule
+                Delete header rule
               </Button>
             )}
             <a className="ml-auto text-[11px] text-muted-foreground no-underline hover:text-foreground" href="#/">

@@ -25,7 +25,7 @@ const ResponseShape = {
 const StoredStatusSchema = z.custom<number>(value => typeof value === 'number')
 export const NetworkOverrideSchema = z.object({ ...EntryShape, ...ResponseShape, status: StoredStatusSchema })
 export const NetworkOverrideDraftSchema = z.object({
-  ...ResponseShape, name: requiredName('Override name'), url: WebsiteSchema, enabled: z.boolean(),
+  ...ResponseShape, name: requiredName('Network rule name'), url: WebsiteSchema, enabled: z.boolean(),
   requestUrl: z.string().check(z.refine(value => requestUrlKey(value) !== null, { message: 'Enter a complete HTTP or HTTPS request URL.' })),
   status: z.number().check(z.refine(value => Number.isInteger(value) && value >= 200 && value <= 599, { message: 'Use a status code from 200 to 599.' })),
   headers: ResponseHeadersSchema,

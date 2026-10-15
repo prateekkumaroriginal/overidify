@@ -1,4 +1,4 @@
-import type { NetworkOverride } from '../lib/network-overrides'
+import type { NetworkOverride } from '../lib/network-rules'
 import { NetworkPageMessageSchema, NetworkRuntimeMessageSchema, NetworkSettingsResponseSchema } from '../lib/settings-messages'
 import type { NetworkApplied } from '../lib/settings-messages'
 

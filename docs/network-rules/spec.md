@@ -1,14 +1,14 @@
-# Network Overrides
+# Network Rules
 
 Status: accepted after the interview and Requestly comparison. Implementation uses extension-only page-level interception, as recorded in ADR 0007.
 
 ## Purpose
 
-Add a Network Overrides tab beside Rules and Switchers. Users configure responses received by page and iframe fetch/XHR callers, with either a full mock or replacement after a real server call.
+The Network Rules tab sits beside Header Rules and Switch Rules. Users configure responses received by page and iframe fetch/XHR callers, with either a full mock or replacement after a real server call.
 
 ## Editor
 
-Each override has a name, website domain pattern, target request URL, method, enabled state, server mode, response body, response status, and response headers.
+Each network rule has a name, website domain pattern, target request URL, method, enabled state, server mode, response body, response status, and response headers.
 
 - Method starts at GET; another method or Any can be selected.
 - Enabled starts true; the user can toggle it before saving.
@@ -23,9 +23,9 @@ Use existing list, naming, storage, editor navigation, and deletion conventions 
 
 ## Matching
 
-Select eligible tabs using the same page-domain matcher as Rules and Switchers. Its host, optional port, wildcard, and path behavior must stay consistent across all three features. Iframe calls use the eligible top-level tab's website scope, consistent with existing header rules.
+Select eligible tabs using the same page-domain matcher as Header Rules and Switch Rules. Its host, optional port, wildcard, and path behavior must stay consistent across all three features. Iframe calls use the eligible top-level tab's website scope, consistent with existing header rules.
 
-Within an eligible tab, match the outgoing request URL and the selected method. Any accepts all methods. Query parameter order does not matter; the same query parameters and values are required. Preserve case-sensitive paths and query values. The later enabled Network Override in list order wins if multiple entries match.
+Within an eligible tab, match the outgoing request URL and the selected method. Any accepts all methods. Query parameter order does not matter; the same query parameters and values are required. Preserve case-sensitive paths and query values. The later enabled Network Rule in list order wins if multiple entries match.
 
 The example target is GET `https://backendapi-qa.topfan.dev/api/get-chatGroups-and-users?tab=featured&counts=true`. A URL with the two query parameters reversed matches. Changing tab to another value or adding a parameter does not match.
 
@@ -33,17 +33,19 @@ The example target is GET `https://backendapi-qa.topfan.dev/api/get-chatGroups-a
 
 Bypass server returns the configured mock without making the target network call.
 
-Call server makes the original request, preserving normal matching header Rules and Switchers. Fetch and asynchronous XHR deliver the entire configured mock once real response headers arrive. Do not inherit fields from the real response. A transport failure before headers remains a failure, with no mock fallback. A failure while downloading the real body after headers does not undo the delivered mock. An HTTP error that supplies a response is distinct from a transport failure.
+Call server makes the original request, preserving normal matching Header Rules and Switch Rules. Fetch and asynchronous XHR deliver the entire configured mock once real response headers arrive. Do not inherit fields from the real response. A transport failure before headers remains a failure, with no mock fallback. A failure while downloading the real body after headers does not undo the delivered mock. An HTTP error that supplies a response is distinct from a transport failure.
 
-Capture the selected override configuration when the request starts. Subsequent edits or toggles affect later requests, while the in-progress request retains its starting configuration.
+Capture the selected network rule configuration when the request starts. Subsequent edits or toggles affect later requests, while the in-progress request retains its starting configuration.
 
 ## Activation and popup
 
 Apply saved changes to subsequent requests in eligible open tabs live where possible. Clearly indicate when a page reload is needed. Do not imply that changing a mock reruns a request or updates already-rendered content.
 
-The popup lists Network Overrides whose website pattern matches the current tab, with names and enable toggles. Popup eligibility does not depend on observing an API call. Response editing remains in settings.
+Settings and the popup omit routine save and toggle confirmations. Reload-required notices remain visible.
 
-Overrides must work while Chrome DevTools is open.
+The popup lists Network Rules whose website pattern matches the current tab, with names and enable toggles. Popup eligibility does not depend on observing an API call. Response editing remains in settings.
+
+Network rules must work while Chrome DevTools is open.
 
 The page receives the configured response. Native DevTools Network can display the original server response in call-server mode; bypassed requests do not make a target network call. The user accepted this Requestly-style behavior after clarification, superseding native mock visibility from Round 5.
 
@@ -69,13 +71,13 @@ Verify early page requests, existing-tab activation, nested and cross-origin fra
 
 Define URL normalization for duplicate query keys and encoding consistently, and validate statuses and headers against the selected browser mechanism. Verify that page-visible mocks keep working while native DevTools is open.
 
-Verify JSON warnings preserve the original body. Confirm Rules and Switchers still share the same matcher and the real call receives their headers. Confirm bypass mode makes no target server call and an in-flight mock does not change after edits.
+Verify JSON warnings preserve the original body. Confirm Header Rules and Switch Rules still share the same matcher and the real call receives their headers. Confirm bypass mode makes no target server call and an in-flight mock does not change after edits.
 
 The [implementation validation record](validation.md) records the automated and installed-browser checks.
 
 ## Decision records
 
-- [Tab](adr/0001-network-overrides-tab.md)
+- [Tab](adr/0001-network-rules-tab.md)
 - [Mock scope and server modes](adr/0002-mock-response-scope.md)
 - [Website scope and query matching](adr/0003-matching-and-server-modes.md)
 - [Editor, priority, and popup](adr/0004-editor-and-activation.md)
