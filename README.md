@@ -4,7 +4,7 @@ Chrome extension for overriding request headers with Header Rules and Switch Rul
 
 ## Install
 
-- [Stable ZIP, v0.2.0](https://github.com/prateekkumaroriginal/overidify/releases/download/v0.2.0/overidify-v0.2.0.zip) follows the versioned [release](https://github.com/prateekkumaroriginal/overidify/releases/tag/v0.2.0).
+- [Stable ZIP, v0.2.1](https://github.com/prateekkumaroriginal/overidify/releases/download/v0.2.1/overidify-v0.2.1.zip) follows the versioned [release](https://github.com/prateekkumaroriginal/overidify/releases/tag/v0.2.1).
 - [Nightly ZIP](https://github.com/prateekkumaroriginal/overidify/releases/download/nightly/overidify-nightly.zip) includes the latest features from `main` that pass CI.
 
 Main can move ahead of the stable release. The nightly ZIP refreshes after successful main builds; the stable ZIP stays fixed to its release tag. No Node.js or pnpm is required for either download.

@@ -3,7 +3,7 @@ import { defineManifest } from '@crxjs/vite-plugin'
 export default defineManifest({
   manifest_version: 3,
   name: 'Overidify',
-  version: '0.2.0',
+  version: '0.2.1',
   minimum_chrome_version: '119',
   description: 'Override request headers and mock API responses with website-scoped rules.',
   permissions: ['storage', 'tabs', 'webNavigation', 'declarativeNetRequest', 'declarativeNetRequestWithHostAccess'],
