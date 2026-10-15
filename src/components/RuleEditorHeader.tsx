@@ -21,7 +21,7 @@ export function RuleEditorHeader({ kind, editing, busy, titleId = 'editor-title'
       </Button>
       <h1 id={titleId} className="min-w-0 flex-1 text-xl font-semibold">{editing ? 'Edit' : 'New'} {kind} rule</h1>
       {onDelete && (
-        <Button variant="destructive-outline" size="sm" type="button" className="shrink-0" disabled={busy} aria-label={`Delete ${kind} rule`} onClick={onDelete}>
+        <Button variant="destructive-outline" size="sm" type="button" className="shrink-0" disabled={busy} onClick={onDelete}>
           <Icon name="trash" data-icon="inline-start" />
           Delete rule
         </Button>
