@@ -1,3 +1,5 @@
+<img src="icons/icon-128.png" width="64" height="64" alt="" />
+
 # Overidify
 
 Overidify is a Chrome extension for changing request headers and mocking API responses. Use it to switch between test accounts, try different API responses, or work on your frontend before an endpoint is ready.
