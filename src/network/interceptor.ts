@@ -385,8 +385,8 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
     return properties
   }
 
-  // Prototype dispatch lets subclasses networkRule methods and use super without
-  // losing interception. Each native instance owns an independent context.
+  // Prototype dispatch preserves interception when subclasses call super.
+  // Each native instance owns an independent context.
   const contexts = new WeakMap<XMLHttpRequest, PropertyDescriptorMap>()
   class InterceptedXHR extends NativeXHR {
     constructor() { super(); contexts.set(this, initializeXHR(this)) }
