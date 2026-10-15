@@ -23,3 +23,51 @@ jobs:
       - run: pnpm test
       - run: pnpm lint
       - run: pnpm test:e2e
+
+  nightly:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: nightly-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v6
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Publish nightly ZIP
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if [[ "$(gh api "repos/$GH_REPO/commits/main" --jq .sha)" != "$GITHUB_SHA" ]]; then
+            echo "Skipping nightly publication because main has advanced."
+            exit 0
+          fi
+
+          archive="$RUNNER_TEMP/overidify-nightly.zip"
+          (cd dist && zip -qr "$archive" .)
+          unzip -tq "$archive"
+
+          notes="$RUNNER_TEMP/nightly-notes.md"
+          printf 'Latest features from main. Stable releases remain tied to their version tags.\n\nBuilt from [%s](https://github.com/%s/commit/%s).\n' \
+            "$GITHUB_SHA" "$GH_REPO" "$GITHUB_SHA" > "$notes"
+
+          if gh release view nightly >/dev/null 2>&1; then
+            gh api --method PATCH "repos/$GH_REPO/git/refs/tags/nightly" \
+              -f sha="$GITHUB_SHA" -F force=true >/dev/null
+            gh release upload nightly "$archive" --clobber
+            gh release edit nightly --title 'Overidify nightly' \
+              --notes-file "$notes" --prerelease --latest=false
+          else
+            gh release create nightly "$archive" --target "$GITHUB_SHA" \
+              --title 'Overidify nightly' --notes-file "$notes" \
+              --prerelease --latest=false
+          fi
