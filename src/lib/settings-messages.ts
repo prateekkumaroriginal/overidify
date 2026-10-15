@@ -1,7 +1,7 @@
 import * as z from 'zod/mini'
-import { NetworkOverrideSchema } from './network-schemas.ts'
+import { NetworkRuleSchema } from './network-schemas.ts'
 
-const entries = z.array(NetworkOverrideSchema)
+const entries = z.array(NetworkRuleSchema)
 const id = z.int().check(z.minimum(0))
 export const NetworkActiveTabsSchema = z.array(id)
 export const NetworkBridgeFramesSchema = z.array(z.object({ tabId: id,
@@ -13,9 +13,9 @@ export const ActivationResultSchema = z.discriminatedUnion('ok', [
 ])
 export const NetworkRuntimeMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('network-page-ready') }),
-  z.object({ type: z.literal('get-network-overrides') }),
-  z.object({ type: z.literal('sync-network-overrides') }),
-  z.object({ type: z.literal('update-network-overrides'), entries }),
+  z.object({ type: z.literal('get-network-rules') }),
+  z.object({ type: z.literal('sync-network-rules') }),
+  z.object({ type: z.literal('update-network-rules'), entries }),
 ])
 export const NetworkBridgeMessageSchema = z.discriminatedUnion('type', [
   z.object({ source: z.literal('overidify-network-bridge'), type: z.literal('hello') }),

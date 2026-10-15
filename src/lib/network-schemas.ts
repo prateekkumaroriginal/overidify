@@ -23,14 +23,14 @@ const ResponseShape = {
 // Keep invalid stored numeric statuses representable while disabled. Draft
 // validation below still prevents activation or saving an invalid status.
 const StoredStatusSchema = z.custom<number>(value => typeof value === 'number')
-export const NetworkOverrideSchema = z.object({ ...EntryShape, ...ResponseShape, status: StoredStatusSchema })
-export const NetworkOverrideDraftSchema = z.object({
+export const NetworkRuleSchema = z.object({ ...EntryShape, ...ResponseShape, status: StoredStatusSchema })
+export const NetworkRuleDraftSchema = z.object({
   ...ResponseShape, name: requiredName('Network rule name'), url: WebsiteSchema, enabled: z.boolean(),
   requestUrl: z.string().check(z.refine(value => requestUrlKey(value) !== null, { message: 'Enter a complete HTTP or HTTPS request URL.' })),
   status: z.number().check(z.refine(value => Number.isInteger(value) && value >= 200 && value <= 599, { message: 'Use a status code from 200 to 599.' })),
   headers: ResponseHeadersSchema,
 })
-export const PersistedNetworkOverrideSchema = z.object({
+export const PersistedNetworkRuleSchema = z.object({
   id: z.catch(z.string().check(z.minLength(1)), () => crypto.randomUUID()),
   name: z.catch(z.string(), ''), url: z.catch(z.string(), '*'),
   requestUrl: z.catch(z.string(), ''), method: z.catch(NetworkMethodSchema, 'GET'),

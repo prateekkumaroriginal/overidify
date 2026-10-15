@@ -1,19 +1,19 @@
-import type { HeaderSwitcher } from '../lib/types'
+import type { SwitchRule } from '../lib/types'
 import { SwitchRuleOptionSelect } from './SwitchRuleOptionSelect'
 import { ToggleSwitch } from './ToggleSwitch'
 
 type SwitchRulesListProps = {
-  switchers: HeaderSwitcher[]
-  switcherHref: (rule: HeaderSwitcher) => string
-  onToggle: (rule: HeaderSwitcher, enabled: boolean) => void
-  onSelectOption: (rule: HeaderSwitcher, optionId: string) => void
+  switchRules: SwitchRule[]
+  switchRuleHref: (rule: SwitchRule) => string
+  onToggle: (rule: SwitchRule, enabled: boolean) => void
+  onSelectOption: (rule: SwitchRule, optionId: string) => void
   disabled?: boolean
 }
 
-export function SwitchRulesList({ switchers, switcherHref, onToggle, onSelectOption, disabled }: SwitchRulesListProps) {
+export function SwitchRulesList({ switchRules, switchRuleHref, onToggle, onSelectOption, disabled }: SwitchRulesListProps) {
   return (
     <ul className="m-0 list-none p-0">
-      {switchers.map((rule, index) => {
+      {switchRules.map((rule, index) => {
         return (
           <li
             className="animate-[rise-in_350ms_both] border-b border-border px-6 transition-colors hover:bg-accent focus-within:bg-accent last:border-b-0 mobile:px-[15px] mobile:min-h-[86px]"
@@ -29,13 +29,13 @@ export function SwitchRulesList({ switchers, switcherHref, onToggle, onSelectOpt
               />
               <a
                 className="grid min-w-0 flex-1 gap-[5px] py-5 no-underline"
-                href={switcherHref(rule)}
+                href={switchRuleHref(rule)}
               >
                 <span className="text-xs font-semibold wrap-anywhere mobile:text-[11px]">{rule.name}</span>
                 <span className="font-mono text-[11px] text-muted-foreground wrap-anywhere">{rule.url}</span>
               </a>
               <SwitchRuleOptionSelect
-                switcher={rule}
+                switchRule={rule}
                 disabled={disabled}
                 onChange={(optionId) => onSelectOption(rule, optionId)}
               />

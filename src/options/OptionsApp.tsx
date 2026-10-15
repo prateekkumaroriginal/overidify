@@ -12,24 +12,24 @@ import { SwitchRulesList } from '../components/SwitchRulesList'
 import { NetworkRuleEditor } from '../components/NetworkRuleEditor'
 import { NetworkRulesList } from '../components/NetworkRulesList'
 import { cleanResponseHeaders } from '../lib/network-rules'
-import type { NetworkOverride, NetworkOverrideDraft } from '../lib/network-rules'
-import { getNetworkOverrides, saveNetworkOverrides, subscribeToNetworkOverrides } from '../lib/network-storage'
-import { createRuleId, getEntryHeaders, sanitizeHeaders } from '../lib/rules'
-import { getEntries, saveEntries, subscribeToEntries } from '../lib/storage'
-import type { HeaderEntry, HeaderRule, HeaderSwitcher, RuleDraft, SwitcherDraft } from '../lib/types'
+import type { NetworkRule, NetworkRuleDraft } from '../lib/network-rules'
+import { getNetworkRules, saveNetworkRules, subscribeToNetworkRules } from '../lib/network-storage'
+import { createRuleId, getEntryHeaders, sanitizeHeaders } from '../lib/request-header-rules'
+import { getRequestHeaderRules, saveRequestHeaderRules, subscribeToRequestHeaderRules } from '../lib/request-header-storage'
+import type { RequestHeaderRule, HeaderRule, SwitchRule, HeaderRuleDraft, SwitchRuleDraft } from '../lib/types'
 
 function readRoute() {
-  return window.location.hash.slice(1) || '/'
+  return window.location.hash.slice(1) || '/header-rules'
 }
 
-function entryRoute(entry: HeaderEntry) {
-  const group = entry.kind === 'switcher' ? 'switchers' : 'rules'
+function entryRoute(entry: RequestHeaderRule) {
+  const group = entry.kind === 'switch-rule' ? 'switch-rules' : 'header-rules'
   return `/${group}/${encodeURIComponent(entry.id)}`
 }
 
 export function OptionsApp() {
-  const [entries, setEntries] = useState<HeaderEntry[]>([])
-  const [overrides, setOverrides] = useState<NetworkOverride[]>([])
+  const [entries, setEntries] = useState<RequestHeaderRule[]>([])
+  const [networkRules, setNetworkRules] = useState<NetworkRule[]>([])
   const [networkNotice, setNetworkNotice] = useState('')
   const [route, setRoute] = useState(readRoute)
   const [loading, setLoading] = useState(true)
@@ -45,8 +45,8 @@ export function OptionsApp() {
 
   useEffect(() => {
     let alive = true
-    void Promise.all([getEntries(), getNetworkOverrides()]).then(([nextEntries, nextOverrides]) => {
-      if (alive) startTransition(() => { setEntries(nextEntries); setOverrides(nextOverrides); setLoading(false) })
+    void Promise.all([getRequestHeaderRules(), getNetworkRules()]).then(([nextEntries, nextNetworkRules]) => {
+      if (alive) startTransition(() => { setEntries(nextEntries); setNetworkRules(nextNetworkRules); setLoading(false) })
     }).catch(() => {
       if (alive) {
         setError('Could not load your settings. Reopen this page to try again.')
@@ -54,56 +54,56 @@ export function OptionsApp() {
         setLoading(false)
       }
     })
-    const unsubscribe = subscribeToEntries((nextEntries) => {
+    const unsubscribe = subscribeToRequestHeaderRules((nextEntries) => {
       if (alive) startTransition(() => setEntries(nextEntries))
     })
-    const unsubscribeNetwork = subscribeToNetworkOverrides(nextOverrides => {
-      if (alive) startTransition(() => setOverrides(nextOverrides))
+    const unsubscribeNetwork = subscribeToNetworkRules(nextNetworkRules => {
+      if (alive) startTransition(() => setNetworkRules(nextNetworkRules))
     })
     return () => { alive = false; unsubscribe(); unsubscribeNetwork() }
   }, [])
 
-  async function persistOverrides(next: NetworkOverride[]) {
+  async function persistNetworkRules(next: NetworkRule[]) {
     setPending(true)
     setError('')
     try {
-      const result = await saveNetworkOverrides(next)
-      setOverrides(result.entries)
+      const result = await saveNetworkRules(next)
+      setNetworkRules(result.entries)
       setNetworkNotice(result.reloadTabIds.length
         ? 'Settings saved. Reload matching website tabs to activate the latest network rules.'
         : '')
     } finally { setPending(false) }
   }
 
-  async function handleSaveOverride(draft: NetworkOverrideDraft, id?: string) {
-    const current = overrides.find(entry => entry.id === id)
-    const entry: NetworkOverride = {
-      ...draft, id: id ?? createRuleId(), order: current?.order ?? overrides.length,
+  async function handleSaveNetworkRule(draft: NetworkRuleDraft, id?: string) {
+    const current = networkRules.find(entry => entry.id === id)
+    const entry: NetworkRule = {
+      ...draft, id: id ?? createRuleId(), order: current?.order ?? networkRules.length,
       name: draft.name.trim(), url: draft.url.trim(), requestUrl: draft.requestUrl.trim(),
       headers: cleanResponseHeaders(draft.headers),
     }
-    await persistOverrides(id ? overrides.map(item => item.id === id ? entry : item) : [...overrides, entry])
-    window.location.hash = '/network-overrides'
+    await persistNetworkRules(id ? networkRules.map(item => item.id === id ? entry : item) : [...networkRules, entry])
+    window.location.hash = '/network-rules'
   }
 
-  async function handleToggleOverride(entry: NetworkOverride, enabled: boolean) {
-    try { await persistOverrides(overrides.map(item => item.id === entry.id ? { ...item, enabled } : item)) }
+  async function handleToggleNetworkRule(entry: NetworkRule, enabled: boolean) {
+    try { await persistNetworkRules(networkRules.map(item => item.id === entry.id ? { ...item, enabled } : item)) }
     catch (reason) { setError(`Could not change the network rule. ${reason instanceof Error ? reason.message : 'Try again.'}`) }
   }
 
-  async function handleDeleteOverride(entry: NetworkOverride) {
+  async function handleDeleteNetworkRule(entry: NetworkRule) {
     if (!window.confirm(`Delete "${entry.name}"?`)) return
     try {
-      await persistOverrides(overrides.filter(item => item.id !== entry.id))
-      window.location.hash = '/network-overrides'
+      await persistNetworkRules(networkRules.filter(item => item.id !== entry.id))
+      window.location.hash = '/network-rules'
     } catch { setError('Could not delete the network rule. Try again.') }
   }
 
-  async function persistEntries(nextEntries: HeaderEntry[]) {
+  async function persistEntries(nextEntries: RequestHeaderRule[]) {
     setPending(true)
     setError('')
     try {
-      const saved = await saveEntries(nextEntries)
+      const saved = await saveRequestHeaderRules(nextEntries)
       setEntries(saved)
       return saved
     } finally {
@@ -111,17 +111,17 @@ export function OptionsApp() {
     }
   }
 
-  async function persistEntry(entry: HeaderEntry, existingId?: string) {
+  async function persistEntry(entry: RequestHeaderRule, existingId?: string) {
     await persistEntries(existingId
       ? entries.map((current) => current.id === existingId ? entry : current)
       : [...entries, entry])
-    window.location.hash = entry.kind === 'switcher' ? '/switchers' : '/'
+    window.location.hash = entry.kind === 'switch-rule' ? '/switch-rules' : '/header-rules'
   }
 
-  async function handleSaveRule(draft: RuleDraft, ruleId?: string): Promise<HeaderRule> {
+  async function handleSaveHeaderRule(draft: HeaderRuleDraft, ruleId?: string): Promise<HeaderRule> {
     const current = entries.find((entry) => entry.id === ruleId)
     const rule: HeaderRule = {
-      kind: 'rule',
+      kind: 'header-rule',
       id: ruleId ?? createRuleId(),
       name: draft.name.trim(),
       url: draft.url.trim(),
@@ -133,47 +133,47 @@ export function OptionsApp() {
     return rule
   }
 
-  async function handleSaveSwitcher(draft: SwitcherDraft, switcherId?: string): Promise<HeaderSwitcher> {
-    const current = entries.find((entry) => entry.id === switcherId)
-    const switcher: HeaderSwitcher = {
-      kind: 'switcher',
-      id: switcherId ?? createRuleId(),
+  async function handleSaveSwitchRule(draft: SwitchRuleDraft, switchRuleId?: string): Promise<SwitchRule> {
+    const current = entries.find((entry) => entry.id === switchRuleId)
+    const switchRule: SwitchRule = {
+      kind: 'switch-rule',
+      id: switchRuleId ?? createRuleId(),
       name: draft.name.trim(),
       url: draft.url.trim(),
       enabled: draft.enabled,
       options: draft.options.map((option) => ({
         ...option, name: option.name.trim(), headers: sanitizeHeaders(option.headers),
       })),
-      selectedOptionId: current?.kind === 'switcher' && draft.options.some((option) => option.id === current.selectedOptionId)
+      selectedOptionId: current?.kind === 'switch-rule' && draft.options.some((option) => option.id === current.selectedOptionId)
         ? current.selectedOptionId
         : draft.selectedOptionId,
       order: current?.order ?? entries.length,
     }
-    await persistEntry(switcher, switcherId)
-    return switcher
+    await persistEntry(switchRule, switchRuleId)
+    return switchRule
   }
 
-  async function handleDelete(entry: HeaderEntry) {
+  async function handleDelete(entry: RequestHeaderRule) {
     if (!window.confirm(`Delete "${entry.name}"?`)) return
     try {
       await persistEntries(entries.filter((current) => current.id !== entry.id))
-      window.location.hash = entry.kind === 'switcher' ? '/switchers' : '/'
+      window.location.hash = entry.kind === 'switch-rule' ? '/switch-rules' : '/header-rules'
     } catch {
-      setError(`Could not delete the ${entry.kind === 'switcher' ? 'switch rule' : 'header rule'}. Try again.`)
+      setError(`Could not delete the ${entry.kind === 'switch-rule' ? 'switch rule' : 'header rule'}. Try again.`)
     }
   }
 
-  async function handleToggle(entry: HeaderEntry, enabled: boolean) {
+  async function handleToggle(entry: RequestHeaderRule, enabled: boolean) {
     try {
       await persistEntries(entries.map((current) => current.id === entry.id ? { ...current, enabled } : current))
     } catch {
-      setError(`Could not change ${entry.kind === 'switcher' ? 'switch rule' : 'header rule'} state. Try again.`)
+      setError(`Could not change ${entry.kind === 'switch-rule' ? 'switch rule' : 'header rule'} state. Try again.`)
     }
   }
 
-  async function handleSelectOption(switcher: HeaderSwitcher, selectedOptionId: string) {
+  async function handleSelectOption(switchRule: SwitchRule, selectedOptionId: string) {
     try {
-      await persistEntries(entries.map((current) => current.id === switcher.id && current.kind === 'switcher'
+      await persistEntries(entries.map((current) => current.id === switchRule.id && current.kind === 'switch-rule'
         ? { ...current, selectedOptionId }
         : current))
     } catch (error) {
@@ -181,51 +181,50 @@ export function OptionsApp() {
     }
   }
 
-  // Old bookmarks for multi-option rules still open their switcher editor.
-  const selected = entries.find((entry) => route === entryRoute(entry) || route === `/rules/${encodeURIComponent(entry.id)}`)
-  const selectedOverride = overrides.find(entry => route === `/network-overrides/${encodeURIComponent(entry.id)}`)
-  const isHome = route === '/' || route === '/switchers' || route === '/network-overrides'
+  const selected = entries.find((entry) => route === entryRoute(entry))
+  const selectedNetworkRule = networkRules.find(entry => route === `/network-rules/${encodeURIComponent(entry.id)}`)
+  const isHome = route === '/header-rules' || route === '/switch-rules' || route === '/network-rules'
 
   return (
     <div className="mx-auto max-w-[1240px] px-16 min-[1440px]:max-w-[1280px] min-[1440px]:px-[90px] tablet:px-9 mobile:px-5">
       <header className="flex h-[78px] items-center justify-between gap-5 border-b tablet:h-[72px]"><Brand /></header>
       <main className="pt-[34px] pb-[50px] min-[1440px]:pt-10 tablet:pt-10 mobile:pt-[31px]">
         {error && <p className="mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 border-destructive/40 bg-destructive/10 text-destructive" role="alert">{error}</p>}
-        {networkNotice && route === '/network-overrides' && <p className="mb-5 text-xs text-muted-foreground" role="status">{networkNotice}</p>}
+        {networkNotice && route === '/network-rules' && <p className="mb-5 text-xs text-muted-foreground" role="status">{networkNotice}</p>}
         {loading ? (
           <div className="flex min-h-[300px] items-center justify-center gap-2.5 text-xs text-muted-foreground" role="status"><span className="size-[7px] animate-loading-pulse rounded-full bg-primary" /> Loading...</div>
         ) : loadFailed ? null : isHome ? (
           <Workspace
             entries={entries}
-            overrides={overrides}
-            view={route === '/network-overrides' ? 'network' : route === '/switchers' ? 'switcher' : 'rule'}
+            networkRules={networkRules}
+            view={route === '/network-rules' ? 'network-rule' : route === '/switch-rules' ? 'switch-rule' : 'header-rule'}
             pending={pending}
             onToggle={(entry, enabled) => { void handleToggle(entry, enabled) }}
-            onSelectOption={(switcher, optionId) => { void handleSelectOption(switcher, optionId) }}
-            onToggleOverride={(entry, enabled) => { void handleToggleOverride(entry, enabled) }}
+            onSelectOption={(switchRule, optionId) => { void handleSelectOption(switchRule, optionId) }}
+            onToggleNetworkRule={(entry, enabled) => { void handleToggleNetworkRule(entry, enabled) }}
           />
-        ) : route === '/network-overrides/new' || selectedOverride ? (
-          <NetworkRuleEditor key={route} override={selectedOverride} pending={pending}
-            onSave={draft => handleSaveOverride(draft, selectedOverride?.id)}
-            onDelete={selectedOverride ? () => { void handleDeleteOverride(selectedOverride) } : undefined} />
-        ) : route === '/new' || selected?.kind === 'rule' ? (
+        ) : route === '/network-rules/new' || selectedNetworkRule ? (
+          <NetworkRuleEditor key={route} networkRule={selectedNetworkRule} pending={pending}
+            onSave={draft => handleSaveNetworkRule(draft, selectedNetworkRule?.id)}
+            onDelete={selectedNetworkRule ? () => { void handleDeleteNetworkRule(selectedNetworkRule) } : undefined} />
+        ) : route === '/header-rules/new' || selected?.kind === 'header-rule' ? (
           <HeaderRuleEditor
             key={route}
-            rule={selected?.kind === 'rule' ? selected : undefined}
+            headerRule={selected?.kind === 'header-rule' ? selected : undefined}
             pending={pending}
-            onSave={(draft) => handleSaveRule(draft, selected?.id)}
+            onSave={(draft) => handleSaveHeaderRule(draft, selected?.id)}
             onDelete={selected ? () => { void handleDelete(selected) } : undefined}
           />
-        ) : route === '/switchers/new' || selected?.kind === 'switcher' ? (
+        ) : route === '/switch-rules/new' || selected?.kind === 'switch-rule' ? (
           <SwitchRuleEditor
             key={route}
-            switcher={selected?.kind === 'switcher' ? selected : undefined}
+            switchRule={selected?.kind === 'switch-rule' ? selected : undefined}
             pending={pending}
-            onSave={(draft) => handleSaveSwitcher(draft, selected?.id)}
+            onSave={(draft) => handleSaveSwitchRule(draft, selected?.id)}
             onDelete={selected ? () => { void handleDelete(selected) } : undefined}
           />
         ) : (
-          <div className="flex flex-col items-center px-5 pt-[45px] pb-11 text-center mobile:px-4 mobile:py-[33px] [&_h3]:mt-[11px] [&_h3]:text-base [&_h3]:font-semibold [&_h3]:tracking-[-0.3px]"><h1 className="text-[28px] font-semibold">Not found.</h1><Button asChild variant="ghost" size="default" className="min-h-[46px] gap-[9px] rounded-[7px] border border-transparent px-5 py-[13px] text-xs font-bold hover:bg-transparent"><a href="#/">Back to header rules <Icon name="arrow" /></a></Button></div>
+          <div className="flex flex-col items-center px-5 pt-[45px] pb-11 text-center mobile:px-4 mobile:py-[33px] [&_h3]:mt-[11px] [&_h3]:text-base [&_h3]:font-semibold [&_h3]:tracking-[-0.3px]"><h1 className="text-[28px] font-semibold">Not found.</h1><Button asChild variant="ghost" size="default" className="min-h-[46px] gap-[9px] rounded-[7px] border border-transparent px-5 py-[13px] text-xs font-bold hover:bg-transparent"><a href="#/header-rules">Back to header rules <Icon name="arrow" /></a></Button></div>
         )}
       </main>
     </div>
@@ -233,44 +232,44 @@ export function OptionsApp() {
 }
 
 type WorkspaceProps = {
-  entries: HeaderEntry[]
-  overrides: NetworkOverride[]
-  view: HeaderEntry['kind'] | 'network'
+  entries: RequestHeaderRule[]
+  networkRules: NetworkRule[]
+  view: RequestHeaderRule['kind'] | 'network-rule'
   pending: boolean
-  onToggle: (entry: HeaderEntry, enabled: boolean) => void
-  onSelectOption: (switcher: HeaderSwitcher, optionId: string) => void
-  onToggleOverride: (override: NetworkOverride, enabled: boolean) => void
+  onToggle: (entry: RequestHeaderRule, enabled: boolean) => void
+  onSelectOption: (switchRule: SwitchRule, optionId: string) => void
+  onToggleNetworkRule: (networkRule: NetworkRule, enabled: boolean) => void
 }
 
-function Workspace({ entries, overrides, view, pending, onToggle, onSelectOption, onToggleOverride }: WorkspaceProps) {
-  const [queries, setQueries] = useState({ rule: '', switcher: '', network: '' })
+function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOption, onToggleNetworkRule }: WorkspaceProps) {
+  const [queries, setQueries] = useState({ 'header-rule': '', 'switch-rule': '', 'network-rule': '' })
   const query = queries[view]
-  const isSwitchers = view === 'switcher'
-  const isNetwork = view === 'network'
-  const noun = isNetwork ? 'network rule' : isSwitchers ? 'switch rule' : 'header rule'
+  const isSwitchRules = view === 'switch-rule'
+  const isNetwork = view === 'network-rule'
+  const noun = isNetwork ? 'network rule' : isSwitchRules ? 'switch rule' : 'header rule'
   const plural = `${noun}s`
-  const title = isNetwork ? 'Network Rules' : isSwitchers ? 'Switch Rules' : 'Header Rules'
-  const newTitle = isNetwork ? 'New Network Rule' : isSwitchers ? 'New Switch Rule' : 'New Header Rule'
-  const newRoute = isNetwork ? '#/network-overrides/new' : isSwitchers ? '#/switchers/new' : '#/new'
+  const title = isNetwork ? 'Network Rules' : isSwitchRules ? 'Switch Rules' : 'Header Rules'
+  const newTitle = isNetwork ? 'New Network Rule' : isSwitchRules ? 'New Switch Rule' : 'New Header Rule'
+  const newRoute = isNetwork ? '#/network-rules/new' : isSwitchRules ? '#/switch-rules/new' : '#/header-rules/new'
   const group = entries.filter((entry) => entry.kind === view)
   const visible = group.filter((entry) => {
     const term = query.trim().toLowerCase()
-    const options = entry.kind === 'switcher'
+    const options = entry.kind === 'switch-rule'
       ? entry.options.map((option) => `${option.name} ${option.headers.map((header) => header.key).join(' ')}`).join(' ')
       : getEntryHeaders(entry).map((header) => header.key).join(' ')
     return !term || `${entry.name} ${entry.url} ${options}`.toLowerCase().includes(term)
   })
-  const visibleOverrides = overrides.filter(entry => !query.trim() || `${entry.name} ${entry.url} ${entry.requestUrl} ${entry.method}`.toLowerCase().includes(query.trim().toLowerCase()))
-  const groupCount = isNetwork ? overrides.length : group.length
-  const visibleCount = isNetwork ? visibleOverrides.length : visible.length
+  const visibleNetworkRules = networkRules.filter(entry => !query.trim() || `${entry.name} ${entry.url} ${entry.requestUrl} ${entry.method}`.toLowerCase().includes(query.trim().toLowerCase()))
+  const groupCount = isNetwork ? networkRules.length : group.length
+  const visibleCount = isNetwork ? visibleNetworkRules.length : visible.length
 
 
   return (
-    <Tabs value={view} onValueChange={(value) => { window.location.hash = value === 'network' ? '/network-overrides' : value === 'switcher' ? '/switchers' : '/' }} className="animate-[rise-in_550ms_80ms_both] gap-0">
+    <Tabs value={view} onValueChange={(value) => { window.location.hash = value === 'network-rule' ? '/network-rules' : value === 'switch-rule' ? '/switch-rules' : '/header-rules' }} className="animate-[rise-in_550ms_80ms_both] gap-0">
       <TabsList aria-label="Rule settings" className="mb-6 max-w-full [&_button]:mobile:px-2">
-        <TabsTrigger value="rule">Header Rules</TabsTrigger>
-        <TabsTrigger value="switcher">Switch Rules</TabsTrigger>
-        <TabsTrigger value="network">Network Rules</TabsTrigger>
+        <TabsTrigger value="header-rule">Header Rules</TabsTrigger>
+        <TabsTrigger value="switch-rule">Switch Rules</TabsTrigger>
+        <TabsTrigger value="network-rule">Network Rules</TabsTrigger>
       </TabsList>
       <TabsContent value={view}>
         <div className={`mb-5 flex items-center justify-between gap-5 mobile:gap-3 [&_h1]:text-xl [&_h1]:font-semibold [&_h1]:flex [&_h1]:items-center [&_h1]:gap-2.5 mobile:[&_h1]:gap-2 mobile:[&_h1]:whitespace-nowrap ${isNetwork ? 'mobile:flex-wrap' : ''}`}>
@@ -293,12 +292,12 @@ function Workspace({ entries, overrides, view, pending, onToggle, onSelectOption
               </a></Button>
             </div>
           ) : visibleCount ? (
-            isNetwork ? <NetworkRulesList overrides={visibleOverrides} disabled={pending} onToggle={onToggleOverride} /> : isSwitchers ? (
-              <SwitchRulesList switchers={visible.filter((entry): entry is HeaderSwitcher => entry.kind === 'switcher')} disabled={pending} switcherHref={(switcher) => `#${entryRoute(switcher)}`} onToggle={onToggle} onSelectOption={onSelectOption} />
+            isNetwork ? <NetworkRulesList networkRules={visibleNetworkRules} disabled={pending} onToggle={onToggleNetworkRule} /> : isSwitchRules ? (
+              <SwitchRulesList switchRules={visible.filter((entry): entry is SwitchRule => entry.kind === 'switch-rule')} disabled={pending} switchRuleHref={(switchRule) => `#${entryRoute(switchRule)}`} onToggle={onToggle} onSelectOption={onSelectOption} />
             ) : (
               <>
                 <div className="grid grid-cols-[32px_minmax(0,1fr)_92px] gap-4 px-6 pt-[17px] pb-2 text-[8px] tracking-[1.1px] text-muted-foreground tablet:grid-cols-[32px_minmax(0,1fr)_68px] mobile:hidden" aria-hidden="true"><span /><span>HEADER RULE / URL PATTERN</span><span>HEADERS</span></div>
-                <HeaderRulesList rules={visible.filter((entry): entry is HeaderRule => entry.kind === 'rule')} disabled={pending} ruleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} />
+                <HeaderRulesList headerRules={visible.filter((entry): entry is HeaderRule => entry.kind === 'header-rule')} disabled={pending} headerRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} />
               </>
             )
           ) : (

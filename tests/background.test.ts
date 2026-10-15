@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
-import type { HeaderEntry } from '../src/lib/types.ts'
+import type { RequestHeaderRule } from '../src/lib/types.ts'
 import type { PageTab } from '../src/lib/dnr.ts'
 
 function event() {
@@ -20,7 +20,7 @@ const resourceTypes = Object.fromEntries([
   'WEBBUNDLE', 'OTHER',
 ].map((type) => [type, type.toLowerCase()]))
 Object.assign(globalThis, { chrome: { declarativeNetRequest: { ResourceType: resourceTypes } } })
-const { rulesToSessionRules } = await import('../src/lib/dnr.ts')
+const { requestHeaderRulesToSessionRules } = await import('../src/lib/dnr.ts')
 
 // Run the actual worker with isolated Chrome events and storage adapters.
 const source = readFileSync(new URL('../src/background/index.ts', import.meta.url), 'utf8')
@@ -30,8 +30,8 @@ const worker = ts.transpileModule(source.replace(/^import .*\n/gm, ''), {
 
 function harness(initialTabs: PageTab[]) {
   let tabs = initialTabs
-  let entries: HeaderEntry[] = [{
-    kind: 'rule', id: 'localhost', name: 'Test', url: 'localhost:4200', enabled: true, order: 0,
+  let entries: RequestHeaderRule[] = [{
+    kind: 'header-rule', id: 'localhost', name: 'Test', url: 'localhost:4200', enabled: true, order: 0,
     headers: [{ key: 'Origin', value: 'https://www.up50.co.in' }],
   }]
   let applied: chrome.declarativeNetRequest.Rule[] = []
@@ -48,19 +48,19 @@ function harness(initialTabs: PageTab[]) {
   runInNewContext(worker, {
     chrome: api,
     console: { error: (...args: unknown[]) => errors.push(args) },
-    STORAGE_KEY: 'headerRules',
-    getEntries: async () => entries,
-    syncSessionRules: async (rules: HeaderEntry[], pages: PageTab[]) => {
-      applied = JSON.parse(JSON.stringify(rulesToSessionRules(rules, pages)))
+    REQUEST_HEADER_STORAGE_KEY: 'requestHeaderRules',
+    getRequestHeaderRules: async () => entries,
+    syncRequestHeaderSessionRules: async (rules: RequestHeaderRule[], pages: PageTab[]) => {
+      applied = JSON.parse(JSON.stringify(requestHeaderRulesToSessionRules(rules, pages)))
     },
   })
   return {
     api,
     setTabs: (next: PageTab[]) => { tabs = next },
-    setEntries: (next: HeaderEntry[]) => { entries = next },
+    setEntries: (next: RequestHeaderRule[]) => { entries = next },
     tabIds: () => applied.flatMap((rule) => rule.condition.tabIds ?? []),
     flush: () => new Promise<void>((resolve, reject) => {
-      api.runtime.onMessage.emit({ type: 'sync-header-rules' }, {}, (result: { ok: boolean; error?: string }) => {
+      api.runtime.onMessage.emit({ type: 'sync-request-header-rules' }, {}, (result: { ok: boolean; error?: string }) => {
         if (!result.ok) { reject(new Error(result.error)); return }
         assert.deepEqual(errors, [])
         resolve()
@@ -119,7 +119,7 @@ test('worker handles failed navigations, opening, closing, replacing tabs, and s
   assert.deepEqual(app.tabIds(), [3])
 
   app.setEntries([])
-  app.api.storage.onChanged.emit({ headerRules: { newValue: [] } }, 'local')
+  app.api.storage.onChanged.emit({ requestHeaderRules: { newValue: [] } }, 'local')
   await app.flush()
   assert.deepEqual(app.tabIds(), [])
 })

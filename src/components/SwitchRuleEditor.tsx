@@ -3,32 +3,32 @@ import { Button } from '@/components/ui/button'
 import { useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { Controller, FormProvider, useFieldArray, useFormContext, useWatch } from 'react-hook-form'
-import { SwitcherDraftSchema } from '../lib/header-schemas'
+import { SwitchRuleDraftSchema } from '../lib/request-header-schemas'
 import {
   createHeaderPair,
-  createSwitcherDraft,
-  createSwitcherOption,
-  switcherToDraft,
-} from '../lib/rules'
-import type { HeaderSwitcher, SwitcherDraft, SwitcherOption } from '../lib/types'
+  createSwitchRuleDraft,
+  createSwitchRuleOption,
+  switchRuleToDraft,
+} from '../lib/request-header-rules'
+import type { SwitchRule, SwitchRuleDraft, SwitchRuleOption } from '../lib/types'
 import { Icon } from './Icon'
 import { ToggleSwitch } from './ToggleSwitch'
 import { useEditorForm } from './useEditorForm'
 
 type SwitchRuleEditorProps = {
-  switcher?: HeaderSwitcher
+  switchRule?: SwitchRule
   pending: boolean
-  onSave: (draft: SwitcherDraft) => Promise<HeaderSwitcher>
+  onSave: (draft: SwitchRuleDraft) => Promise<SwitchRule>
   onDelete?: () => void
 }
 
-type DeletedOption = { option: SwitcherOption; index: number; selectedOptionId: string }
+type DeletedOption = { option: SwitchRuleOption; index: number; selectedOptionId: string }
 
-export function SwitchRuleEditor({ switcher, pending, onSave, onDelete }: SwitchRuleEditorProps) {
+export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: SwitchRuleEditorProps) {
   const { form, formRef, onSubmit, busy, error, success, clearStatus } = useEditorForm({
-    schema: SwitcherDraftSchema, initial: () => switcher ? switcherToDraft(switcher) : createSwitcherDraft(),
-    pending, returnRoute: '/switchers', successMessage: 'Switch rule saved.',
-    onSave: async draft => { const saved = await onSave(draft); setDeletedOption(null); return switcherToDraft(saved) },
+    schema: SwitchRuleDraftSchema, initial: () => switchRule ? switchRuleToDraft(switchRule) : createSwitchRuleDraft(),
+    pending, returnRoute: '/switch-rules', successMessage: 'Switch rule saved.',
+    onSave: async draft => { const saved = await onSave(draft); setDeletedOption(null); return switchRuleToDraft(saved) },
     onInvalid: errors => {
       const index = form.getValues('options').findIndex((_, index) => errors.options?.[index])
       if (index >= 0) setEditingId(form.getValues(`options.${index}.id`))
@@ -36,8 +36,6 @@ export function SwitchRuleEditor({ switcher, pending, onSave, onDelete }: Switch
   })
   const { append, remove, insert } = useFieldArray({ control: form.control, name: 'options' })
   useWatch({ control: form.control, name: 'options' })
-  // Field-array operations notify watchers after rendering. Read the current
-  // values so a new editing ID never falls back to another option meanwhile.
   const options = form.getValues('options')
   const [editingId, setEditingId] = useState(() => form.getValues('selectedOptionId'))
   const [deletedOption, setDeletedOption] = useState<DeletedOption | null>(null)
@@ -50,7 +48,7 @@ export function SwitchRuleEditor({ switcher, pending, onSave, onDelete }: Switch
   function addOption() {
     let number = options.length + 1
     while (options.some(option => option.name.trim().toLowerCase() === `option ${number}`)) number++
-    const option = createSwitcherOption(`Option ${number}`)
+    const option = createSwitchRuleOption(`Option ${number}`)
     append(option)
     setEditingId(option.id)
     focusOption()
@@ -82,8 +80,8 @@ export function SwitchRuleEditor({ switcher, pending, onSave, onDelete }: Switch
   return (
     <FormProvider {...form}>
       <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="editor-title">
-        <a className="inline-flex items-center gap-2 text-[11px] text-muted-foreground no-underline hover:text-primary [&_svg]:w-[15px]" href="#/switchers"><Icon name="back" /> Back to switch rules</a>
-        <div className="mt-[27px] mb-[30px] mobile:mt-5 [&_h1]:text-xl [&_h1]:leading-[1.4] [&_h1]:font-semibold"><h1 id="editor-title">{switcher ? 'Edit switch rule' : 'New switch rule'}</h1></div>
+        <a className="inline-flex items-center gap-2 text-[11px] text-muted-foreground no-underline hover:text-primary [&_svg]:w-[15px]" href="#/switch-rules"><Icon name="back" /> Back to switch rules</a>
+        <div className="mt-[27px] mb-[30px] mobile:mt-5 [&_h1]:text-xl [&_h1]:leading-[1.4] [&_h1]:font-semibold"><h1 id="editor-title">{switchRule ? 'Edit switch rule' : 'New switch rule'}</h1></div>
         <form ref={formRef} onSubmit={onSubmit} onChange={clearStatus}>
           <fieldset className="m-0 min-w-0 border-0 p-0" disabled={busy}>
             <div className="mb-5 rounded-lg border bg-card shadow-panel px-7 pt-[25px] mobile:px-[17px] mobile:pt-5">
@@ -93,8 +91,8 @@ export function SwitchRuleEditor({ switcher, pending, onSave, onDelete }: Switch
                   <Input {...form.register('name')} placeholder="e.g. Authenticated API" autoFocus required />
                 </label>
                 <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">Domain
-                  <Input className="font-mono text-[11px]" {...form.register('url')} placeholder="e.g. localhost:4200 or api.example.com" aria-label="Domain" aria-describedby="switcher-domain-help" required />
-                  <span id="switcher-domain-help" className="font-normal text-muted-foreground">Matches the page's domain on every path. Applies to requests made from that page, including other API hosts. Include a port to match only that port.</span>
+                  <Input className="font-mono text-[11px]" {...form.register('url')} placeholder="e.g. localhost:4200 or api.example.com" aria-label="Domain" aria-describedby="switch-rule-domain-help" required />
+                  <span id="switch-rule-domain-help" className="font-normal text-muted-foreground">Matches the page's domain on every path. Applies to requests made from that page, including other API hosts. Include a port to match only that port.</span>
                 </label>
               </div>
               <div className="flex items-center justify-between gap-5 border-t py-[17px]">
@@ -125,14 +123,14 @@ export function SwitchRuleEditor({ switcher, pending, onSave, onDelete }: Switch
                     </div>
                   ))}
                 </div>
-                <SwitcherOptionEditor key={`${editingOption.id}-${editingIndex}`} index={editingIndex} nameRef={optionNameInput} onEdit={clearStatus} />
+                <SwitchRuleOptionEditor key={`${editingOption.id}-${editingIndex}`} index={editingIndex} nameRef={optionNameInput} onEdit={clearStatus} />
               </div>
               {deletedOption && <div className="mt-[18px] flex items-center gap-3 border-t pt-4 text-xs text-muted-foreground" role="status"><span>{deletedOption.option.name} deleted</span><Button variant="link" className="min-h-0 min-w-0 rounded-none px-1.5 py-[1px] text-xs underline" type="button" onClick={undoDelete}>Undo</Button></div>}
             </div>
             {saveState.message && <p className={`mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 ${saveState.tone === 'error' ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-input bg-secondary text-secondary-foreground'}`} role={saveState.tone === 'error' ? 'alert' : 'status'}>{saveState.message}</p>}
             <div className="mt-[25px] mb-10 flex items-center gap-[23px] mobile:gap-[17px]">
               {onDelete && <Button variant="ghost" type="button" className="h-auto px-0 py-[9px] rounded-none text-[11px] text-muted-foreground hover:bg-transparent hover:text-destructive" onClick={onDelete}>Delete switch rule</Button>}
-              <a className="ml-auto text-[11px] text-muted-foreground no-underline hover:text-foreground" href="#/switchers">Cancel</a>
+              <a className="ml-auto text-[11px] text-muted-foreground no-underline hover:text-foreground" href="#/switch-rules">Cancel</a>
               <Button variant="default" className="mobile:px-3 mobile:text-xs" type="submit">Save</Button>
             </div>
           </fieldset>
@@ -142,10 +140,10 @@ export function SwitchRuleEditor({ switcher, pending, onSave, onDelete }: Switch
   )
 }
 
-function SwitcherOptionEditor({ index: optionIndex, nameRef, onEdit }: {
+function SwitchRuleOptionEditor({ index: optionIndex, nameRef, onEdit }: {
   index: number; nameRef: RefObject<HTMLInputElement | null>; onEdit: () => void
 }) {
-  const { register, control } = useFormContext<SwitcherDraft>()
+  const { register, control } = useFormContext<SwitchRuleDraft>()
   const { fields, append, remove } = useFieldArray({ control, name: `options.${optionIndex}.headers` })
   const name = register(`options.${optionIndex}.name`, { onChange: onEdit })
   return (

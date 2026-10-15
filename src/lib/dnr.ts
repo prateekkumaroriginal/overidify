@@ -1,6 +1,6 @@
 import { matchesPageDomain } from './pattern.ts'
-import { getEntryHeaders } from './rules.ts'
-import type { HeaderEntry } from './types'
+import { getEntryHeaders } from './request-header-rules.ts'
+import type { RequestHeaderRule } from './types'
 
 const SESSION_RULE_OFFSET = 1000
 
@@ -23,8 +23,8 @@ const RESOURCE_TYPES: chrome.declarativeNetRequest.ResourceType[] = [
   chrome.declarativeNetRequest.ResourceType.OTHER,
 ]
 
-export function rulesToSessionRules(
-  rules: HeaderEntry[],
+export function requestHeaderRulesToSessionRules(
+  rules: RequestHeaderRule[],
   tabs: PageTab[],
 ): chrome.declarativeNetRequest.Rule[] {
   return [...rules]
@@ -55,20 +55,20 @@ export function rulesToSessionRules(
     })
 }
 
-export async function syncSessionRules(rules: HeaderEntry[], tabs: PageTab[]): Promise<void> {
-  const [legacyRules, existingRules] = await Promise.all([
+export async function syncRequestHeaderSessionRules(rules: RequestHeaderRule[], tabs: PageTab[]): Promise<void> {
+  const [dynamicRules, existingRules] = await Promise.all([
     chrome.declarativeNetRequest.getDynamicRules(),
     chrome.declarativeNetRequest.getSessionRules(),
   ])
 
-  // Remove destination-based rules left by previous extension versions.
-  if (legacyRules.length) {
+  // Header changes use tab-scoped session rules exclusively.
+  if (dynamicRules.length) {
     await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: legacyRules.map((rule) => rule.id),
+      removeRuleIds: dynamicRules.map((rule) => rule.id),
     })
   }
   await chrome.declarativeNetRequest.updateSessionRules({
     removeRuleIds: existingRules.map((rule) => rule.id),
-    addRules: rulesToSessionRules(rules, tabs),
+    addRules: requestHeaderRulesToSessionRules(rules, tabs),
   })
 }

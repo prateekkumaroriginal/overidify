@@ -1,12 +1,12 @@
 import { installNetworkInterceptors } from './interceptor'
-import { normalizeNetworkOverrides } from '../lib/network-rules'
+import { normalizeNetworkRules } from '../lib/network-rules'
 import { NetworkBridgeMessageSchema } from '../lib/settings-messages'
 
 const page = window as Window & typeof globalThis & { __overidifyNetwork?: boolean }
 if (!page.__overidifyNetwork) {
   page.__overidifyNetwork = true
   const interceptor = installNetworkInterceptors(page)
-  let entries = normalizeNetworkOverrides([])
+  let entries = normalizeNetworkRules([])
   const children = new WeakMap<Window, ReturnType<typeof installNetworkInterceptors>>()
   const watched = new WeakSet<Node>()
   const roots = new Set<WeakRef<Document | ShadowRoot>>()
@@ -61,7 +61,7 @@ if (!page.__overidifyNetwork) {
             child.__overidifyNetwork = true
             children.set(child, controller)
           }
-          controller?.setOverrides(entries)
+          controller?.setNetworkRules(entries)
           watchDocument(child)
         } catch { /* Opaque/cross-origin frames cannot be called by this parent. */ }
       }
@@ -76,8 +76,8 @@ if (!page.__overidifyNetwork) {
     if (message.type === 'hello') {
       window.postMessage({ source: 'overidify-network-page', type: 'ready' }, '*')
     } else if (message.type === 'config') {
-      entries = normalizeNetworkOverrides(message.entries)
-      interceptor.setOverrides(entries)
+      entries = normalizeNetworkRules(message.entries)
+      interceptor.setNetworkRules(entries)
       applySandboxFrames()
       window.postMessage({ source: 'overidify-network-page', type: 'applied', id: message.id, needsReload: interceptor.needsReload }, '*')
     }

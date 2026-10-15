@@ -67,7 +67,7 @@ pnpm exec playwright install chromium
 pnpm test:e2e
 ```
 
-Matching, migration, priority, and validation tests run with Node's TypeScript stripping support. Use Node.js 24 for development and CI.
+Matching, normalization, priority, and validation tests run with Node's TypeScript stripping support. Use Node.js 24 for development and CI.
 
 ESLint checks project code; bundled agent skills under `.agents/` are excluded.
 
@@ -117,11 +117,10 @@ Version 1 covers page and iframe fetch/XHR calls. Worker calls, page navigations
 - The API's domain does not determine whether a Header Rule or Switch Rule matches
 - Top-level page navigations are excluded; rules are refreshed when tabs open, navigate, or close
 - Both accept `localhost:4200`, `api.example.com`, `*.example.com`, or `*`
-- Existing Header Rule and Switch Rule URLs such as `http://localhost:4200/messages` become `localhost:4200`
-- Existing Header Rules retain their headers and enabled state
+- Header Rule and Switch Rule URLs such as `http://localhost:4200/messages` are normalized to `localhost:4200`
 - Switch Rules with a single option have no dropdown
 
 - `*` matches all HTTP and HTTPS website tabs
-- Legacy wildcard URL patterns like `*://api.example.com/*` become host patterns such as `api.example.com`
+- Wildcard URL patterns like `*://api.example.com/*` are normalized to host patterns such as `api.example.com`
 - Later entries have higher priority, across both Header Rules and Switch Rules
 - Header pairs use set semantics, so existing values are replaced and missing headers are added

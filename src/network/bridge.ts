@@ -1,4 +1,4 @@
-import type { NetworkOverride } from '../lib/network-rules'
+import type { NetworkRule } from '../lib/network-rules'
 import { NetworkPageMessageSchema, NetworkRuntimeMessageSchema, NetworkSettingsResponseSchema } from '../lib/settings-messages'
 import type { NetworkApplied } from '../lib/settings-messages'
 
@@ -6,11 +6,11 @@ const bridgeWindow = window as Window & { __overidifyNetworkBridge?: boolean }
 if (!bridgeWindow.__overidifyNetworkBridge) {
   bridgeWindow.__overidifyNetworkBridge = true
   let pageReady = false
-  let entries: NetworkOverride[] = []
+  let entries: NetworkRule[] = []
   let sequence = 0
   const pending = new Map<number, (result: NetworkApplied) => void>()
 
-  function apply(next: NetworkOverride[]): Promise<NetworkApplied> {
+  function apply(next: NetworkRule[]): Promise<NetworkApplied> {
     entries = next
     const id = ++sequence
     return new Promise(resolve => {
@@ -23,7 +23,7 @@ if (!bridgeWindow.__overidifyNetworkBridge) {
   async function refresh() {
     const version = ++sequence
     try {
-      const result = NetworkSettingsResponseSchema.parse(await chrome.runtime.sendMessage({ type: 'get-network-overrides' }))
+      const result = NetworkSettingsResponseSchema.parse(await chrome.runtime.sendMessage({ type: 'get-network-rules' }))
       if (version !== sequence) return
       await apply(result.entries ?? [])
     } catch { pageReady = false }
@@ -46,7 +46,7 @@ if (!bridgeWindow.__overidifyNetworkBridge) {
   })
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     const parsed = NetworkRuntimeMessageSchema.safeParse(message)
-    if (!parsed.success || parsed.data.type !== 'update-network-overrides') return
+    if (!parsed.success || parsed.data.type !== 'update-network-rules') return
     if (!pageReady) window.postMessage({ source: 'overidify-network-bridge', type: 'hello' }, '*')
     void apply(parsed.data.entries).then(sendResponse)
     return true

@@ -1,6 +1,4 @@
-# Network Overrides design interview
-
-Feature names are now Header Rule, Switch Rule, and Network Rule. This historical record uses their former names, Rule, Switcher, and Network Override.
+# Network Rules design interview
 
 Status: interview complete. After checking Requestly and clarifying its Network panel limitation, the user accepted extension-only page interception. Implementation can proceed.
 
@@ -10,8 +8,8 @@ Submit copies all questions and answers for the current round. The user pastes t
 
 ## Confirmed decisions
 
-- Add a separate tab named Network Overrides. See [ADR 0001](adr/0001-network-rules-tab.md).
-- Rules and Switchers must retain identical URL matching logic, as required by the root AGENTS.md.
+- Add a separate tab named Network Rules. See [ADR 0001](adr/0001-network-rules-tab.md).
+- Header Rules and Switch Rules must retain identical URL matching logic, as required by the root AGENTS.md.
 - First version scope and response controls are accepted in [ADR 0002](adr/0002-mock-response-scope.md).
 - Website scope, query comparison, and server mode behavior are accepted in [ADR 0003](adr/0003-matching-and-server-modes.md).
 - Editor defaults, shared page-domain matching, priority, and popup behavior are accepted in [ADR 0004](adr/0004-editor-and-activation.md).
@@ -28,7 +26,7 @@ Completed. The user's submitted answers are:
 3. Type or paste in an editor.
 4. Edit response body, status code, and headers.
 5. Exact request URL with an optional HTTP method.
-6. Let each override choose whether to bypass the server or call it and replace its response.
+6. Let each Network Rule choose whether to bypass the server or call it and replace its response.
 
 The example's website URL was not supplied. The user clarified in Round 2 that the response is whatever the user enters; a fixed example response is not required.
 
@@ -51,13 +49,13 @@ The website URL means the browser address-bar URL of the page making the request
 
 Completed. The user's submitted answers are:
 
-1. Match the page URL in the same way as Rules and Switchers. This resolves the scope requirement; no particular frontend URL is required.
+1. Match the page URL in the same way as Header Rules and Switch Rules. This resolves the scope requirement; no particular frontend URL is required.
 2. Warn about invalid JSON, but allow saving and returning the entered text.
 3. Start with status 200, editable by the user.
 4. Start with Content-Type: application/json, editable by the user.
 5. Enabled by default, with an editor toggle before saving.
 6. The later entry in the list wins.
-7. Show overrides matching the current website in the popup, with enable toggles.
+7. Show Network Rules matching the current website in the popup, with enable toggles.
 8. Cover page and iframe fetch/XHR calls. Worker-originated calls can wait.
 
 ## Round 4: Activation and compatibility
@@ -66,9 +64,9 @@ Completed. The user's submitted answers are:
 
 1. Start with GET; the user can choose another method or Any.
 2. Apply changes live when possible; clearly indicate when reload is needed.
-3. Complete an in-progress call-server request using the override settings captured when it started.
-4. Apply matching header Rules and Switchers to the real request as usual.
-5. Overrides must keep working while Chrome DevTools is open.
+3. Complete an in-progress call-server request using the Network Rule settings captured when it started.
+4. Apply matching Header Rules and Switch Rules to the real request as usual.
+5. Network Rules must keep working while Chrome DevTools is open.
 
 ## Questions to resolve after scope
 
@@ -80,7 +78,7 @@ The [interception feasibility review](../research/network-rules-interception.md)
 
 Is changing the response received by page fetch/XHR enough, or must the mocked status, headers, and body also appear in the Chrome DevTools Network panel?
 
-Answer: The mocked status, headers, and body must also appear in the Chrome DevTools Network panel while overrides remain active.
+Answer: The mocked status, headers, and body must also appear in the Chrome DevTools Network panel while Network Rules remain active.
 
 This excludes a page-only fetch/XHR wrapper as the complete implementation. The requirement remains accepted while researching browser-level alternatives; do not silently substitute an extension's custom network panel.
 
@@ -104,7 +102,7 @@ Resolved after the Requestly comparison. The user accepted page-level mocking an
 
 The user requested checking Requestly's implementation before revisiting the tradeoff. Requestly's [current troubleshooting documentation](https://interceptor-docs.requestly.com/troubleshoot/http-rules/rule-changes-not-reflecting-in-chrome-devtools) explicitly says response modifications reach the page while Chrome's native Network panel displays the original response. Its [desktop browser setup](https://interceptor-docs.requestly.com/interceptor/desktop-app/browser-interception) uses a separate proxy application and certificate setup, with an extension connection available for an existing browser profile.
 
-This is evidence about Requestly, not acceptance of a reduced Network Overrides requirement. Preserve the user's accepted constraints until they make a new decision.
+This is evidence about Requestly, not acceptance of a reduced Network Rules requirement. Preserve the user's accepted constraints until they make a new decision.
 
 The [Requestly source review](../research/requestly-response-overrides.md) confirms page-level fetch/XHR replacement in its Chrome extension at a pinned commit. Do not copy Requestly's real-fetch failure fallback or header inheritance into Overidify: accepted call-server behavior preserves transport failures and replaces the entire configured response.
 

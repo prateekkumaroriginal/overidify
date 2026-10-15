@@ -1,36 +1,36 @@
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Controller, useFieldArray } from 'react-hook-form'
-import { RuleDraftSchema } from '../lib/header-schemas'
-import { createHeaderPair, createRuleDraft, ruleToDraft } from '../lib/rules'
-import type { HeaderRule, RuleDraft } from '../lib/types'
+import { HeaderRuleDraftSchema } from '../lib/request-header-schemas'
+import { createHeaderPair, createHeaderRuleDraft, headerRuleToDraft } from '../lib/request-header-rules'
+import type { HeaderRule, HeaderRuleDraft } from '../lib/types'
 import { Icon } from './Icon'
 import { ToggleSwitch } from './ToggleSwitch'
 import { useEditorForm } from './useEditorForm'
 
 type HeaderRuleEditorProps = {
-  rule?: HeaderRule
+  headerRule?: HeaderRule
   pending: boolean
-  onSave: (draft: RuleDraft) => Promise<HeaderRule>
+  onSave: (draft: HeaderRuleDraft) => Promise<HeaderRule>
   onDelete?: () => void
 }
 
-export function HeaderRuleEditor({ rule, pending, onSave, onDelete }: HeaderRuleEditorProps) {
+export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: HeaderRuleEditorProps) {
   const { form, formRef, onSubmit, busy, error, success } = useEditorForm({
-    schema: RuleDraftSchema, initial: () => rule ? ruleToDraft(rule) : createRuleDraft(),
-    pending, returnRoute: '/', successMessage: 'Header rule saved.',
-    onSave: async draft => ruleToDraft(await onSave(draft)),
+    schema: HeaderRuleDraftSchema, initial: () => headerRule ? headerRuleToDraft(headerRule) : createHeaderRuleDraft(),
+    pending, returnRoute: '/header-rules', successMessage: 'Header rule saved.',
+    onSave: async draft => headerRuleToDraft(await onSave(draft)),
   })
   const { fields, append, remove, replace } = useFieldArray({ control: form.control, name: 'headers' })
   const saveState = { tone: error ? 'error' : 'success', message: error || success }
 
   return (
     <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="editor-title">
-      <a className="inline-flex items-center gap-2 text-[11px] text-muted-foreground no-underline hover:text-primary [&_svg]:w-[15px]" href="#/">
+      <a className="inline-flex items-center gap-2 text-[11px] text-muted-foreground no-underline hover:text-primary [&_svg]:w-[15px]" href="#/header-rules">
         <Icon name="back" /> Back to header rules
       </a>
       <div className="mt-[27px] mb-[30px] mobile:mt-5 [&_h1]:text-xl [&_h1]:leading-[1.4] [&_h1]:font-semibold">
-        <h1 id="editor-title">{rule ? 'Edit header rule' : 'New header rule'}</h1>
+        <h1 id="editor-title">{headerRule ? 'Edit header rule' : 'New header rule'}</h1>
       </div>
       <form
         ref={formRef}
@@ -60,10 +60,10 @@ export function HeaderRuleEditor({ rule, pending, onSave, onDelete }: HeaderRule
                   {...form.register('url')}
                   placeholder="e.g. localhost:4200 or api.example.com"
                   aria-label="Domain"
-                  aria-describedby="rule-domain-help"
+                  aria-describedby="header-rule-domain-help"
                   required
                 />
-                <span id="rule-domain-help" className="font-normal text-muted-foreground">Matches the page's domain on every path. Applies to requests made from that page, including other API hosts. Include a port to match only that port.</span>
+                <span id="header-rule-domain-help" className="font-normal text-muted-foreground">Matches the page's domain on every path. Applies to requests made from that page, including other API hosts. Include a port to match only that port.</span>
               </label>
             </div>
             <div className="flex items-center justify-between gap-5 border-t py-[17px]">
@@ -137,7 +137,7 @@ export function HeaderRuleEditor({ rule, pending, onSave, onDelete }: HeaderRule
                 Delete header rule
               </Button>
             )}
-            <a className="ml-auto text-[11px] text-muted-foreground no-underline hover:text-foreground" href="#/">
+            <a className="ml-auto text-[11px] text-muted-foreground no-underline hover:text-foreground" href="#/header-rules">
               Cancel
             </a>
             <Button variant="default" className="mobile:px-3 mobile:text-xs" type="submit">

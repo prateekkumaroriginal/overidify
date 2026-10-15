@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { matchesPageDomain } from '../src/lib/pattern.ts'
-import type { HeaderEntry } from '../src/lib/types.ts'
+import type { RequestHeaderRule } from '../src/lib/types.ts'
 
 Object.assign(globalThis, {
   chrome: {
@@ -15,10 +15,10 @@ Object.assign(globalThis, {
   },
 })
 
-const { rulesToSessionRules, syncSessionRules } = await import('../src/lib/dnr.ts')
+const { requestHeaderRulesToSessionRules, syncRequestHeaderSessionRules } = await import('../src/lib/dnr.ts')
 
-const localhostRule: HeaderEntry = {
-  kind: 'rule', id: 'localhost', name: 'up50', url: 'localhost:4200', order: 0, enabled: true,
+const localhostRule: RequestHeaderRule = {
+  kind: 'header-rule', id: 'localhost', name: 'up50', url: 'localhost:4200', order: 0, enabled: true,
   headers: [
     { key: 'Origin', value: 'https://www.up50.co.in' },
     { key: 'Referer', value: 'https://www.up50.co.in/' },
@@ -26,7 +26,7 @@ const localhostRule: HeaderEntry = {
 }
 
 test('localhost:4200 applies Origin and Referer to external API requests only in matching website tabs', () => {
-  const [compiled] = rulesToSessionRules([localhostRule], [
+  const [compiled] = requestHeaderRulesToSessionRules([localhostRule], [
     { id: 1, url: 'http://localhost:4200/messages' },
     { id: 2, url: 'http://localhost:4201/messages' },
     { id: 3, url: 'https://backendapi-qa.topfan.dev/' },
@@ -46,33 +46,33 @@ test('localhost:4200 applies Origin and Referer to external API requests only in
 
 test('disabled or empty rules and tabs without a supported page or ID cannot apply headers', () => {
   const tabs = [{ id: 1, url: 'http://localhost:4200/messages' }]
-  assert.deepEqual(rulesToSessionRules([{ ...localhostRule, enabled: false }], tabs), [])
-  assert.deepEqual(rulesToSessionRules([{ ...localhostRule, headers: [] }], tabs), [])
-  assert.deepEqual(rulesToSessionRules([localhostRule], [
+  assert.deepEqual(requestHeaderRulesToSessionRules([{ ...localhostRule, enabled: false }], tabs), [])
+  assert.deepEqual(requestHeaderRulesToSessionRules([{ ...localhostRule, headers: [] }], tabs), [])
+  assert.deepEqual(requestHeaderRulesToSessionRules([localhostRule], [
     { url: 'http://localhost:4200/messages' },
     { id: -1, url: 'http://localhost:4200/messages' },
     { id: 1 },
     { id: 2, url: 'chrome://extensions' },
   ]), [])
-  assert.deepEqual(rulesToSessionRules([localhostRule], []), [])
+  assert.deepEqual(requestHeaderRulesToSessionRules([localhostRule], []), [])
 })
 
-test('ordered priorities and selected switcher headers survive tab scoping', () => {
-  const switcher: HeaderEntry = {
-    ...localhostRule, kind: 'switcher', id: 'switcher', order: 1, selectedOptionId: 'selected',
+test('ordered priorities and selected Switch Rule headers survive tab scoping', () => {
+  const switchRule: RequestHeaderRule = {
+    ...localhostRule, kind: 'switch-rule', id: 'switch-rule', order: 1, selectedOptionId: 'selected',
     options: [
       { id: 'unused', name: 'Unused', headers: [{ key: 'Origin', value: 'https://unused.example.com' }] },
       { id: 'selected', name: 'Selected', headers: [{ key: 'Origin', value: 'https://selected.example.com' }] },
     ],
   }
-  const compiled = rulesToSessionRules([switcher, localhostRule], [{ id: 1, url: 'http://localhost:4200/messages' }])
+  const compiled = requestHeaderRulesToSessionRules([switchRule, localhostRule], [{ id: 1, url: 'http://localhost:4200/messages' }])
   assert.ok(compiled[1].priority! > compiled[0].priority!)
   assert.deepEqual(compiled[1].action.requestHeaders, [
     { header: 'Origin', operation: 'set', value: 'https://selected.example.com' },
   ])
 })
 
-test('sync migrates old destination rules and removes page rules when the tab navigates away', async () => {
+test('sync clears dynamic rules and removes page rules when the tab navigates away', async () => {
   const updates: { scope: string; options: chrome.declarativeNetRequest.UpdateRuleOptions }[] = []
   let sessionRules: chrome.declarativeNetRequest.Rule[] = [{ id: 901, action: {} as chrome.declarativeNetRequest.RuleAction, condition: {} }]
   let dynamicRules: chrome.declarativeNetRequest.Rule[] = [{ id: 900, action: {} as chrome.declarativeNetRequest.RuleAction, condition: {} }]
@@ -88,19 +88,19 @@ test('sync migrates old destination rules and removes page rules when the tab na
       sessionRules = options.addRules ?? []
     },
   })
-  await syncSessionRules([localhostRule], [{ id: 1, url: 'http://localhost:4200/messages' }])
+  await syncRequestHeaderSessionRules([localhostRule], [{ id: 1, url: 'http://localhost:4200/messages' }])
   assert.deepEqual(updates[0], { scope: 'dynamic', options: { removeRuleIds: [900] } })
   assert.equal(updates[1].scope, 'session')
   assert.deepEqual(updates[1].options.removeRuleIds, [901])
   assert.equal(sessionRules.length, 1)
   assert.deepEqual(dynamicRules, [])
   updates.length = 0
-  await syncSessionRules([localhostRule], [{ id: 1, url: 'https://elsewhere.example.com/' }])
+  await syncRequestHeaderSessionRules([localhostRule], [{ id: 1, url: 'https://elsewhere.example.com/' }])
   assert.deepEqual(updates, [{ scope: 'session', options: { removeRuleIds: [1000], addRules: [] } }])
   assert.deepEqual(sessionRules, [])
 })
 
-test('rules, switchers, and popup match identical page domains regardless of API destination', () => {
+test('Header Rules, Switch Rules, and popup match identical page domains regardless of API destination', () => {
   const cases = [
     {
       pattern: 'http://localhost:4200/messages',
@@ -137,14 +137,14 @@ test('rules, switchers, and popup match identical page domains regardless of API
   for (const { pattern, matches, excludes } of cases) {
     const headers = [{ key: 'X-Test', value: 'same' }]
     const base = { name: 'Test', url: pattern, enabled: true }
-    const entries: HeaderEntry[] = [
-      { ...base, kind: 'rule', id: 'rule', order: 0, headers },
-      { ...base, kind: 'switcher', id: 'switcher', order: 1, selectedOptionId: 'active', options: [
+    const entries: RequestHeaderRule[] = [
+      { ...base, kind: 'header-rule', id: 'header-rule', order: 0, headers },
+      { ...base, kind: 'switch-rule', id: 'switch-rule', order: 1, selectedOptionId: 'active', options: [
         { id: 'active', name: 'Active', headers },
       ] },
     ]
     const tabs = [...matches, ...excludes].map((url, id) => ({ id, url }))
-    const compiled = rulesToSessionRules(entries, tabs)
+    const compiled = requestHeaderRulesToSessionRules(entries, tabs)
     const matchedTabs = tabs.filter((tab) => matchesPageDomain(pattern, tab.url)).map((tab) => tab.id)
     assert.deepEqual(matchedTabs, tabs.filter((tab, index) => index < matches.length && /^https?:/.test(tab.url)).map((tab) => tab.id), pattern)
     assert.equal(compiled.length, matchedTabs.length ? 2 : 0)

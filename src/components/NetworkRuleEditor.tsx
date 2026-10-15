@@ -1,29 +1,29 @@
 import { Controller, useFieldArray, useWatch } from 'react-hook-form'
-import { NetworkOverrideDraftSchema } from '../lib/network-schemas'
+import { NetworkRuleDraftSchema } from '../lib/network-schemas'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { NativeSelect } from './ui/native-select'
 import { Icon } from './Icon'
 import { ToggleSwitch } from './ToggleSwitch'
 import { useEditorForm } from './useEditorForm'
-import { createNetworkOverrideDraft, jsonBodyWarning, NETWORK_METHODS } from '../lib/network-rules'
-import type { NetworkOverride, NetworkOverrideDraft } from '../lib/network-rules'
+import { createNetworkRuleDraft, jsonBodyWarning, NETWORK_METHODS } from '../lib/network-rules'
+import type { NetworkRule, NetworkRuleDraft } from '../lib/network-rules'
 
 type Props = {
-  override?: NetworkOverride
+  networkRule?: NetworkRule
   pending: boolean
-  onSave: (draft: NetworkOverrideDraft) => Promise<void>
+  onSave: (draft: NetworkRuleDraft) => Promise<void>
   onDelete?: () => void
 }
 const fieldClass = 'grid min-w-0 content-start gap-2 text-[11px] font-semibold'
 const panelClass = 'mb-5 rounded-lg border bg-card shadow-panel px-7 py-6 mobile:px-[17px]'
 
-export function NetworkRuleEditor({ override, pending, onSave, onDelete }: Props) {
+export function NetworkRuleEditor({ networkRule, pending, onSave, onDelete }: Props) {
   const { form, formRef, onSubmit, busy, error } = useEditorForm({
-    schema: NetworkOverrideDraftSchema, initial: () => override
-      ? { ...override, headers: override.headers.map(header => ({ ...header })) }
-      : createNetworkOverrideDraft(),
-    pending, returnRoute: '/network-overrides', onSave,
+    schema: NetworkRuleDraftSchema, initial: () => networkRule
+      ? { ...networkRule, headers: networkRule.headers.map(header => ({ ...header })) }
+      : createNetworkRuleDraft(),
+    pending, returnRoute: '/network-rules', onSave,
   })
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'headers' })
   const [body, method, status, headers, mode] = useWatch({ control: form.control, name: ['body', 'method', 'status', 'headers', 'mode'] })
@@ -32,8 +32,8 @@ export function NetworkRuleEditor({ override, pending, onSave, onDelete }: Props
 
   return (
     <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="network-editor-title">
-      <a className="inline-flex items-center gap-2 text-[11px] text-muted-foreground no-underline hover:text-primary [&_svg]:w-[15px]" href="#/network-overrides"><Icon name="back" /> Back to network rules</a>
-      <h1 id="network-editor-title" className="mt-7 mb-7 text-xl font-semibold">{override ? 'Edit network rule' : 'New network rule'}</h1>
+      <a className="inline-flex items-center gap-2 text-[11px] text-muted-foreground no-underline hover:text-primary [&_svg]:w-[15px]" href="#/network-rules"><Icon name="back" /> Back to network rules</a>
+      <h1 id="network-editor-title" className="mt-7 mb-7 text-xl font-semibold">{networkRule ? 'Edit network rule' : 'New network rule'}</h1>
       <form ref={formRef} onSubmit={onSubmit}>
         <fieldset disabled={busy} className="m-0 min-w-0 border-0 p-0">
           <div className={panelClass}>
@@ -67,7 +67,7 @@ export function NetworkRuleEditor({ override, pending, onSave, onDelete }: Props
           </div>
           <p className="mb-5 text-[11px] text-muted-foreground">The page receives your mock while DevTools stays usable. Chrome's Network panel may show the original response; bypassed calls do not reach the server.</p>
           {error && <p className="mb-5 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-xs text-destructive" role="alert">{error}</p>}
-          <div className="mt-6 mb-10 flex items-center gap-5">{onDelete && <Button variant="ghost" type="button" className="px-0 text-[11px] text-muted-foreground hover:text-destructive" onClick={onDelete}>Delete network rule</Button>}<a className="ml-auto text-[11px] text-muted-foreground no-underline" href="#/network-overrides">Cancel</a><Button type="submit">Save</Button></div>
+          <div className="mt-6 mb-10 flex items-center gap-5">{onDelete && <Button variant="ghost" type="button" className="px-0 text-[11px] text-muted-foreground hover:text-destructive" onClick={onDelete}>Delete network rule</Button>}<a className="ml-auto text-[11px] text-muted-foreground no-underline" href="#/network-rules">Cancel</a><Button type="submit">Save</Button></div>
         </fieldset>
       </form>
     </section>

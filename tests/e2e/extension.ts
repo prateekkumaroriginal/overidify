@@ -5,14 +5,14 @@ import type { IncomingHttpHeaders } from 'node:http'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { createNetworkOverrideDraft } from '../../src/lib/network-rules.ts'
-import type { NetworkOverride } from '../../src/lib/network-rules.ts'
+import { createNetworkRuleDraft } from '../../src/lib/network-rules.ts'
+import type { NetworkRule } from '../../src/lib/network-rules.ts'
 
 type Server = { origin: string; hits: { url: string; headers: IncomingHttpHeaders; method: string }[] }
 type Extension = { context: BrowserContext; settings: Page; id: string; profile: string }
 type Fixtures = {
-  server: Server; extension: Extension; site: Page; override: NetworkOverride
-  seed: (entries: NetworkOverride[]) => Promise<{ ok: boolean; reloadTabIds?: number[] }>
+  server: Server; extension: Extension; site: Page; networkRule: NetworkRule
+  seed: (entries: NetworkRule[]) => Promise<{ ok: boolean; reloadTabIds?: number[] }>
 }
 
 export const test = base.extend<Fixtures>({
@@ -78,16 +78,16 @@ export const test = base.extend<Fixtures>({
     const page = await extension.context.newPage()
     try { await provide(page) } finally { await page.close() }
   },
-  override: async ({ server }, provide) => {
-    await provide({ ...createNetworkOverrideDraft(), id: 'test', name: 'Mock response', order: 0,
+  networkRule: async ({ server }, provide) => {
+    await provide({ ...createNetworkRuleDraft(), id: 'test', name: 'Mock response', order: 0,
       url: new URL(server.origin).host, requestUrl: `${server.origin}/api/start?a=1&b=2`,
       status: 201, body: '{"mock":true}', headers: [{ key: 'Content-Type', value: 'application/json' }, { key: 'X-Mock', value: 'configured' }],
     })
   },
   seed: async ({ extension }, provide) => {
     await provide(entries => extension.settings.evaluate(async entries => {
-      await chrome.storage.local.set({ networkOverrides: entries })
-      return chrome.runtime.sendMessage({ type: 'sync-network-overrides' })
+      await chrome.storage.local.set({ networkRules: entries })
+      return chrome.runtime.sendMessage({ type: 'sync-network-rules' })
     }, entries))
   },
 })

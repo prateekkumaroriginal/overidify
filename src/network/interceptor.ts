@@ -1,11 +1,11 @@
-import { selectNetworkOverride } from '../lib/network-rules'
-import type { NetworkOverride } from '../lib/network-rules'
+import { selectNetworkRule } from '../lib/network-rules'
+import type { NetworkRule } from '../lib/network-rules'
 
 type PageWindow = Window & typeof globalThis
 const nullBody = (method: string, status: number) => method === 'HEAD' || [204, 205, 304].includes(status)
 
 export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWindow, 'setTimeout' | 'clearTimeout'> = page) {
-  let overrides: NetworkOverride[] = []
+  let networkRules: NetworkRule[] = []
   let initialized = false
   let missedSyncRequest = false
   let release: () => void = () => undefined
@@ -59,7 +59,7 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
     }, { highWaterMark: 0 })
   }
 
-  function mockResponse(entry: NetworkOverride, method: string, url: string, signal: AbortSignal): Response {
+  function mockResponse(entry: NetworkRule, method: string, url: string, signal: AbortSignal): Response {
     const source = new page.ReadableStream<Uint8Array>({ start(controller) {
       controller.enqueue(new page.TextEncoder().encode(entry.body)); controller.close()
     } })
@@ -102,10 +102,10 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
     const request = new page.Request(input, init)
     const { method, url, signal } = request
     // An initialized request captures its settings before yielding to any work.
-    let selected = initialized ? selectNetworkOverride(overrides, url, method, page.document.baseURI) : undefined
+    let selected = initialized ? selectNetworkRule(networkRules, url, method, page.document.baseURI) : undefined
     if (!initialized) {
       await withAbort(ready, signal)
-      selected = selectNetworkOverride(overrides, url, method, page.document.baseURI)
+      selected = selectNetworkRule(networkRules, url, method, page.document.baseURI)
     }
     if (!selected) return Reflect.apply(originalFetch, page, [request])
     if (signal?.aborted) throw signal.reason
@@ -144,7 +144,7 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
     let method = 'GET'
     let url = ''
     let asynchronous = true
-    let entry: NetworkOverride | undefined
+    let entry: NetworkRule | undefined
     let intercepting = false
     let pending = false
     let finished = false
@@ -302,7 +302,7 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
       timers.clearTimeout(previous.timeout)
     } }
 
-    function send(body: Document | XMLHttpRequestBodyInit | null | undefined, selected?: NetworkOverride) {
+    function send(body: Document | XMLHttpRequestBodyInit | null | undefined, selected?: NetworkRule) {
       entry = selected
       intercepting = Boolean(entry)
       pending = false
@@ -344,12 +344,12 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
         if (xhr.timeout > 0) timeout = timers.setTimeout(() => finishFailure('timeout'), xhr.timeout)
         void ready.then(() => {
           if (version !== generation || finished) return
-          try { send(body, selectNetworkOverride(overrides, url, method)) }
+          try { send(body, selectNetworkRule(networkRules, url, method)) }
           catch { intercepting = true; finishFailure('error') }
         })
       } else {
         if (!initialized) missedSyncRequest = true
-        send(body, initialized ? selectNetworkOverride(overrides, url, method) : undefined)
+        send(body, initialized ? selectNetworkRule(networkRules, url, method) : undefined)
       }
     } }
 
@@ -385,7 +385,7 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
     return properties
   }
 
-  // Prototype dispatch lets subclasses override methods and use super without
+  // Prototype dispatch lets subclasses networkRule methods and use super without
   // losing interception. Each native instance owns an independent context.
   const contexts = new WeakMap<XMLHttpRequest, PropertyDescriptorMap>()
   class InterceptedXHR extends NativeXHR {
@@ -409,8 +409,8 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
   page.XMLHttpRequest = InterceptedXHR
 
   return {
-    setOverrides(next: NetworkOverride[]) {
-      overrides = next.map(entry => ({ ...entry, headers: entry.headers.map(header => ({ ...header })) }))
+    setNetworkRules(next: NetworkRule[]) {
+      networkRules = next.map(entry => ({ ...entry, headers: entry.headers.map(header => ({ ...header })) }))
       initialized = true
       timers.clearTimeout(startup)
       release()
