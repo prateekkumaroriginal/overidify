@@ -1,55 +1,20 @@
-type IconName =
-  | 'arrow'
-  | 'back'
-  | 'plus'
-  | 'search'
-  | 'sliders'
-  | 'code'
-  | 'globe'
-  | 'close'
-  | 'check'
-  | 'external'
-  | 'trash'
-
-const paths: Record<IconName, string> = {
-  arrow: 'M4 12h16m-6-6 6 6-6 6',
-  back: 'M20 12H4m6-6-6 6 6 6',
-  plus: 'M12 5v14M5 12h14',
-  search: 'M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',
-  sliders: 'M4 7h8m4 0h4M4 17h3m4 0h9M12 4v6M7 14v6',
-  code: 'm8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16',
-  globe:
-    'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0M3 12h18M12 3c5 5 5 13 0 18-5-5-5-13 0-18',
-  close: 'm6 6 12 12M6 18 18 6',
-  check: 'm5 12 4 4L19 6',
-  trash: 'M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6',
-  external: 'M14 3h7v7m0-7L10 14M10 3H3v18h18v-7',
-}
+import type { LucideIcon, LucideProps } from 'lucide-react'
+import { cn } from '../lib/utils'
 
 export function Icon({
-  name,
-  className = '',
-  'data-icon': dataIcon,
-}: {
-  name: IconName
-  className?: string
-  'data-icon'?: 'inline-start' | 'inline-end'
-}) {
+  icon: IconComponent,
+  className,
+  size = 20,
+  strokeWidth = 1.6,
+  ...props
+}: LucideProps & { icon: LucideIcon }) {
   return (
-    <svg
-      data-icon={dataIcon}
-      className={`shrink-0 align-middle ${className}`}
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+    <IconComponent
+      size={size}
+      strokeWidth={strokeWidth}
       aria-hidden="true"
-    >
-      <path d={paths[name]} />
-    </svg>
+      className={cn('shrink-0 align-middle', className)}
+      {...props}
+    />
   )
 }

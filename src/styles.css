@@ -4,14 +4,6 @@
 @import '@fontsource/manrope/latin-600.css';
 @import '@fontsource/manrope/latin-700.css';
 
-@font-face {
-  font-family: 'Clerk Suisse';
-  src: url('./assets/fonts/suisse-intl-medium.woff2') format('woff2');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
 @custom-variant dark (&:is(.dark *));
 @custom-variant tablet (@media (max-width: 900px));
 @custom-variant mobile (@media (max-width: 620px));
@@ -68,7 +60,6 @@
   --radius-md: 6px;
   --radius-lg: var(--radius);
   --font-sans: 'Manrope', sans-serif;
-  --font-mono: ui-monospace, 'SFMono-Regular', Consolas, monospace;
 }
 
 @theme {
@@ -113,6 +104,16 @@
   }
 }
 
+/* Chrome injects an unlayered body font into extension pages. Keep this rule
+   outside Tailwind's layers and more specific so the UI renders Manrope. */
+html body {
+  font-family: 'Manrope', sans-serif;
+}
+
+button, input, select, textarea, code, kbd, samp, pre {
+  font-family: inherit;
+}
+
 /* Clerk's Copy prompt and Ask AI controls. Pixel units keep their dimensions
    independent of this app's 14px root font size. Source: clerk.com/docs. */
 .clerk-button {
@@ -130,7 +131,7 @@
   border-radius: 6px;
   background-color: var(--button-background);
   color: var(--action-foreground);
-  font-family: 'Clerk Suisse', Arial, sans-serif;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 500;
   line-height: 24px;

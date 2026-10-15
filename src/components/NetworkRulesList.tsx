@@ -10,7 +10,7 @@ export function NetworkRulesList({ networkRules, disabled, onToggle }: {
     <ToggleSwitch checked={networkRule.enabled} label={`Enable ${networkRule.name}`} disabled={disabled} onChange={enabled => onToggle(networkRule, enabled)} />
     <a className="grid min-w-0 flex-1 gap-1.5 py-5 no-underline" href={`#/network-rules/${encodeURIComponent(networkRule.id)}`}>
       <span className="text-xs font-semibold wrap-anywhere">{networkRule.name}</span>
-      <span className="font-mono text-[11px] text-muted-foreground wrap-anywhere">{networkRule.method === 'ANY' ? 'Any' : networkRule.method} {networkRule.requestUrl}</span>
+      <span className="font-sans text-[11px] text-muted-foreground wrap-anywhere">{networkRule.method === 'ANY' ? 'Any' : networkRule.method} {networkRule.requestUrl}</span>
       <span className="text-[11px] text-muted-foreground wrap-anywhere">{networkRule.url} · {networkRule.mode === 'bypass' ? 'Bypass server' : 'Call server'} · {networkRule.status}</span>
     </a>
   </li>)}</ul>

@@ -1,14 +1,17 @@
+import { ArrowRight, Check, ChevronDown } from 'lucide-react'
 import { Select } from 'radix-ui'
 import type { SwitchRule } from '../lib/types'
 import { Icon } from './Icon'
+import { cn } from '../lib/utils'
 
 type SwitchRuleOptionSelectProps = {
   switchRule: SwitchRule
   disabled?: boolean
   onChange: (optionId: string) => void
+  size?: 'sm' | 'default'
 }
 
-export function SwitchRuleOptionSelect({ switchRule, disabled, onChange }: SwitchRuleOptionSelectProps) {
+export function SwitchRuleOptionSelect({ switchRule, disabled, onChange, size = 'default' }: SwitchRuleOptionSelectProps) {
   if (switchRule.options.length < 2) return null
   return (
     <Select.Root
@@ -17,14 +20,15 @@ export function SwitchRuleOptionSelect({ switchRule, disabled, onChange }: Switc
       onValueChange={onChange}
     >
       <Select.Trigger
-        className="flex h-9 w-[132px] shrink-0 items-center justify-between gap-2 rounded-md border border-input bg-field px-3 text-xs text-foreground hover:border-primary/20 data-[state=open]:border-primary/25 mobile:w-28 mobile:text-[11px] [&>span:first-child]:truncate"
+        className={cn(
+          'flex h-9 w-[132px] shrink-0 items-center justify-between gap-2 rounded-md border border-input bg-field px-3 text-xs text-foreground hover:border-primary/20 data-[state=open]:border-primary/25 mobile:w-28 mobile:text-[11px] [&>span:first-child]:truncate',
+          size === 'sm' && 'h-7 w-[104px] px-2 text-[11px] mobile:w-[104px]',
+        )}
         aria-label={`Option for ${switchRule.name}`}
       >
         <Select.Value />
         <Select.Icon asChild>
-          <svg className="size-3.5 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="m6 9 6 6 6-6" />
-          </svg>
+          <Icon icon={ChevronDown} className="size-3.5 text-muted-foreground" />
         </Select.Icon>
       </Select.Trigger>
       <Select.Portal>
@@ -36,7 +40,7 @@ export function SwitchRuleOptionSelect({ switchRule, disabled, onChange }: Switc
           className="z-50 max-h-[min(280px,var(--radix-select-content-available-height))] w-[var(--radix-select-trigger-width)] min-w-40 max-w-[var(--radix-select-content-available-width)] overflow-hidden rounded-lg border border-border bg-field p-1 text-foreground shadow-[0_8px_24px_rgb(0_0_0/0.35)]"
         >
           <Select.ScrollUpButton className="flex h-6 items-center justify-center text-muted-foreground">
-            <Icon name="arrow" className="size-3.5 -rotate-90" />
+            <Icon icon={ArrowRight} className="size-3.5 -rotate-90" />
           </Select.ScrollUpButton>
           <Select.Viewport>
             {switchRule.options.map((option) => (
@@ -47,13 +51,13 @@ export function SwitchRuleOptionSelect({ switchRule, disabled, onChange }: Switc
               >
                 <Select.ItemText>{option.name}</Select.ItemText>
                 <Select.ItemIndicator className="absolute right-2 flex items-center">
-                  <Icon name="check" className="size-3.5" />
+                  <Icon icon={Check} className="size-3.5" />
                 </Select.ItemIndicator>
               </Select.Item>
             ))}
           </Select.Viewport>
           <Select.ScrollDownButton className="flex h-6 items-center justify-center text-muted-foreground">
-            <Icon name="arrow" className="size-3.5 rotate-90" />
+            <Icon icon={ArrowRight} className="size-3.5 rotate-90" />
           </Select.ScrollDownButton>
         </Select.Content>
       </Select.Portal>

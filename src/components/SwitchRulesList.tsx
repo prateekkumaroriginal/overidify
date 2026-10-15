@@ -32,7 +32,7 @@ export function SwitchRulesList({ switchRules, switchRuleHref, onToggle, onSelec
                 href={switchRuleHref(rule)}
               >
                 <span className="text-xs font-semibold wrap-anywhere mobile:text-[11px]">{rule.name}</span>
-                <span className="font-mono text-[11px] text-muted-foreground wrap-anywhere">{rule.url}</span>
+                <span className="font-sans text-[11px] text-muted-foreground wrap-anywhere">{rule.url}</span>
               </a>
               <SwitchRuleOptionSelect
                 switchRule={rule}

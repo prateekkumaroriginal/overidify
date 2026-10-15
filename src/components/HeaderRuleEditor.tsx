@@ -1,3 +1,4 @@
+import { Check, Plus, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Controller, useFieldArray } from 'react-hook-form'
@@ -52,7 +53,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
               <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">
                 Domain
                 <Input
-                  className="font-mono text-[11px]"
+                  className="font-sans text-[11px]"
                   {...form.register('url')}
                   placeholder="e.g. localhost:4200 or api.example.com"
                   aria-label="Domain"
@@ -76,19 +77,19 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
                 type="button"
                 onClick={() => append(createHeaderPair())}
               >
-                <Icon name="plus" /> Add header
+                <Icon icon={Plus} /> Add header
               </Button>
             </div>
             <div className="min-w-0">
               {fields.map((header, index) => (
                 <div className="mb-6 grid grid-cols-[20px_minmax(0,1fr)_minmax(0,1.4fr)_26px] items-end gap-[13px] mobile:gap-3 mobile:grid-cols-[1fr_26px] mobile:items-center mobile:border-b mobile:pb-5 mobile:last:border-b-0 mobile:last:pb-0" key={header.id}>
-                  <span className="pb-3 font-mono text-[10px] text-muted-foreground mobile:hidden">
+                  <span className="pb-3 font-sans text-[10px] text-muted-foreground mobile:hidden">
                     {String(index + 1).padStart(2, '0')}
                   </span>
                   <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">
                     {index === 0 && 'Name'}
                     <Input
-                      className="font-mono text-[11px]"
+                      className="font-sans text-[11px]"
                       {...form.register(`headers.${index}.key`)}
                       placeholder="e.g. Authorization"
                       aria-label={`Header ${index + 1} name`}
@@ -97,7 +98,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
                   <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">
                     {index === 0 && 'Value'}
                     <Input
-                      className="font-mono text-[11px]"
+                      className="font-sans text-[11px]"
                       {...form.register(`headers.${index}.value`)}
                       placeholder="e.g. Bearer token"
                       aria-label={`Header ${index + 1} value`}
@@ -108,7 +109,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
                     aria-label={`Remove header ${index + 1}`}
                     onClick={() => fields.length === 1 ? replace([createHeaderPair()]) : remove(index)}
                   >
-                    <Icon name="close" />
+                    <Icon icon={X} />
                   </Button>
                 </div>
               ))}
@@ -119,7 +120,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
               className={`mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 ${saveState.tone === 'error' ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-input bg-secondary text-secondary-foreground'}`}
               role={saveState.tone === 'error' ? 'alert' : 'status'}
             >
-              <Icon name={saveState.tone === 'error' ? 'close' : 'check'} />
+              <Icon icon={saveState.tone === 'error' ? X : Check} />
               {saveState.message}
             </p>
           )}

@@ -1,4 +1,6 @@
-# Button font
+# Reference font asset
+
+The UI uses Manrope from `@fontsource/manrope` for all text. The Suisse font below is retained as a design reference and is not loaded by the app.
 
 `suisse-intl-medium.woff2` is the 500-weight Suisse Intl font used by the reference buttons on [Clerk Docs](https://clerk.com/docs/nextjs/getting-started/quickstart).
 
