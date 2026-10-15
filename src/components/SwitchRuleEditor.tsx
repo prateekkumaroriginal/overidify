@@ -12,6 +12,7 @@ import {
 } from '../lib/request-header-rules'
 import type { SwitchRule, SwitchRuleDraft, SwitchRuleOption } from '../lib/types'
 import { Icon } from './Icon'
+import { RuleEditorHeader } from './RuleEditorHeader'
 import { ToggleSwitch } from './ToggleSwitch'
 import { useEditorForm } from './useEditorForm'
 
@@ -80,8 +81,7 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
   return (
     <FormProvider {...form}>
       <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="editor-title">
-        <a className="inline-flex items-center gap-2 text-[11px] text-muted-foreground no-underline hover:text-primary [&_svg]:w-[15px]" href="#/switch-rules"><Icon name="back" /> Back to switch rules</a>
-        <div className="mt-[27px] mb-[30px] mobile:mt-5 [&_h1]:text-xl [&_h1]:leading-[1.4] [&_h1]:font-semibold"><h1 id="editor-title">{switchRule ? 'Edit switch rule' : 'New switch rule'}</h1></div>
+        <RuleEditorHeader kind="switch" editing={!!switchRule} busy={busy} onDelete={onDelete} />
         <form ref={formRef} onSubmit={onSubmit} onChange={clearStatus}>
           <fieldset className="m-0 min-w-0 border-0 p-0" disabled={busy}>
             <div className="mb-5 rounded-lg border bg-card shadow-panel px-7 pt-[25px] mobile:px-[17px] mobile:pt-5">
@@ -129,7 +129,6 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
             </div>
             {saveState.message && <p className={`mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 ${saveState.tone === 'error' ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-input bg-secondary text-secondary-foreground'}`} role={saveState.tone === 'error' ? 'alert' : 'status'}>{saveState.message}</p>}
             <div className="mt-[25px] mb-10 flex items-center gap-[23px] mobile:gap-[17px]">
-              {onDelete && <Button variant="ghost" type="button" className="h-auto px-0 py-[9px] rounded-none text-[11px] text-muted-foreground hover:bg-transparent hover:text-destructive" onClick={onDelete}>Delete switch rule</Button>}
               <a className="ml-auto text-[11px] text-muted-foreground no-underline hover:text-foreground" href="#/switch-rules">Cancel</a>
               <Button variant="default" className="mobile:px-3 mobile:text-xs" type="submit">Save</Button>
             </div>

@@ -29,12 +29,15 @@ const paths: Record<IconName, string> = {
 export function Icon({
   name,
   className = '',
+  'data-icon': dataIcon,
 }: {
   name: IconName
   className?: string
+  'data-icon'?: 'inline-start' | 'inline-end'
 }) {
   return (
     <svg
+      data-icon={dataIcon}
       className={`shrink-0 align-middle ${className}`}
       width="20"
       height="20"

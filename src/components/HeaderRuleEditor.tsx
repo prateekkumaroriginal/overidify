@@ -5,6 +5,7 @@ import { HeaderRuleDraftSchema } from '../lib/request-header-schemas'
 import { createHeaderPair, createHeaderRuleDraft, headerRuleToDraft } from '../lib/request-header-rules'
 import type { HeaderRule, HeaderRuleDraft } from '../lib/types'
 import { Icon } from './Icon'
+import { RuleEditorHeader } from './RuleEditorHeader'
 import { ToggleSwitch } from './ToggleSwitch'
 import { useEditorForm } from './useEditorForm'
 
@@ -26,12 +27,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
 
   return (
     <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="editor-title">
-      <a className="inline-flex items-center gap-2 text-[11px] text-muted-foreground no-underline hover:text-primary [&_svg]:w-[15px]" href="#/header-rules">
-        <Icon name="back" /> Back to header rules
-      </a>
-      <div className="mt-[27px] mb-[30px] mobile:mt-5 [&_h1]:text-xl [&_h1]:leading-[1.4] [&_h1]:font-semibold">
-        <h1 id="editor-title">{headerRule ? 'Edit header rule' : 'New header rule'}</h1>
-      </div>
+      <RuleEditorHeader kind="header" editing={!!headerRule} busy={busy} onDelete={onDelete} />
       <form
         ref={formRef}
         onSubmit={onSubmit}
@@ -128,15 +124,6 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
             </p>
           )}
           <div className="mt-[25px] mb-10 flex items-center gap-[23px] mobile:gap-[17px]">
-            {onDelete && (
-              <Button variant="ghost"
-                type="button"
-                className="h-auto px-0 py-[9px] rounded-none text-[11px] text-muted-foreground hover:bg-transparent hover:text-destructive"
-                onClick={onDelete}
-              >
-                Delete header rule
-              </Button>
-            )}
             <a className="ml-auto text-[11px] text-muted-foreground no-underline hover:text-foreground" href="#/header-rules">
               Cancel
             </a>

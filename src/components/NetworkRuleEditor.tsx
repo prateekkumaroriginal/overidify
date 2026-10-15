@@ -4,6 +4,7 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { NativeSelect } from './ui/native-select'
 import { Icon } from './Icon'
+import { RuleEditorHeader } from './RuleEditorHeader'
 import { ToggleSwitch } from './ToggleSwitch'
 import { useEditorForm } from './useEditorForm'
 import { createNetworkRuleDraft, jsonBodyWarning, NETWORK_METHODS } from '../lib/network-rules'
@@ -32,8 +33,7 @@ export function NetworkRuleEditor({ networkRule, pending, onSave, onDelete }: Pr
 
   return (
     <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="network-editor-title">
-      <a className="inline-flex items-center gap-2 text-[11px] text-muted-foreground no-underline hover:text-primary [&_svg]:w-[15px]" href="#/network-rules"><Icon name="back" /> Back to network rules</a>
-      <h1 id="network-editor-title" className="mt-7 mb-7 text-xl font-semibold">{networkRule ? 'Edit network rule' : 'New network rule'}</h1>
+      <RuleEditorHeader kind="network" editing={!!networkRule} busy={busy} titleId="network-editor-title" onDelete={onDelete} />
       <form ref={formRef} onSubmit={onSubmit}>
         <fieldset disabled={busy} className="m-0 min-w-0 border-0 p-0">
           <div className={panelClass}>
@@ -67,7 +67,7 @@ export function NetworkRuleEditor({ networkRule, pending, onSave, onDelete }: Pr
           </div>
           <p className="mb-5 text-[11px] text-muted-foreground">The page receives your mock while DevTools stays usable. Chrome's Network panel may show the original response; bypassed calls do not reach the server.</p>
           {error && <p className="mb-5 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-xs text-destructive" role="alert">{error}</p>}
-          <div className="mt-6 mb-10 flex items-center gap-5">{onDelete && <Button variant="ghost" type="button" className="px-0 text-[11px] text-muted-foreground hover:text-destructive" onClick={onDelete}>Delete network rule</Button>}<a className="ml-auto text-[11px] text-muted-foreground no-underline" href="#/network-rules">Cancel</a><Button type="submit">Save</Button></div>
+          <div className="mt-6 mb-10 flex items-center gap-5"><a className="ml-auto text-[11px] text-muted-foreground no-underline" href="#/network-rules">Cancel</a><Button type="submit">Save</Button></div>
         </fieldset>
       </form>
     </section>

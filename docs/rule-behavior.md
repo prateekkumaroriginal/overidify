@@ -59,6 +59,8 @@ Chrome DevTools can stay open. In call-server mode, its native Network panel sho
 
 The popup lists rules matching the current website. Use it to toggle rules and select Switch Rule options. Open **Settings** to edit responses and headers, search rules, or delete entries and options.
 
+All three rule editors place a ghost Back arrow beside the title and a **Delete rule** button with a trash icon at the top right for saved rules. **Cancel** and **Save** remain below the form.
+
 Saved edits and toggles affect subsequent requests. An in-flight request keeps the Network Rule settings captured when it started. Changing a rule does not repeat a request or update content already on the page.
 
 Reload website tabs after installing, updating, or reloading the extension, and whenever the settings page or popup asks you to.
