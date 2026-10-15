@@ -81,12 +81,15 @@ test('Switch rule editor retains option identity, inactive fields, selection, va
   await page.getByRole('button', { name: 'Delete option Guest', exact: true }).click()
   await expect(page.getByLabel('Option name', { exact: true })).toHaveValue('Admin')
   await page.getByRole('button', { name: 'Undo', exact: true }).click()
+  await expect(page.getByLabel('Option name', { exact: true })).toHaveAttribute('name', 'options.1.name')
   await expect(page.getByLabel('Header 1 value')).toHaveValue('guest-edited')
   await page.getByLabel('Option name', { exact: true }).fill('Admin')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('Give each option a different name')
   await page.getByLabel('Option name', { exact: true }).fill('Guest')
   await page.getByRole('button', { name: 'Add option', exact: true }).click()
+  await expect(page.getByLabel('Option name', { exact: true })).toHaveAttribute('name', 'options.2.name')
+  await expect(page.getByLabel('Option name', { exact: true })).toHaveValue('Option 3')
   await page.getByLabel('Option name', { exact: true }).fill('New account')
   await page.getByLabel('Header 1 name').fill('X-New')
   await page.getByLabel('Header 1 value').fill('new')
@@ -100,6 +103,7 @@ test('Switch rule editor retains option identity, inactive fields, selection, va
     { id: 'guest', name: 'Guest', headers: [{ key: 'X-Role', value: 'guest-edited' }] },
   ])
   expect(new Set(switcher.options.map(option => option.id)).size).toBe(3)
+  expect(switcher.options[2]).toMatchObject({ name: 'New account', headers: [{ key: 'X-New', value: 'new' }] })
 })
 
 test('popup toggles apply live and layouts fit desktop and mobile', async ({ extension, site, server, override, seed }, testInfo) => {

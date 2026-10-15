@@ -35,7 +35,10 @@ export function SwitchRuleEditor({ switcher, pending, onSave, onDelete }: Switch
     },
   })
   const { append, remove, insert } = useFieldArray({ control: form.control, name: 'options' })
-  const options = useWatch({ control: form.control, name: 'options' })
+  useWatch({ control: form.control, name: 'options' })
+  // Field-array operations notify watchers after rendering. Read the current
+  // values so a new editing ID never falls back to another option meanwhile.
+  const options = form.getValues('options')
   const [editingId, setEditingId] = useState(() => form.getValues('selectedOptionId'))
   const [deletedOption, setDeletedOption] = useState<DeletedOption | null>(null)
   const optionNameInput = useRef<HTMLInputElement>(null)
