@@ -41,6 +41,8 @@ Capture the selected network rule configuration when the request starts. Subsequ
 
 Apply saved changes to subsequent requests in eligible open tabs live where possible. Clearly indicate when a page reload is needed. Do not imply that changing a mock reruns a request or updates already-rendered content.
 
+Settings and the popup omit routine save and toggle confirmations. Reload-required notices remain visible.
+
 The popup lists Network Rules whose website pattern matches the current tab, with names and enable toggles. Popup eligibility does not depend on observing an API call. Response editing remains in settings.
 
 Network rules must work while Chrome DevTools is open.

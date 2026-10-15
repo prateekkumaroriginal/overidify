@@ -107,10 +107,13 @@ test('popup toggles apply live and layouts fit desktop and mobile', async ({ ext
   const popup = await extension.context.newPage()
   await site.bringToFront(); await popup.goto(`chrome-extension://${extension.id}/popup.html`)
   await popup.getByRole('switch', { name: 'Enable Mock response', exact: true }).click()
-  await expect(popup.getByText('Changes apply to the next request.', { exact: true })).toBeVisible()
+  await expect(popup.getByRole('switch', { name: 'Enable Mock response', exact: true })).toBeEnabled()
+  await expect(popup.getByRole('status')).toHaveCount(0)
   expect((await fetchResult(site)).status).toBe(200)
   await popup.getByRole('switch', { name: 'Enable Mock response', exact: true }).click()
   await expect(popup.getByRole('switch', { name: 'Enable Mock response', exact: true })).toBeChecked()
+  await expect(popup.getByRole('switch', { name: 'Enable Mock response', exact: true })).toBeEnabled()
+  await expect(popup.getByRole('status')).toHaveCount(0)
   await expect.poll(async () => (await fetchResult(site)).status).toBe(201)
   const page = extension.settings
   for (const width of [1280, 360]) {

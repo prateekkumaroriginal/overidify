@@ -93,7 +93,7 @@ export function PopupApp() {
     try {
       const result = await saveNetworkOverrides(overrides.map(entry => entry.id === override.id ? { ...entry, enabled } : entry))
       setOverrides(result.entries)
-      setNotice(result.reloadTabIds.length ? 'Reload matching website tabs to activate the latest network rules.' : 'Changes apply to the next request.')
+      setNotice(result.reloadTabIds.length ? 'Reload matching website tabs to activate the latest network rules.' : '')
     } catch (reason) { setError(`Could not apply the network rule. ${reason instanceof Error ? reason.message : 'Try again.'}`) }
     finally { setPending(false) }
   }
