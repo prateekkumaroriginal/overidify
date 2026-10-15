@@ -69,6 +69,8 @@ pnpm test:e2e
 
 Matching, migration, priority, and validation tests run with Node's TypeScript stripping support. Use Node.js 24 for development and CI.
 
+ESLint checks project code; bundled agent skills under `.agents/` are excluded.
+
 `pnpm test:e2e` builds the production extension, typechecks the browser tests, and runs Playwright against bundled Chromium with the unpacked extension installed. Each test owns a temporary profile and local HTTP server. The suite covers all three editors, popup toggles, early requests under CSP, fetch/XHR behavior, live updates, iframe scope, and native DevTools. On Linux, install browser system dependencies with `pnpm exec playwright install --with-deps chromium` if needed. CI runs the same checks.
 
 ## Build
