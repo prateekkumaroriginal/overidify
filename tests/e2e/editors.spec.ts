@@ -35,7 +35,7 @@ test('Network rule editor preserves raw body, warnings, headers, toggles and key
   await expect(page).toHaveURL(/#\/network-rules$/)
   await page.getByRole('link', { name: /Featured chats/ }).click()
   page.once('dialog', dialog => dialog.accept())
-  await page.getByRole('button', { name: 'Delete network rule', exact: true }).click()
+  await page.getByRole('button', { name: 'Delete rule', exact: true }).click()
   await expect(page).toHaveURL(/#\/network-rules$/)
   expect((await page.evaluate(() => chrome.storage.local.get('networkRules'))).networkRules).toEqual([])
 })

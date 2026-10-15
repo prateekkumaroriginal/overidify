@@ -11,6 +11,7 @@ const buttonVariants = cva(
         default: "clerk-button clerk-button-primary",
         destructive: "border border-transparent bg-destructive text-background hover:bg-destructive/90",
         outline: "border bg-card hover:border-primary/20 hover:bg-accent",
+        "destructive-outline": "border border-input bg-transparent text-destructive hover:border-destructive/40 hover:bg-destructive/10 [&_svg]:size-4",
         secondary: "clerk-button clerk-button-secondary",
         ghost: "gap-0 rounded-[5px] border-0 bg-transparent text-sm font-normal hover:bg-accent hover:text-foreground",
         link: "gap-0 border-0 bg-transparent font-normal text-foreground underline-offset-[3px] hover:underline",
