@@ -2,7 +2,7 @@
 
 | Term | Meaning | Status |
 | --- | --- | --- |
-| Network Rule | Mock responses configured in the Network Rules tab, beside Header Rules and Switch Rules. | Confirmed in Round 1; feature names updated in October 2026 |
+| Network Rule | Mock responses configured in the Network Rules tab, beside Header Rules and Switch Rules. | Confirmed in Round 1 |
 | Header Rule | An existing entry that applies one set of request headers. | Existing behavior |
 | Switch Rule | An existing entry with named header options; the selected option supplies its request headers. | Existing behavior |
 | Page domain match | The shared matcher checks the website tab's host and optional port. Header Rules, Switch Rules, and Network Rules use the same page-domain matching logic. | Existing behavior extended by Round 3 |

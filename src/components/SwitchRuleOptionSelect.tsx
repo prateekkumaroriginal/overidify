@@ -1,24 +1,24 @@
 import { Select } from 'radix-ui'
-import type { HeaderSwitcher } from '../lib/types'
+import type { SwitchRule } from '../lib/types'
 import { Icon } from './Icon'
 
 type SwitchRuleOptionSelectProps = {
-  switcher: HeaderSwitcher
+  switchRule: SwitchRule
   disabled?: boolean
   onChange: (optionId: string) => void
 }
 
-export function SwitchRuleOptionSelect({ switcher, disabled, onChange }: SwitchRuleOptionSelectProps) {
-  if (switcher.options.length < 2) return null
+export function SwitchRuleOptionSelect({ switchRule, disabled, onChange }: SwitchRuleOptionSelectProps) {
+  if (switchRule.options.length < 2) return null
   return (
     <Select.Root
-      value={switcher.selectedOptionId}
+      value={switchRule.selectedOptionId}
       disabled={disabled}
       onValueChange={onChange}
     >
       <Select.Trigger
         className="flex h-9 w-[132px] shrink-0 items-center justify-between gap-2 rounded-md border border-input bg-field px-3 text-xs text-foreground hover:border-primary/20 data-[state=open]:border-primary/25 mobile:w-28 mobile:text-[11px] [&>span:first-child]:truncate"
-        aria-label={`Option for ${switcher.name}`}
+        aria-label={`Option for ${switchRule.name}`}
       >
         <Select.Value />
         <Select.Icon asChild>
@@ -39,7 +39,7 @@ export function SwitchRuleOptionSelect({ switcher, disabled, onChange }: SwitchR
             <Icon name="arrow" className="size-3.5 -rotate-90" />
           </Select.ScrollUpButton>
           <Select.Viewport>
-            {switcher.options.map((option) => (
+            {switchRule.options.map((option) => (
               <Select.Item
                 key={option.id}
                 value={option.id}

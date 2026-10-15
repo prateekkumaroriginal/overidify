@@ -1,13 +1,13 @@
-import { getNetworkOverrides, NETWORK_STORAGE_KEY } from '../lib/network-storage'
-import { networkOverridesForPage, normalizeNetworkOverrides } from '../lib/network-rules'
+import { getNetworkRules, NETWORK_STORAGE_KEY } from '../lib/network-storage'
+import { networkRulesForPage, normalizeNetworkRules } from '../lib/network-rules'
 import { matchesPageDomain } from '../lib/pattern'
 import { NetworkActiveTabsSchema, NetworkBridgeFramesSchema, NetworkAppliedSchema, NetworkRuntimeMessageSchema } from '../lib/settings-messages'
 
 const pageUrls = new Map<number, string>()
 const possiblyActiveTabs = new Set<number>()
 const previousPatterns = new Set<string>()
-const ACTIVE_TABS_KEY = 'networkOverrideActiveTabs'
-const BRIDGE_FRAMES_KEY = 'networkOverrideBridgeFrames'
+const ACTIVE_TABS_KEY = 'networkRuleActiveTabs'
+const BRIDGE_FRAMES_KEY = 'networkRuleBridgeFrames'
 const bridgeFrames = new Map<number, Map<number, string>>()
 const activationReady = chrome.storage.session.get([ACTIVE_TABS_KEY, BRIDGE_FRAMES_KEY]).then(stored => {
   const parsed = NetworkActiveTabsSchema.safeParse(stored[ACTIVE_TABS_KEY])
@@ -40,7 +40,7 @@ async function updateTab(tab: chrome.tabs.Tab, priorPatterns: string[]) {
   if (tab.id === undefined) return false
   await activationReady
   const url = pageUrls.get(tab.id) ?? tab.url ?? ''
-  const entries = networkOverridesForPage(await getNetworkOverrides(), url)
+  const entries = networkRulesForPage(await getNetworkRules(), url)
   const enabled = entries.some(entry => entry.enabled)
   if (enabled || priorPatterns.some(pattern => matchesPageDomain(pattern, url))) await rememberActiveTab(tab.id, true)
   const frames = await chrome.webNavigation.getAllFrames({ tabId: tab.id }).catch(() => null)
@@ -51,7 +51,7 @@ async function updateTab(tab: chrome.tabs.Tab, priorPatterns: string[]) {
     frame.documentId !== undefined && bridgeFrames.get(tab.id!)?.get(frame.frameId) === frame.documentId)
   const applied = await Promise.all(targets.map(async frame => {
     try {
-      const response = NetworkAppliedSchema.safeParse(await chrome.tabs.sendMessage(tab.id!, { type: 'update-network-overrides', entries }, {
+      const response = NetworkAppliedSchema.safeParse(await chrome.tabs.sendMessage(tab.id!, { type: 'update-network-rules', entries }, {
         frameId: frame.frameId, ...(frame.documentId ? { documentId: frame.documentId } : {}),
       }))
       return response.success && response.data.ok && !response.data.needsReload
@@ -84,7 +84,7 @@ function sync(): Promise<number[]> {
   })()
   return syncing
 }
-const requestSync = () => { void sync().catch(error => console.error('Failed to update network overrides.', error)) }
+const requestSync = () => { void sync().catch(error => console.error('Failed to update Network Rules.', error)) }
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   const parsed = NetworkRuntimeMessageSchema.safeParse(message)
@@ -100,13 +100,13 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     }).then(() => respond({ ok: true }), () => respond({ ok: false }))
     return true
   }
-  if (parsed.data.type === 'get-network-overrides') {
+  if (parsed.data.type === 'get-network-rules') {
     // Scope comes from the browser's tab metadata, never a page-supplied URL.
     const url = sender.tab?.id === undefined ? '' : pageUrls.get(sender.tab.id) ?? sender.tab.url ?? ''
-    void getNetworkOverrides().then(entries => respond({ entries: networkOverridesForPage(entries, url) }), () => respond({ entries: [] }))
+    void getNetworkRules().then(entries => respond({ entries: networkRulesForPage(entries, url) }), () => respond({ entries: [] }))
     return true
   }
-  if (parsed.data.type === 'sync-network-overrides') {
+  if (parsed.data.type === 'sync-network-rules') {
     void sync().then(reloadTabIds => respond({ ok: true, reloadTabIds }), error => respond({ ok: false, error: String(error) }))
     return true
   }
@@ -114,7 +114,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local' || !(NETWORK_STORAGE_KEY in changes)) return
   // oldValue also recovers possible stale activation after a worker restart.
-  for (const entry of normalizeNetworkOverrides(changes[NETWORK_STORAGE_KEY].oldValue)) {
+  for (const entry of normalizeNetworkRules(changes[NETWORK_STORAGE_KEY].oldValue)) {
     if (entry.enabled) previousPatterns.add(entry.url)
   }
   requestSync()

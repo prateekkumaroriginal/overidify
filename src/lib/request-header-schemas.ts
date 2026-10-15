@@ -1,12 +1,12 @@
 import * as z from 'zod/mini'
 import { EntryShape, HeaderPairSchema, requiredName, WebsiteSchema } from './schema-fields.ts'
 
-export const HeaderRuleSchema = z.object({ ...EntryShape, kind: z.literal('rule'), headers: z.array(HeaderPairSchema) })
-export const SwitcherOptionSchema = z.object({ id: z.string(), name: z.string(), headers: z.array(HeaderPairSchema) })
-export const HeaderSwitcherSchema = z.object({
-  ...EntryShape, kind: z.literal('switcher'), options: z.array(SwitcherOptionSchema), selectedOptionId: z.string(),
+export const HeaderRuleSchema = z.object({ ...EntryShape, kind: z.literal('header-rule'), headers: z.array(HeaderPairSchema) })
+export const SwitchRuleOptionSchema = z.object({ id: z.string(), name: z.string(), headers: z.array(HeaderPairSchema) })
+export const SwitchRuleSchema = z.object({
+  ...EntryShape, kind: z.literal('switch-rule'), options: z.array(SwitchRuleOptionSchema), selectedOptionId: z.string(),
 })
-export const HeaderEntrySchema = z.discriminatedUnion('kind', [HeaderRuleSchema, HeaderSwitcherSchema])
+export const RequestHeaderRuleSchema = z.discriminatedUnion('kind', [HeaderRuleSchema, SwitchRuleSchema])
 const RequestHeadersSchema = z.array(HeaderPairSchema).check(
   z.refine(headers => headers.some(header => header.key.trim() || header.value.trim()), { message: 'Add at least one header pair.' }),
   z.superRefine((headers, context) => {
@@ -18,10 +18,10 @@ const RequestHeadersSchema = z.array(HeaderPairSchema).check(
     })
   }),
 )
-export const RuleDraftSchema = z.object({
+export const HeaderRuleDraftSchema = z.object({
   name: requiredName('Header rule name'), url: WebsiteSchema, enabled: z.boolean(), headers: RequestHeadersSchema,
 })
-export const SwitcherDraftSchema = z.object({
+export const SwitchRuleDraftSchema = z.object({
   name: requiredName('Switch rule name'), url: WebsiteSchema, enabled: z.boolean(), selectedOptionId: z.string(),
   options: z.array(z.object({ id: z.string(), name: requiredName('Option name'), headers: RequestHeadersSchema })).check(z.minLength(1)),
 }).check(z.superRefine((draft, context) => {

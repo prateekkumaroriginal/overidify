@@ -1,14 +1,14 @@
 import { getDomainPattern } from './pattern.ts'
 import { HeaderPairSchema } from './schema-fields.ts'
-import { LegacyEntrySchema, LegacyOptionSchema } from './header-migration-schemas.ts'
+import { PersistedRequestHeaderRuleSchema, PersistedSwitchRuleOptionSchema } from './persisted-request-header-schemas.ts'
 import type {
-  HeaderEntry,
+  RequestHeaderRule,
   HeaderPair,
   HeaderRule,
-  HeaderSwitcher,
-  RuleDraft,
-  SwitcherDraft,
-  SwitcherOption,
+  SwitchRule,
+  HeaderRuleDraft,
+  SwitchRuleDraft,
+  SwitchRuleOption,
 } from './types'
 
 export function createHeaderPair(): HeaderPair {
@@ -19,16 +19,16 @@ export function createRuleId(): string {
   return crypto.randomUUID()
 }
 
-export function createRuleDraft(): RuleDraft {
+export function createHeaderRuleDraft(): HeaderRuleDraft {
   return { name: '', url: '*', enabled: true, headers: [createHeaderPair()] }
 }
 
-export function createSwitcherOption(name = 'Option 1'): SwitcherOption {
+export function createSwitchRuleOption(name = 'Option 1'): SwitchRuleOption {
   return { id: createRuleId(), name, headers: [createHeaderPair()] }
 }
 
-export function createSwitcherDraft(): SwitcherDraft {
-  const option = createSwitcherOption()
+export function createSwitchRuleDraft(): SwitchRuleDraft {
+  const option = createSwitchRuleOption()
   return {
     name: '',
     url: '*',
@@ -38,19 +38,19 @@ export function createSwitcherDraft(): SwitcherDraft {
   }
 }
 
-export function getSelectedOption(switcher: SwitcherDraft): SwitcherOption {
-  return switcher.options.find((option) => option.id === switcher.selectedOptionId) ?? switcher.options[0]
+export function getSelectedOption(switchRule: SwitchRuleDraft): SwitchRuleOption {
+  return switchRule.options.find((option) => option.id === switchRule.selectedOptionId) ?? switchRule.options[0]
 }
 
-export function getEntryHeaders(entry: HeaderEntry): HeaderPair[] {
-  return entry.kind === 'rule' ? entry.headers : getSelectedOption(entry).headers
+export function getEntryHeaders(entry: RequestHeaderRule): HeaderPair[] {
+  return entry.kind === 'header-rule' ? entry.headers : getSelectedOption(entry).headers
 }
 
 function copyHeaders(headers: HeaderPair[]): HeaderPair[] {
   return headers.map((header) => ({ ...header }))
 }
 
-export function ruleToDraft(rule: HeaderRule): RuleDraft {
+export function headerRuleToDraft(rule: HeaderRule): HeaderRuleDraft {
   return {
     name: rule.name,
     url: rule.url,
@@ -59,13 +59,13 @@ export function ruleToDraft(rule: HeaderRule): RuleDraft {
   }
 }
 
-export function switcherToDraft(switcher: HeaderSwitcher): SwitcherDraft {
+export function switchRuleToDraft(switchRule: SwitchRule): SwitchRuleDraft {
   return {
-    name: switcher.name,
-    url: switcher.url,
-    enabled: switcher.enabled,
-    selectedOptionId: switcher.selectedOptionId,
-    options: switcher.options.map((option) => ({ ...option, headers: copyHeaders(option.headers) })),
+    name: switchRule.name,
+    url: switchRule.url,
+    enabled: switchRule.enabled,
+    selectedOptionId: switchRule.selectedOptionId,
+    options: switchRule.options.map((option) => ({ ...option, headers: copyHeaders(option.headers) })),
   }
 }
 
@@ -85,8 +85,10 @@ function normalizeHeaders(input: unknown): HeaderPair[] {
   })
 }
 
-function normalizeEntry(input: unknown, index: number): HeaderEntry {
-  const candidate = LegacyEntrySchema.parse(input)
+function normalizeEntry(input: unknown, index: number): RequestHeaderRule[] {
+  const parsed = PersistedRequestHeaderRuleSchema.safeParse(input)
+  if (!parsed.success) return []
+  const candidate = parsed.data
   const id = candidate.id?.trim() ? candidate.id : createRuleId()
   const url = candidate.url.trim() || '*'
   const base = {
@@ -96,28 +98,19 @@ function normalizeEntry(input: unknown, index: number): HeaderEntry {
     enabled: candidate.enabled,
     order: candidate.order ?? index,
   }
-  const rawOptions = candidate.options
-  const defaultOption = rawOptions.length === 1 && rawOptions[0] && typeof rawOptions[0] === 'object'
-    ? LegacyOptionSchema.parse(rawOptions[0])
-    : undefined
-  // Undo the prior migration of regular rules into a single Default option.
-  // Explicit switchers keep their type even when only one option remains.
-  const isSwitcher = candidate.kind === 'switcher' || (
-    candidate.kind !== 'rule' && rawOptions.length > 0 &&
-    !(defaultOption && defaultOption.name.trim() === 'Default')
-  )
-  if (!isSwitcher) {
-    return {
+  if (candidate.kind === 'header-rule') {
+    return [{
       ...base,
-      kind: 'rule',
-      headers: normalizeHeaders(candidate.headers ?? defaultOption?.headers),
-    }
+      kind: 'header-rule',
+      headers: normalizeHeaders(candidate.headers),
+    }]
   }
 
+  const rawOptions = candidate.options
   const usedIds = new Set<string>()
-  const options: SwitcherOption[] = rawOptions.length
+  const options: SwitchRuleOption[] = rawOptions.length
     ? rawOptions.map((input: unknown, optionIndex) => {
-        const option = LegacyOptionSchema.parse(input)
+        const option = PersistedSwitchRuleOptionSchema.parse(input)
         let optionId = option.id?.trim() ? option.id : `${id}-option-${optionIndex + 1}`
         while (usedIds.has(optionId)) optionId += '-copy'
         usedIds.add(optionId)
@@ -127,19 +120,19 @@ function normalizeEntry(input: unknown, index: number): HeaderEntry {
           headers: normalizeHeaders(option.headers),
         }
       })
-    : [{ id: `${id}-default`, name: 'Option 1', headers: normalizeHeaders(candidate.headers) }]
-  return {
+    : [{ id: `${id}-option-1`, name: 'Option 1', headers: [] }]
+  return [{
     ...base,
-    kind: 'switcher',
+    kind: 'switch-rule',
     options,
     selectedOptionId: options.find((option) => option.id === candidate.selectedOptionId)?.id ?? options[0].id,
-  }
+  }]
 }
 
-export function normalizeEntries(input: unknown): HeaderEntry[] {
+export function normalizeRequestHeaderRules(input: unknown): RequestHeaderRule[] {
   if (!Array.isArray(input)) return []
   return input
-    .map(normalizeEntry)
+    .flatMap(normalizeEntry)
     .sort((left, right) => left.order - right.order)
     .map((entry, index) => ({ ...entry, order: index }))
 }

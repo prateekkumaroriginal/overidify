@@ -1,8 +1,8 @@
 import { test, expect, fetchResult } from './extension'
 
 for (const mode of ['bypass', 'call-server'] as const) {
-  test(`${mode} failed XHR open preserves pending and completed mocks`, async ({ site, server, override, seed }) => {
-    await seed([{ ...override, mode }]); await site.goto(server.origin)
+  test(`${mode} failed XHR open preserves pending and completed mocks`, async ({ site, server, networkRule, seed }) => {
+    await seed([{ ...networkRule, mode }]); await site.goto(server.origin)
     await site.evaluate(() => Reflect.get(window, 'firstFetch'))
     const result = await site.evaluate(() => new Promise(resolve => {
       const xhr = new XMLHttpRequest(); const errors: string[] = []
@@ -18,11 +18,11 @@ for (const mode of ['bypass', 'call-server'] as const) {
       }
       xhr.open('GET', '/api/start?b=2&a=1'); xhr.send(); failOpen()
     }))
-    expect(result).toEqual({ errors: ['SecurityError', 'SyntaxError', 'SecurityError', 'SyntaxError'], status: 201, state: 4, body: override.body })
+    expect(result).toEqual({ errors: ['SecurityError', 'SyntaxError', 'SecurityError', 'SyntaxError'], status: 201, state: 4, body: networkRule.body })
   })
 
-  test(`${mode} fetch cancellation reaches pending requests and unread mock bodies`, async ({ site, server, override, seed }) => {
-    await seed([{ ...override, mode }]); await site.goto(server.origin)
+  test(`${mode} fetch cancellation reaches pending requests and unread mock bodies`, async ({ site, server, networkRule, seed }) => {
+    await seed([{ ...networkRule, mode }]); await site.goto(server.origin)
     await site.evaluate(() => Reflect.get(window, 'firstFetch'))
     const result = await site.evaluate(async () => {
       const immediate = new AbortController()
@@ -46,11 +46,11 @@ for (const mode of ['bypass', 'call-server'] as const) {
   })
 }
 
-test('XHR converts method and URL arguments once, including pass-through traffic', async ({ browser, site, server, override, seed }) => {
+test('XHR converts method and URL arguments once, including pass-through traffic', async ({ browser, site, server, networkRule, seed }) => {
   await site.goto(server.origin); await site.evaluate(() => Reflect.get(window, 'firstFetch'))
   const native = await browser.newPage(); await native.goto(server.origin)
   for (const mode of ['disabled', 'bypass', 'call-server'] as const) {
-    await seed(mode === 'disabled' ? [] : [{ ...override, mode }])
+    await seed(mode === 'disabled' ? [] : [{ ...networkRule, mode }])
     const results = await Promise.all([native, site].map(page => page.evaluate(async () => {
       const methods = [null, 123, { toString: () => 'GET' }].map(method => {
         const xhr = new XMLHttpRequest()
@@ -73,24 +73,24 @@ test('XHR converts method and URL arguments once, including pass-through traffic
   await native.close()
 })
 
-test('script-disabled sandbox frames do not cause persistent reload warnings', async ({ site, server, override, seed }) => {
-  await seed([override]); await site.goto(`${server.origin}/sandbox`)
+test('script-disabled sandbox frames do not cause persistent reload warnings', async ({ site, server, networkRule, seed }) => {
+  await seed([networkRule]); await site.goto(`${server.origin}/sandbox`)
   await site.evaluate(() => Reflect.get(window, 'firstFetch'))
-  expect((await seed([override])).reloadTabIds).toEqual([])
+  expect((await seed([networkRule])).reloadTabIds).toEqual([])
   expect((await fetchResult(site)).status).toBe(201)
   await site.reload()
-  expect((await seed([override])).reloadTabIds).toEqual([])
+  expect((await seed([networkRule])).reloadTabIds).toEqual([])
 })
 
-test('parent calls to same-origin script-disabled iframe APIs receive live mocks', async ({ site, server, override, seed }) => {
-  await seed([override]); await site.goto(server.origin)
+test('parent calls to same-origin script-disabled iframe APIs receive live mocks', async ({ site, server, networkRule, seed }) => {
+  await seed([networkRule]); await site.goto(server.origin)
   await site.evaluate(() => Reflect.get(window, 'firstFetch'))
   await site.evaluate(() => new Promise<void>(resolve => {
     const frame = document.createElement('iframe'); frame.sandbox.value = 'allow-same-origin'; frame.srcdoc = '<h1>No scripts</h1>'
     frame.onload = () => resolve(); document.body.append(frame)
   }))
   for (const mode of ['bypass', 'call-server', 'disabled'] as const) {
-    expect((await seed(mode === 'disabled' ? [] : [{ ...override, mode }])).reloadTabIds).toEqual([])
+    expect((await seed(mode === 'disabled' ? [] : [{ ...networkRule, mode }])).reloadTabIds).toEqual([])
     const result = await site.evaluate(async () => {
       const frame = document.querySelector('iframe')!.contentWindow!
       const request = Reflect.get(frame, 'fetch') as typeof fetch
@@ -102,13 +102,13 @@ test('parent calls to same-origin script-disabled iframe APIs receive live mocks
       })
       return { fetch: { status: response.status, body: await response.text() }, xhr }
     })
-    const expected = { status: mode === 'disabled' ? 200 : 201, body: mode === 'disabled' ? '{"real":true}' : override.body }
+    const expected = { status: mode === 'disabled' ? 200 : 201, body: mode === 'disabled' ? '{"real":true}' : networkRule.body }
     expect(result).toEqual({ fetch: expected, xhr: expected })
   }
 })
 
-test('sandbox discovery covers open and closed shadow roots and nested documents', async ({ site, server, override, seed }) => {
-  await seed([override]); await site.goto(server.origin)
+test('sandbox discovery covers open and closed shadow roots and nested documents', async ({ site, server, networkRule, seed }) => {
+  await seed([networkRule]); await site.goto(server.origin)
   await site.evaluate(() => Reflect.get(window, 'firstFetch'))
   const result = await site.evaluate(async () => {
     const create = (root: Node, doc = document) => new Promise<HTMLIFrameElement>(resolve => {
@@ -129,12 +129,12 @@ test('sandbox discovery covers open and closed shadow roots and nested documents
       return { status: response.status, body: await response.text() }
     }))
   })
-  expect(result).toEqual(Array.from({ length: 3 }, () => ({ status: 201, body: override.body })))
+  expect(result).toEqual(Array.from({ length: 3 }, () => ({ status: 201, body: networkRule.body })))
   expect(server.hits).toHaveLength(0)
 })
 
-test('parser-created shadow frame APIs are mocked on first parent access', async ({ site, server, override, seed }) => {
-  await seed([override]); await site.goto(`${server.origin}/declarative-shadow`)
+test('parser-created shadow frame APIs are mocked on first parent access', async ({ site, server, networkRule, seed }) => {
+  await seed([networkRule]); await site.goto(`${server.origin}/declarative-shadow`)
   await site.evaluate(() => Reflect.get(window, 'firstFetch'))
   const result = await site.evaluate(async () => {
     const frame = document.querySelector('#shadow-host')!.shadowRoot!.querySelector('iframe')!
@@ -142,15 +142,15 @@ test('parser-created shadow frame APIs are mocked on first parent access', async
     const response = await (Reflect.get(target, 'fetch') as typeof fetch).call(target, '/api/start?b=2&a=1')
     return { status: response.status, body: await response.text() }
   })
-  expect(result).toEqual({ status: 201, body: override.body })
+  expect(result).toEqual({ status: 201, body: networkRule.body })
   expect(server.hits).toHaveLength(0)
 })
 
-test('mock XHR rejects no malformed header names and skips LOADING for HEAD', async ({ browser, site, server, override, seed }) => {
+test('mock XHR rejects no malformed header names and skips LOADING for HEAD', async ({ browser, site, server, networkRule, seed }) => {
   await site.goto(server.origin); await site.evaluate(() => Reflect.get(window, 'firstFetch'))
   const native = await browser.newPage(); await native.goto(server.origin)
   for (const mode of ['bypass', 'call-server'] as const) {
-    await seed([{ ...override, method: 'ANY', mode }])
+    await seed([{ ...networkRule, method: 'ANY', mode }])
     const results = await Promise.all([native, site].map(page => page.evaluate(() => new Promise(resolve => {
       const xhr = new XMLHttpRequest(); const states: number[] = []
       xhr.onreadystatechange = () => states.push(xhr.readyState)
@@ -163,8 +163,8 @@ test('mock XHR rejects no malformed header names and skips LOADING for HEAD', as
   await native.close()
 })
 
-test('XHR MIME overrides survive open and instance reuse', async ({ browser, site, server, override, seed }) => {
-  await seed([override]); await site.goto(server.origin)
+test('XHR MIME overrides survive open and instance reuse', async ({ browser, site, server, networkRule, seed }) => {
+  await seed([networkRule]); await site.goto(server.origin)
   await site.evaluate(() => Reflect.get(window, 'firstFetch'))
   const native = await browser.newPage(); await native.goto(server.origin)
   const results = await Promise.all([native, site].map(page => page.evaluate(async () => {
@@ -180,11 +180,11 @@ test('XHR MIME overrides survive open and instance reuse', async ({ browser, sit
   await native.close()
 })
 
-test('XHR subclasses retain identity, methods and native method overrides without or with mocks', async ({ site, server, override, seed }) => {
+test('XHR subclasses retain identity, methods and native method overrides without or with mocks', async ({ site, server, networkRule, seed }) => {
   await site.goto(server.origin)
   await site.evaluate(() => Reflect.get(window, 'firstFetch'))
   for (const enabled of [false, true]) {
-    await seed(enabled ? [override] : [])
+    await seed(enabled ? [networkRule] : [])
     const result = await site.evaluate(() => new Promise(resolve => {
       class CustomXHR extends XMLHttpRequest {
         calls: string[] = []
@@ -205,11 +205,11 @@ test('XHR subclasses retain identity, methods and native method overrides withou
   }
 })
 
-test('XHR internal listeners and events do not invoke subclass public overrides', async ({ site, server, override, seed }) => {
+test('XHR internal listeners and events do not invoke subclass public overrides', async ({ site, server, networkRule, seed }) => {
   await site.goto(server.origin)
   await site.evaluate(() => Reflect.get(window, 'firstFetch'))
   for (const mode of ['disabled', 'bypass', 'call-server'] as const) {
-    await seed(mode === 'disabled' ? [] : [{ ...override, mode }])
+    await seed(mode === 'disabled' ? [] : [{ ...networkRule, mode }])
     const result = await site.evaluate(() => new Promise(resolve => {
       class CustomXHR extends XMLHttpRequest {
         calls: string[] = []
@@ -229,8 +229,8 @@ test('XHR internal listeners and events do not invoke subclass public overrides'
   }
 })
 
-test('fetch matches Request objects from another frame and respects inherited signals', async ({ site, server, override, seed }) => {
-  await seed([override]); await site.goto(server.origin)
+test('fetch matches Request objects from another frame and respects inherited signals', async ({ site, server, networkRule, seed }) => {
+  await seed([networkRule]); await site.goto(server.origin)
   await site.evaluate(() => Reflect.get(window, 'firstFetch'))
   const result = await site.evaluate(async () => {
     const frame = document.createElement('iframe'); frame.src = '/frame'; document.body.append(frame)
@@ -243,12 +243,12 @@ test('fetch matches Request objects from another frame and respects inherited si
     const cancelled = await fetch(aborted).then(() => 'success', reason => reason)
     return { status: response.status, body: await response.text(), cancelled }
   })
-  expect(result).toEqual({ status: 201, body: override.body, cancelled: 'frame-cancelled' })
+  expect(result).toEqual({ status: 201, body: networkRule.body, cancelled: 'frame-cancelled' })
   expect(server.hits).toHaveLength(0)
 })
 
-test('fetch retains Request cancellation for undefined options and allows explicit signal detachment', async ({ site, server, override, seed }) => {
-  await seed([override]); await site.goto(server.origin)
+test('fetch retains Request cancellation for undefined options and allows explicit signal detachment', async ({ site, server, networkRule, seed }) => {
+  await seed([networkRule]); await site.goto(server.origin)
   const result = await site.evaluate(async () => {
     const controller = new AbortController()
     const request = new Request('/api/start?b=2&a=1', { signal: controller.signal })
@@ -264,8 +264,8 @@ test('fetch retains Request cancellation for undefined options and allows explic
 })
 
 for (const mode of ['bypass', 'call-server'] as const) {
-  test(`${mode} XHR abort handlers can reopen and complete the same instance`, async ({ site, server, override, seed }) => {
-    await seed([{ ...override, mode, requestUrl: `${server.origin}/api/slow` }, { ...override, id: 'retry', order: 1, mode }])
+  test(`${mode} XHR abort handlers can reopen and complete the same instance`, async ({ site, server, networkRule, seed }) => {
+    await seed([{ ...networkRule, mode, requestUrl: `${server.origin}/api/slow` }, { ...networkRule, id: 'retry', order: 1, mode }])
     await site.goto(server.origin)
     await site.evaluate(() => Reflect.get(window, 'firstFetch'))
     const result = await site.evaluate(() => new Promise(resolve => {
@@ -278,19 +278,19 @@ for (const mode of ['bypass', 'call-server'] as const) {
       xhr.onload = () => { clearTimeout(timeout); resolve({ status: xhr.status, state: xhr.readyState, aborts, body: xhr.responseText }) }
       xhr.open('GET', '/api/slow'); xhr.send(); xhr.abort()
     }))
-    expect(result).toEqual({ status: 201, state: 4, aborts: 1, body: override.body })
+    expect(result).toEqual({ status: 201, state: 4, aborts: 1, body: networkRule.body })
   })
 }
 
-test('failed disable and delete warnings survive a worker restart until the page reloads', async ({ extension, site, server, override, seed }) => {
+test('failed disable and delete warnings survive a worker restart until the page reloads', async ({ extension, site, server, networkRule, seed }) => {
   await site.addInitScript(() => window.addEventListener('message', event => {
     if (Reflect.get(window, 'blockNetworkConfig') && event.data?.source === 'overidify-network-bridge' && event.data?.type === 'config') event.stopImmediatePropagation()
   }))
-  await seed([override]); await site.goto(server.origin)
+  await seed([networkRule]); await site.goto(server.origin)
   expect((await fetchResult(site)).status).toBe(201)
   // Reproduce a stale page interceptor whose bridge cannot deliver new config.
   await site.evaluate(() => Reflect.set(window, 'blockNetworkConfig', true))
-  for (const entries of [[{ ...override, enabled: false }], []]) {
+  for (const entries of [[{ ...networkRule, enabled: false }], []]) {
     const result = await seed(entries)
     expect(result.ok).toBe(true)
     expect((await fetchResult(site)).status).toBe(201)
@@ -312,15 +312,15 @@ test('failed disable and delete warnings survive a worker restart until the page
   await site.reload()
   expect((await fetchResult(site)).status).toBe(200)
   expect((await seed([])).reloadTabIds).toEqual([])
-  expect((await extension.settings.evaluate(() => chrome.storage.session.get('networkOverrideActiveTabs'))).networkOverrideActiveTabs).toEqual([])
+  expect((await extension.settings.evaluate(() => chrome.storage.session.get('networkRuleActiveTabs'))).networkRuleActiveTabs).toEqual([])
 })
 
-test('XHR async arguments use native boolean conversion and defaults in both modes', async ({ browser, site, server, override, seed }) => {
+test('XHR async arguments use native boolean conversion and defaults in both modes', async ({ browser, site, server, networkRule, seed }) => {
   await site.goto(server.origin)
   await site.evaluate(() => Reflect.get(window, 'firstFetch'))
   const native = await browser.newPage(); await native.goto(server.origin)
   for (const mode of ['bypass', 'call-server'] as const) {
-    await seed([{ ...override, mode }])
+    await seed([{ ...networkRule, mode }])
     for (const args of [[], [false], [null], [0], [''], [undefined], [true]]) {
       const results = await Promise.all([native, site].map(page => page.evaluate(args => {
         const xhr = new XMLHttpRequest(); const states: number[] = []
@@ -331,14 +331,14 @@ test('XHR async arguments use native boolean conversion and defaults in both mod
       expect(results[1].states, `${mode}, async=${args.length ? String(args[0]) : 'omitted'}`).toEqual(results[0].states)
       expect(results[1].state).toBe(results[0].state)
       expect(results[1].status).toBe(results[0].status === 200 ? 201 : 0)
-      expect(results[1].body).toBe(results[0].state === 4 ? override.body : '')
+      expect(results[1].body).toBe(results[0].state === 4 ? networkRule.body : '')
     }
   }
   await native.close()
 })
 
-test('bypass XHR rejects header edits after send just like native XHR', async ({ site, server, override, seed }) => {
-  await seed([override]); await site.goto(server.origin)
+test('bypass XHR rejects header edits after send just like native XHR', async ({ site, server, networkRule, seed }) => {
+  await seed([networkRule]); await site.goto(server.origin)
   const result = await site.evaluate(() => {
     const xhr = new XMLHttpRequest(); xhr.open('GET', '/api/start?b=2&a=1'); xhr.send()
     try { xhr.setRequestHeader('X-Too-Late', 'value'); return 'allowed' } catch (error) { return (error as DOMException).name }
@@ -346,13 +346,13 @@ test('bypass XHR rejects header edits after send just like native XHR', async ({
   expect(result).toBe('InvalidStateError')
 })
 
-test('synchronous call-server XHR preserves native failure state and exceptions', async ({ browser, site, server, override, seed }) => {
-  await seed([{ ...override, mode: 'call-server', requestUrl: `${server.origin}/api/truncated` }])
+test('synchronous call-server XHR preserves native failure state and exceptions', async ({ browser, site, server, networkRule, seed }) => {
+  await seed([{ ...networkRule, mode: 'call-server', requestUrl: `${server.origin}/api/truncated` }])
   await site.goto(server.origin)
   await site.evaluate(() => Reflect.get(window, 'firstFetch'))
   const native = await browser.newPage(); await native.goto(server.origin)
   for (const target of ['/api/truncated', '/api/fail']) {
-    await seed([{ ...override, mode: 'call-server', requestUrl: `${server.origin}${target}` }])
+    await seed([{ ...networkRule, mode: 'call-server', requestUrl: `${server.origin}${target}` }])
     const results = await Promise.all([native, site].map(page => page.evaluate(target => {
       const xhr = new XMLHttpRequest(); xhr.open('GET', target, false)
       let error = ''
@@ -362,10 +362,10 @@ test('synchronous call-server XHR preserves native failure state and exceptions'
     expect(results[0].error).toBe('NetworkError')
     expect(results[1]).toEqual(results[0])
   }
-  await seed([{ ...override, mode: 'call-server' }])
+  await seed([{ ...networkRule, mode: 'call-server' }])
   expect(await site.evaluate(() => {
     const xhr = new XMLHttpRequest(); xhr.open('GET', '/api/start?b=2&a=1', false); xhr.send()
     return { status: xhr.status, body: xhr.responseText }
-  })).toEqual({ status: 201, body: override.body })
+  })).toEqual({ status: 201, body: networkRule.body })
   await native.close()
 })

@@ -1,16 +1,16 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createNetworkOverrideDraft, jsonBodyWarning, matchesNetworkRequest, networkOverridesForPage, normalizeNetworkOverrides, requestUrlKey, selectNetworkOverride, validateNetworkOverride } from '../src/lib/network-rules.ts'
+import { createNetworkRuleDraft, jsonBodyWarning, matchesNetworkRequest, networkRulesForPage, normalizeNetworkRules, requestUrlKey, selectNetworkRule, validateNetworkRule } from '../src/lib/network-rules.ts'
 import { matchesPageDomain } from '../src/lib/pattern.ts'
-import type { NetworkOverride } from '../src/lib/network-rules.ts'
+import type { NetworkRule } from '../src/lib/network-rules.ts'
 
-function override(patch: Partial<NetworkOverride> = {}): NetworkOverride {
-  return { ...createNetworkOverrideDraft(), id: 'chat', name: 'Chats', order: 0,
+function networkRule(patch: Partial<NetworkRule> = {}): NetworkRule {
+  return { ...createNetworkRuleDraft(), id: 'chat', name: 'Chats', order: 0,
     requestUrl: 'https://backendapi-qa.topfan.dev/api/get-chatGroups-and-users?tab=featured&counts=true', ...patch }
 }
 
 test('exact request matching ignores query order but preserves parameters, values, path and method', () => {
-  const entry = override()
+  const entry = networkRule()
   assert.equal(matchesNetworkRequest(entry, 'https://backendapi-qa.topfan.dev/api/get-chatGroups-and-users?counts=true&tab=featured', 'GET'), true)
   for (const input of [entry.requestUrl + '&extra=1', entry.requestUrl.replace('featured', 'other'), entry.requestUrl.replace('/api/', '/API/'), entry.requestUrl.replace('https:', 'http:')]) {
     assert.equal(matchesNetworkRequest(entry, input, 'GET'), false, input)
@@ -28,53 +28,53 @@ test('request matching handles duplicates and URL encoding without conflating di
   assert.equal(requestUrlKey('https://user:pass@api.example/a'), null)
 })
 
-test('website eligibility uses the same matcher as Rules and Switchers and never the API host', () => {
+test('website eligibility uses the same matcher as Header Rules and Switch Rules and never the API host', () => {
   for (const pattern of ['localhost:4200', '*.example.com', '*', 'http://localhost:4200/messages']) {
-    const entry = override({ url: pattern })
+    const entry = networkRule({ url: pattern })
     for (const page of ['http://localhost:4200/messages', 'http://localhost:4201/', 'https://nested.example.com/', 'https://unmatched.test/']) {
-      assert.equal(networkOverridesForPage([entry], page).length > 0, matchesPageDomain(pattern, page))
+      assert.equal(networkRulesForPage([entry], page).length > 0, matchesPageDomain(pattern, page))
     }
   }
-  assert.equal(networkOverridesForPage([override({ url: 'localhost:4200' })], 'https://backendapi-qa.topfan.dev/').length, 0)
+  assert.equal(networkRulesForPage([networkRule({ url: 'localhost:4200' })], 'https://backendapi-qa.topfan.dev/').length, 0)
 })
 
 test('later enabled entries win and selection captures independent response settings', () => {
-  const first = override({ id: 'first', order: 0 })
-  const second = override({ id: 'second', order: 1, body: 'old', headers: [{ key: 'X-Test', value: 'old' }] })
-  const disabled = override({ id: 'disabled', order: 2, enabled: false })
-  const selected = selectNetworkOverride([disabled, second, first], first.requestUrl, 'GET')!
+  const first = networkRule({ id: 'first', order: 0 })
+  const second = networkRule({ id: 'second', order: 1, body: 'old', headers: [{ key: 'X-Test', value: 'old' }] })
+  const disabled = networkRule({ id: 'disabled', order: 2, enabled: false })
+  const selected = selectNetworkRule([disabled, second, first], first.requestUrl, 'GET')!
   assert.equal(selected.id, second.id)
   second.body = 'changed'
   second.headers[0].value = 'changed'
   assert.equal(selected.body, 'old')
   assert.equal(selected.headers[0].value, 'old')
-  assert.equal(selectNetworkOverride([first], '/no-match', 'GET', 'https://example.com'), undefined)
+  assert.equal(selectNetworkRule([first], '/no-match', 'GET', 'https://example.com'), undefined)
 })
 
 test('draft defaults and normalization preserve response text; invalid saved entries cannot intercept', () => {
-  const draft = createNetworkOverrideDraft()
+  const draft = createNetworkRuleDraft()
   assert.equal(draft.method, 'GET')
   assert.equal(draft.mode, 'bypass')
   assert.equal(draft.status, 200)
   assert.equal(draft.enabled, true)
   const body = '  {broken json\n  '
-  const [entry] = normalizeNetworkOverrides([override({ url: 'http://LOCALHOST:4200/page', body, mode: 'call-server' })])
+  const [entry] = normalizeNetworkRules([networkRule({ url: 'http://LOCALHOST:4200/page', body, mode: 'call-server' })])
   assert.equal(entry.url, 'localhost:4200')
   assert.equal(entry.body, body)
   assert.equal(entry.mode, 'call-server')
   assert.equal(entry.enabled, true)
-  assert.equal(normalizeNetworkOverrides([override({ status: 0 })])[0].enabled, false)
-  assert.equal(normalizeNetworkOverrides([override({ requestUrl: 'not a URL' })])[0].enabled, false)
+  assert.equal(normalizeNetworkRules([networkRule({ status: 0 })])[0].enabled, false)
+  assert.equal(normalizeNetworkRules([networkRule({ requestUrl: 'not a URL' })])[0].enabled, false)
 })
 
 test('invalid JSON is a warning while impossible response headers and statuses block saving', () => {
-  const entry = override({ body: '{broken' })
-  assert.equal(validateNetworkOverride(entry), null)
+  const entry = networkRule({ body: '{broken' })
+  assert.equal(validateNetworkRule(entry), null)
   assert.ok(jsonBodyWarning(entry))
   assert.equal(jsonBodyWarning({ ...entry, headers: [{ key: 'content-type', value: 'text/plain' }] }), null)
   assert.equal(jsonBodyWarning({ ...entry, body: 'null' }), null)
-  assert.ok(validateNetworkOverride({ ...entry, status: 600 }))
-  assert.ok(validateNetworkOverride({ ...entry, headers: [{ key: 'X-Header', value: 'ok\r\nInjected: yes' }] }))
-  assert.ok(validateNetworkOverride({ ...entry, headers: [{ key: 'Set-Cookie', value: 'token=test' }] }))
-  assert.equal(validateNetworkOverride({ ...entry, headers: [{ key: 'X-Empty', value: '' }] }), null)
+  assert.ok(validateNetworkRule({ ...entry, status: 600 }))
+  assert.ok(validateNetworkRule({ ...entry, headers: [{ key: 'X-Header', value: 'ok\r\nInjected: yes' }] }))
+  assert.ok(validateNetworkRule({ ...entry, headers: [{ key: 'Set-Cookie', value: 'token=test' }] }))
+  assert.equal(validateNetworkRule({ ...entry, headers: [{ key: 'X-Empty', value: '' }] }), null)
 })

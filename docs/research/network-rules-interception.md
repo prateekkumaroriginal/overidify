@@ -58,7 +58,7 @@ Setup: install/run a helper and launch Chrome with remote debugging. Chrome 136+
 
 A proxy can synthesize before forwarding, or replace an upstream response. Mitmproxy examples show bypass with configurable status/body/headers and response modification. HTTPS requires browser proxy configuration and trust in the helper's CA. Chrome's proxy API configures fixed-server/PAC routing; it does not create an HTTP server. [Mitmproxy examples](https://docs.mitmproxy.org/stable/addons/examples/), [CA setup](https://docs.mitmproxy.org/stable/concepts/certificates/), [Chrome proxy API](https://developer.chrome.com/docs/extensions/reference/api/proxy)
 
-Expected result: original API URL with the mock as its network response while DevTools stays open. Setup includes a running helper, proxy configuration, certificate trust, and restoration/removal paths. Test upstream failures, CORS/preflight, cookies, and existing header Rules/Switchers.
+Expected result: original API URL with the mock as its network response while DevTools stays open. Setup includes a running helper, proxy configuration, certificate trust, and restoration/removal paths. Test upstream failures, CORS/preflight, cookies, and existing Header Rules and Switch Rules.
 
 A proxy does not automatically know Chrome tab IDs or the top-level website behind a cross-origin iframe. It needs an extension-to-helper scoping/correlation design using the existing shared matcher; Origin/Referer alone does not prove equivalent scope. Snapshot behavior and live changes also need tests.
 
@@ -95,4 +95,4 @@ This establishes a bounded transport/coexistence result, not production readines
 
 Separate DNR/WAR probe: redirecting a webpage GET to a packaged extension response served the static file at status 200. Both direct page retrieval and DNR redirection produced zero events in the extension worker's fetch handler. This tested path did not provide a dynamic body or status from that handler.
 
-Probe source is outside the repository in `/home/prateekkumar/.local/share/codex-visualizations/overidify-network-overrides-20261014/extension-response-probe/`, with `run.cjs` for DNR/WAR and `cdp-coexistence.cjs` for native DevTools coexistence. Temporary browser profiles were removed after each completed probe.
+Probe source is outside the repository, with `run.cjs` for DNR/WAR and `cdp-coexistence.cjs` for native DevTools coexistence. Temporary browser profiles were removed after each completed probe.

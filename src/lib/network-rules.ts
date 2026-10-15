@@ -1,17 +1,17 @@
 import { getDomainPattern, matchesPageDomain } from './pattern.ts'
 import type * as z from 'zod/mini'
-import { NetworkOverrideDraftSchema, PersistedNetworkOverrideSchema } from './network-schemas.ts'
-import type { NetworkMethodSchema, NetworkOverrideSchema } from './network-schemas.ts'
+import { NetworkRuleDraftSchema, PersistedNetworkRuleSchema } from './network-schemas.ts'
+import type { NetworkMethodSchema, NetworkRuleSchema } from './network-schemas.ts'
 import { matchesNetworkRequest } from './network-matching.ts'
 export { requestUrlKey, matchesNetworkRequest } from './network-matching.ts'
 export { NETWORK_METHODS } from './network-schemas.ts'
 import type { HeaderPair } from './types'
 
 export type NetworkMethod = z.infer<typeof NetworkMethodSchema>
-export type NetworkOverride = z.infer<typeof NetworkOverrideSchema>
-export type NetworkOverrideDraft = z.infer<typeof NetworkOverrideDraftSchema>
+export type NetworkRule = z.infer<typeof NetworkRuleSchema>
+export type NetworkRuleDraft = z.infer<typeof NetworkRuleDraftSchema>
 
-export function createNetworkOverrideDraft(): NetworkOverrideDraft {
+export function createNetworkRuleDraft(): NetworkRuleDraft {
   return {
     name: '', url: '*', requestUrl: '', method: 'GET', enabled: true,
     mode: 'bypass', body: '', status: 200,
@@ -24,40 +24,40 @@ export function cleanResponseHeaders(headers: HeaderPair[]): HeaderPair[] {
     .filter(({ key, value }) => key || value)
 }
 
-export function selectNetworkOverride(entries: NetworkOverride[], url: string, method: string, base?: string): NetworkOverride | undefined {
-  let selected: NetworkOverride | undefined
+export function selectNetworkRule(entries: NetworkRule[], url: string, method: string, base?: string): NetworkRule | undefined {
+  let selected: NetworkRule | undefined
   for (const entry of entries) {
     if (entry.enabled && matchesNetworkRequest(entry, url, method, base) && (!selected || entry.order >= selected.order)) selected = entry
   }
   return selected ? { ...selected, headers: selected.headers.map(header => ({ ...header })) } : undefined
 }
 
-export function networkOverridesForPage(entries: NetworkOverride[], pageUrl: string): NetworkOverride[] {
+export function networkRulesForPage(entries: NetworkRule[], pageUrl: string): NetworkRule[] {
   return entries.filter(entry => matchesPageDomain(entry.url, pageUrl))
 }
 
-export function validateNetworkOverride(draft: NetworkOverrideDraft): string | null {
-  const result = NetworkOverrideDraftSchema.safeParse(draft)
-  return result.success ? null : result.error.issues[0]?.message ?? 'Invalid override.'
+export function validateNetworkRule(draft: NetworkRuleDraft): string | null {
+  const result = NetworkRuleDraftSchema.safeParse(draft)
+  return result.success ? null : result.error.issues[0]?.message ?? 'Invalid Network Rule.'
 }
 
-export function jsonBodyWarning(draft: Pick<NetworkOverrideDraft, 'body' | 'headers'>): string | null {
+export function jsonBodyWarning(draft: Pick<NetworkRuleDraft, 'body' | 'headers'>): string | null {
   const contentType = draft.headers.find(header => header.key.trim().toLowerCase() === 'content-type')?.value ?? ''
   if (!/\bjson\b/i.test(contentType)) return null
   try { JSON.parse(draft.body); return null } catch { return 'The body is not valid JSON. You can still save and return this text.' }
 }
 
-export function normalizeNetworkOverrides(input: unknown): NetworkOverride[] {
+export function normalizeNetworkRules(input: unknown): NetworkRule[] {
   if (!Array.isArray(input)) return []
   return input.flatMap((value, index) => {
     if (!value || typeof value !== 'object') return []
-    const item = PersistedNetworkOverrideSchema.parse(value)
-    const entry: NetworkOverride = {
+    const item = PersistedNetworkRuleSchema.parse(value)
+    const entry: NetworkRule = {
       ...item, name: item.name.trim(), url: getDomainPattern(item.url), requestUrl: item.requestUrl.trim(),
       order: item.order ?? index, headers: cleanResponseHeaders(item.headers),
     }
     // Invalid persisted entries remain editable, but can never intercept.
-    if (validateNetworkOverride(entry)) entry.enabled = false
+    if (validateNetworkRule(entry)) entry.enabled = false
     return [entry]
   }).sort((a, b) => a.order - b.order).map((entry, order) => ({ ...entry, order }))
 }

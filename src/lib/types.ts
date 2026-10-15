@@ -1,11 +1,11 @@
 import type * as z from 'zod/mini'
 import type { HeaderPairSchema } from './schema-fields.ts'
-import type { HeaderEntrySchema, HeaderRuleSchema, HeaderSwitcherSchema, RuleDraftSchema, SwitcherDraftSchema, SwitcherOptionSchema } from './header-schemas.ts'
+import type { RequestHeaderRuleSchema, HeaderRuleSchema, SwitchRuleSchema, HeaderRuleDraftSchema, SwitchRuleDraftSchema, SwitchRuleOptionSchema } from './request-header-schemas.ts'
 
 export type HeaderPair = z.infer<typeof HeaderPairSchema>
 export type HeaderRule = z.infer<typeof HeaderRuleSchema>
-export type HeaderSwitcher = z.infer<typeof HeaderSwitcherSchema>
-export type SwitcherOption = z.infer<typeof SwitcherOptionSchema>
-export type HeaderEntry = z.infer<typeof HeaderEntrySchema>
-export type RuleDraft = z.infer<typeof RuleDraftSchema>
-export type SwitcherDraft = z.infer<typeof SwitcherDraftSchema>
+export type SwitchRule = z.infer<typeof SwitchRuleSchema>
+export type SwitchRuleOption = z.infer<typeof SwitchRuleOptionSchema>
+export type RequestHeaderRule = z.infer<typeof RequestHeaderRuleSchema>
+export type HeaderRuleDraft = z.infer<typeof HeaderRuleDraftSchema>
+export type SwitchRuleDraft = z.infer<typeof SwitchRuleDraftSchema>
