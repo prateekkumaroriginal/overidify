@@ -4,7 +4,7 @@ Chrome extension for overriding request headers with rules and named switchers, 
 
 ## Install
 
-[Download Overidify v0.1.0](https://github.com/prateekkumaroriginal/overidify/releases/download/v0.1.0/overidify-v0.1.0.zip) or view the [release notes](https://github.com/prateekkumaroriginal/overidify/releases/tag/v0.1.0). No Node.js or pnpm is required.
+[Download Overidify v0.2.0](https://github.com/prateekkumaroriginal/overidify/releases/download/v0.2.0/overidify-v0.2.0.zip) or view the [release notes](https://github.com/prateekkumaroriginal/overidify/releases/tag/v0.2.0). No Node.js or pnpm is required.
 
 1. Extract the ZIP into a permanent folder.
 2. Open `chrome://extensions` and enable **Developer mode**.
