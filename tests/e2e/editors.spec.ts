@@ -3,10 +3,10 @@ import * as z from 'zod/mini'
 import { NetworkOverrideSchema } from '../../src/lib/network-schemas'
 import { HeaderEntrySchema, HeaderSwitcherSchema } from '../../src/lib/header-schemas'
 
-test('Network editor preserves raw body, warnings, headers, toggles and keyboard submission', async ({ extension, override }) => {
+test('Network rule editor preserves raw body, warnings, headers, toggles and keyboard submission', async ({ extension, override }) => {
   const page = extension.settings
   await page.goto(`chrome-extension://${extension.id}/options.html#/network-overrides/new`)
-  await page.getByLabel('Override name', { exact: true }).fill('Featured chats')
+  await page.getByLabel('Network rule name', { exact: true }).fill('Featured chats')
   await page.getByLabel('Website domain', { exact: true }).fill(override.url)
   await page.getByLabel('Request URL', { exact: true }).fill(override.requestUrl)
   const body = '  {broken json\n  '
@@ -16,7 +16,7 @@ test('Network editor preserves raw body, warnings, headers, toggles and keyboard
   await expect(page.getByText('The body is not valid JSON.', { exact: false })).toBeVisible()
   await page.getByRole('button', { name: 'Add header', exact: true }).click()
   await page.getByLabel('Response header 2 name').fill('X-Empty')
-  await page.getByRole('switch', { name: 'Network override enabled' }).click()
+  await page.getByRole('switch', { name: 'Network rule enabled' }).click()
   await page.getByLabel('Response body', { exact: true }).press('Control+Enter')
   await expect(page).toHaveURL(/#\/network-overrides$/)
   const entries = z.array(NetworkOverrideSchema).parse((await page.evaluate(() => chrome.storage.local.get('networkOverrides'))).networkOverrides)
@@ -31,19 +31,19 @@ test('Network editor preserves raw body, warnings, headers, toggles and keyboard
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(page).toHaveURL(/#\/network-overrides$/)
   await page.getByRole('link', { name: /Featured chats/ }).click()
-  await page.getByLabel('Override name', { exact: true }).press('Escape')
+  await page.getByLabel('Network rule name', { exact: true }).press('Escape')
   await expect(page).toHaveURL(/#\/network-overrides$/)
   await page.getByRole('link', { name: /Featured chats/ }).click()
   page.once('dialog', dialog => dialog.accept())
-  await page.getByRole('button', { name: 'Delete override', exact: true }).click()
+  await page.getByRole('button', { name: 'Delete network rule', exact: true }).click()
   await expect(page).toHaveURL(/#\/network-overrides$/)
   expect((await page.evaluate(() => chrome.storage.local.get('networkOverrides'))).networkOverrides).toEqual([])
 })
 
-test('Rule editor keeps header rows stable and preserves Enter and save behavior', async ({ extension }) => {
+test('Header rule editor keeps header rows stable and preserves Enter and save behavior', async ({ extension }) => {
   const page = extension.settings
   await page.goto(`chrome-extension://${extension.id}/options.html#/new`)
-  await page.getByLabel('Rule name', { exact: true }).fill('Authentication')
+  await page.getByLabel('Header rule name', { exact: true }).fill('Authentication')
   await page.getByLabel('Header 1 name').fill('X-First')
   await page.getByLabel('Header 1 value').fill('first')
   await page.getByRole('button', { name: 'Add header', exact: true }).click()
@@ -57,15 +57,15 @@ test('Rule editor keeps header rows stable and preserves Enter and save behavior
   await expect(page.getByRole('alert')).toContainText('Add at least one header pair')
   await page.getByLabel('Header 1 name').fill('Authorization')
   await page.getByLabel('Header 1 value').fill('Bearer test')
-  await page.getByLabel('Rule name', { exact: true }).press('Enter')
+  await page.getByLabel('Header rule name', { exact: true }).press('Enter')
   await expect(page).toHaveURL(/#\/new$/)
-  await page.getByLabel('Rule name', { exact: true }).press('Control+Enter')
+  await page.getByLabel('Header rule name', { exact: true }).press('Control+Enter')
   await expect(page).toHaveURL(/#\/$/)
   const entries = z.array(HeaderEntrySchema).parse((await page.evaluate(() => chrome.storage.local.get('headerRules'))).headerRules)
   expect(entries[0]).toMatchObject({ kind: 'rule', name: 'Authentication', headers: [{ key: 'Authorization', value: 'Bearer test' }] })
 })
 
-test('Switcher editor retains option identity, inactive fields, selection, validation and undo', async ({ extension }) => {
+test('Switch rule editor retains option identity, inactive fields, selection, validation and undo', async ({ extension }) => {
   const page = extension.settings
   await page.evaluate(() => chrome.storage.local.set({ headerRules: [{
     id: 'switcher', kind: 'switcher', name: 'Accounts', url: '*', enabled: true, order: 0, selectedOptionId: 'guest',
@@ -116,7 +116,7 @@ test('popup toggles apply live and layouts fit desktop and mobile', async ({ ext
   for (const width of [1280, 360]) {
     await page.setViewportSize({ width, height: 900 })
     await page.goto(`chrome-extension://${extension.id}/options.html#/network-overrides`)
-    await page.getByRole('heading', { name: 'Network Overrides', exact: true }).waitFor()
+    await page.getByRole('heading', { name: 'Network Rules', exact: true }).waitFor()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await page.screenshot({ path: testInfo.outputPath(`list-${width}.png`), fullPage: true, animations: 'disabled' })
     await page.getByRole('link', { name: /Mock response/ }).click()

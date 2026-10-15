@@ -12,4 +12,4 @@ The native Network panel can display the original response in call-server mode. 
 
 Install interceptors in the page's main execution world and use an isolated extension bridge for settings. Preserve the accepted body, status, complete-header replacement, failure, priority, matching, and in-flight snapshot behavior. Requestly's implementation is a reference for the mechanism, not a source of product defaults.
 
-Verify page and iframe behavior in the installed extension, including DevTools coexistence. Explain Network panel behavior briefly in the Network Overrides editor.
+Verify page and iframe behavior in the installed extension, including DevTools coexistence. Explain Network panel behavior briefly in the Network Rules editor.

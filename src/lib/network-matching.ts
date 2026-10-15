@@ -1,4 +1,4 @@
-import type { NetworkOverride } from './network-overrides.ts'
+import type { NetworkOverride } from './network-rules.ts'
 
 // Include repeated query keys while ignoring their order and URL fragments.
 export function requestUrlKey(input: string, base?: string): string | null {

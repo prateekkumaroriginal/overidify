@@ -1,5 +1,5 @@
 import { installNetworkInterceptors } from './interceptor'
-import { normalizeNetworkOverrides } from '../lib/network-overrides'
+import { normalizeNetworkOverrides } from '../lib/network-rules'
 import { NetworkBridgeMessageSchema } from '../lib/settings-messages'
 
 const page = window as Window & typeof globalThis & { __overidifyNetwork?: boolean }

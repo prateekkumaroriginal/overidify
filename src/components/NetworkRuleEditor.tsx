@@ -6,8 +6,8 @@ import { NativeSelect } from './ui/native-select'
 import { Icon } from './Icon'
 import { ToggleSwitch } from './ToggleSwitch'
 import { useEditorForm } from './useEditorForm'
-import { createNetworkOverrideDraft, jsonBodyWarning, NETWORK_METHODS } from '../lib/network-overrides'
-import type { NetworkOverride, NetworkOverrideDraft } from '../lib/network-overrides'
+import { createNetworkOverrideDraft, jsonBodyWarning, NETWORK_METHODS } from '../lib/network-rules'
+import type { NetworkOverride, NetworkOverrideDraft } from '../lib/network-rules'
 
 type Props = {
   override?: NetworkOverride
@@ -18,7 +18,7 @@ type Props = {
 const fieldClass = 'grid min-w-0 content-start gap-2 text-[11px] font-semibold'
 const panelClass = 'mb-5 rounded-lg border bg-card shadow-panel px-7 py-6 mobile:px-[17px]'
 
-export function NetworkOverrideEditor({ override, pending, onSave, onDelete }: Props) {
+export function NetworkRuleEditor({ override, pending, onSave, onDelete }: Props) {
   const { form, formRef, onSubmit, busy, error } = useEditorForm({
     schema: NetworkOverrideDraftSchema, initial: () => override
       ? { ...override, headers: override.headers.map(header => ({ ...header })) }
@@ -32,25 +32,25 @@ export function NetworkOverrideEditor({ override, pending, onSave, onDelete }: P
 
   return (
     <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="network-editor-title">
-      <a className="inline-flex items-center gap-2 text-[11px] text-muted-foreground no-underline hover:text-primary [&_svg]:w-[15px]" href="#/network-overrides"><Icon name="back" /> Back to network overrides</a>
-      <h1 id="network-editor-title" className="mt-7 mb-7 text-xl font-semibold">{override ? 'Edit network override' : 'New network override'}</h1>
+      <a className="inline-flex items-center gap-2 text-[11px] text-muted-foreground no-underline hover:text-primary [&_svg]:w-[15px]" href="#/network-overrides"><Icon name="back" /> Back to network rules</a>
+      <h1 id="network-editor-title" className="mt-7 mb-7 text-xl font-semibold">{override ? 'Edit network rule' : 'New network rule'}</h1>
       <form ref={formRef} onSubmit={onSubmit}>
         <fieldset disabled={busy} className="m-0 min-w-0 border-0 p-0">
           <div className={panelClass}>
             <h2 className="mb-5 text-[13px] font-bold">Request matching</h2>
             <div className="grid grid-cols-2 gap-5 mobile:grid-cols-1">
-              <label className={fieldClass}>Override name<Input {...form.register('name')} placeholder="e.g. Featured chats" required autoFocus /></label>
+              <label className={fieldClass}>Network rule name<Input {...form.register('name')} placeholder="e.g. Featured chats" required autoFocus /></label>
               <label className={fieldClass}>Website domain<Input {...form.register('url')} placeholder="e.g. localhost:4200" required aria-describedby="network-domain-help" /></label>
             </div>
-            <p id="network-domain-help" className="mt-3 text-[11px] text-muted-foreground">Matches the page domain on every path, just like Rules and Switchers. Requests from its frames use the same website scope.</p>
+            <p id="network-domain-help" className="mt-3 text-[11px] text-muted-foreground">Matches the page domain on every path, just like Header Rules and Switch Rules. Requests from its frames use the same website scope.</p>
             <div className="mt-5 grid grid-cols-[minmax(0,1fr)_auto] gap-4 mobile:grid-cols-1">
               <label className={fieldClass}>Request URL<Input className="font-mono text-[11px]" {...form.register('requestUrl')} placeholder="https://api.example.com/chats?tab=featured" required aria-describedby="network-target-help" /></label>
               <label className={fieldClass}>HTTP method<NativeSelect className="py-[11px]" {...form.register('method')}>{NETWORK_METHODS.map(method => <option key={method} value={method}>{method === 'ANY' ? 'Any' : method}</option>)}</NativeSelect></label>
             </div>
             <p id="network-target-help" className="mt-3 text-[11px] text-muted-foreground">The full API URL must match. Query parameter order is ignored; parameter names and values must be the same.</p>
             <label className={`${fieldClass} mt-5`}>Server behavior<NativeSelect className="py-[11px]" {...form.register('mode')}><option value="bypass">Bypass server</option><option value="call-server">Call server, then replace response</option></NativeSelect></label>
-            <p className="mt-3 text-[11px] text-muted-foreground">{mode === 'bypass' ? 'Return the mock without making the target API call.' : 'Make the real call with your Rules and Switchers headers, then return the mock once response headers arrive. Failures before headers stay failures. Synchronous XHR waits for native completion and preserves native failures.'}</p>
-            <div className="mt-5 flex items-center justify-between border-t pt-4"><span className="text-[11px] font-semibold">Enabled</span><Controller control={form.control} name="enabled" render={({ field }) => <ToggleSwitch checked={field.value} label="Network override enabled" onChange={field.onChange} />} /></div>
+            <p className="mt-3 text-[11px] text-muted-foreground">{mode === 'bypass' ? 'Return the mock without making the target API call.' : 'Make the real call with your Header Rules and Switch Rules headers, then return the mock once response headers arrive. Failures before headers stay failures. Synchronous XHR waits for native completion and preserves native failures.'}</p>
+            <div className="mt-5 flex items-center justify-between border-t pt-4"><span className="text-[11px] font-semibold">Enabled</span><Controller control={form.control} name="enabled" render={({ field }) => <ToggleSwitch checked={field.value} label="Network rule enabled" onChange={field.onChange} />} /></div>
           </div>
           <div className={panelClass}>
             <div className="mb-5 flex flex-wrap items-center justify-between gap-4"><h2 className="text-[13px] font-bold">Mock response</h2><label className="flex items-center gap-3 text-[11px] font-semibold">Status code<Input className="w-24 font-mono" type="number" min={200} max={599} step={1} required {...form.register('status', { valueAsNumber: true })} /></label></div>
@@ -67,7 +67,7 @@ export function NetworkOverrideEditor({ override, pending, onSave, onDelete }: P
           </div>
           <p className="mb-5 text-[11px] text-muted-foreground">The page receives your mock while DevTools stays usable. Chrome's Network panel may show the original response; bypassed calls do not reach the server.</p>
           {error && <p className="mb-5 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-xs text-destructive" role="alert">{error}</p>}
-          <div className="mt-6 mb-10 flex items-center gap-5">{onDelete && <Button variant="ghost" type="button" className="px-0 text-[11px] text-muted-foreground hover:text-destructive" onClick={onDelete}>Delete override</Button>}<a className="ml-auto text-[11px] text-muted-foreground no-underline" href="#/network-overrides">Cancel</a><Button type="submit">Save</Button></div>
+          <div className="mt-6 mb-10 flex items-center gap-5">{onDelete && <Button variant="ghost" type="button" className="px-0 text-[11px] text-muted-foreground hover:text-destructive" onClick={onDelete}>Delete network rule</Button>}<a className="ml-auto text-[11px] text-muted-foreground no-underline" href="#/network-overrides">Cancel</a><Button type="submit">Save</Button></div>
         </fieldset>
       </form>
     </section>

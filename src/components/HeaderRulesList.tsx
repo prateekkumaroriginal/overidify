@@ -1,7 +1,7 @@
 import type { HeaderRule } from '../lib/types'
 import { ToggleSwitch } from './ToggleSwitch'
 
-type RulesListProps = {
+type HeaderRulesListProps = {
   rules: HeaderRule[]
   ruleHref: (rule: HeaderRule) => string
   onToggle: (rule: HeaderRule, enabled: boolean) => void
@@ -9,13 +9,13 @@ type RulesListProps = {
   openInTab?: boolean
 }
 
-export function RulesList({
+export function HeaderRulesList({
   rules,
   ruleHref,
   onToggle,
   disabled,
   openInTab,
-}: RulesListProps) {
+}: HeaderRulesListProps) {
   return (
     <ul className="m-0 list-none p-0">
       {rules.map((rule, index) => (

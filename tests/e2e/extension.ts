@@ -5,8 +5,8 @@ import type { IncomingHttpHeaders } from 'node:http'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { createNetworkOverrideDraft } from '../../src/lib/network-overrides.ts'
-import type { NetworkOverride } from '../../src/lib/network-overrides.ts'
+import { createNetworkOverrideDraft } from '../../src/lib/network-rules.ts'
+import type { NetworkOverride } from '../../src/lib/network-rules.ts'
 
 type Server = { origin: string; hits: { url: string; headers: IncomingHttpHeaders; method: string }[] }
 type Extension = { context: BrowserContext; settings: Page; id: string; profile: string }

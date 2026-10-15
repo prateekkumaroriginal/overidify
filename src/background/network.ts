@@ -1,5 +1,5 @@
 import { getNetworkOverrides, NETWORK_STORAGE_KEY } from '../lib/network-storage'
-import { networkOverridesForPage, normalizeNetworkOverrides } from '../lib/network-overrides'
+import { networkOverridesForPage, normalizeNetworkOverrides } from '../lib/network-rules'
 import { matchesPageDomain } from '../lib/pattern'
 import { NetworkActiveTabsSchema, NetworkBridgeFramesSchema, NetworkAppliedSchema, NetworkRuntimeMessageSchema } from '../lib/settings-messages'
 

@@ -1,5 +1,7 @@
 # Network Overrides validation
 
+Feature names are now Header Rule, Switch Rule, and Network Rule. This historical record uses their former names, Rule, Switcher, and Network Override.
+
 Verified on 2026-10-15 against the production build in `dist/`.
 
 ## Automated checks

@@ -1,8 +1,8 @@
 import type { HeaderSwitcher } from '../lib/types'
-import { SwitcherOptionSelect } from './SwitcherOptionSelect'
+import { SwitchRuleOptionSelect } from './SwitchRuleOptionSelect'
 import { ToggleSwitch } from './ToggleSwitch'
 
-type SwitchersListProps = {
+type SwitchRulesListProps = {
   switchers: HeaderSwitcher[]
   switcherHref: (rule: HeaderSwitcher) => string
   onToggle: (rule: HeaderSwitcher, enabled: boolean) => void
@@ -10,7 +10,7 @@ type SwitchersListProps = {
   disabled?: boolean
 }
 
-export function SwitchersList({ switchers, switcherHref, onToggle, onSelectOption, disabled }: SwitchersListProps) {
+export function SwitchRulesList({ switchers, switcherHref, onToggle, onSelectOption, disabled }: SwitchRulesListProps) {
   return (
     <ul className="m-0 list-none p-0">
       {switchers.map((rule, index) => {
@@ -34,7 +34,7 @@ export function SwitchersList({ switchers, switcherHref, onToggle, onSelectOptio
                 <span className="text-xs font-semibold wrap-anywhere mobile:text-[11px]">{rule.name}</span>
                 <span className="font-mono text-[11px] text-muted-foreground wrap-anywhere">{rule.url}</span>
               </a>
-              <SwitcherOptionSelect
+              <SwitchRuleOptionSelect
                 switcher={rule}
                 disabled={disabled}
                 onChange={(optionId) => onSelectOption(rule, optionId)}

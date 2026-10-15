@@ -1,7 +1,7 @@
-import type { NetworkOverride } from '../lib/network-overrides'
+import type { NetworkOverride } from '../lib/network-rules'
 import { ToggleSwitch } from './ToggleSwitch'
 
-export function NetworkOverridesList({ overrides, disabled, onToggle }: {
+export function NetworkRulesList({ overrides, disabled, onToggle }: {
   overrides: NetworkOverride[]
   disabled: boolean
   onToggle: (override: NetworkOverride, enabled: boolean) => void

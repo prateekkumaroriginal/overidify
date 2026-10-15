@@ -1,5 +1,7 @@
 # Network Overrides design interview
 
+Feature names are now Header Rule, Switch Rule, and Network Rule. This historical record uses their former names, Rule, Switcher, and Network Override.
+
 Status: interview complete. After checking Requestly and clarifying its Network panel limitation, the user accepted extension-only page interception. Implementation can proceed.
 
 Run the interview in rounds with at most eight questions each. Give each question an answer field, a Recommended button, and an Explain button. Include option buttons only for multiple-choice questions. A recommendation becomes a decision only after the user sends their answers in chat.
@@ -8,7 +10,7 @@ Submit copies all questions and answers for the current round. The user pastes t
 
 ## Confirmed decisions
 
-- Add a separate tab named Network Overrides. See [ADR 0001](adr/0001-network-overrides-tab.md).
+- Add a separate tab named Network Overrides. See [ADR 0001](adr/0001-network-rules-tab.md).
 - Rules and Switchers must retain identical URL matching logic, as required by the root AGENTS.md.
 - First version scope and response controls are accepted in [ADR 0002](adr/0002-mock-response-scope.md).
 - Website scope, query comparison, and server mode behavior are accepted in [ADR 0003](adr/0003-matching-and-server-modes.md).
@@ -72,7 +74,7 @@ Completed. The user's submitted answers are:
 
 Resolve browser constraints and observable interception failures through implementation research. Use existing local persistence for saved configuration, including enabled state, unless the user changes that convention. Existing storage and list conventions should guide routine choices without asking questions already answered by the repository. The [feature specification](spec.md) consolidates the accepted behavior.
 
-The [interception feasibility review](../research/network-overrides-interception.md) includes the bounded direct-CDP test and the limits of extension-only approaches. Page-level wrapping does not satisfy the accepted native Network requirement. The tested direct-CDP setup was rejected in Round 6 because of friction.
+The [interception feasibility review](../research/network-rules-interception.md) includes the bounded direct-CDP test and the limits of extension-only approaches. Page-level wrapping does not satisfy the accepted native Network requirement. The tested direct-CDP setup was rejected in Round 6 because of friction.
 
 ## Round 5: DevTools response visibility
 
