@@ -1,12 +1,12 @@
 const preference = window.matchMedia('(prefers-color-scheme: dark)')
 const theme = () => preference.matches ? 'dark' : 'light'
-let reported = theme()
+// Only a successful worker acknowledgement confirms a theme was applied.
+let reported: ReturnType<typeof theme> | undefined
 let reporting: Promise<void> | undefined
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type !== 'read-icon-theme' || sender.id !== chrome.runtime.id || sender.tab) return
-  reported = theme()
-  sendResponse({ theme: reported })
+  sendResponse({ theme: theme() })
 })
 
 function reportChange(): void {
