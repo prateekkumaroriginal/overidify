@@ -23,7 +23,7 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" vi
 const browser = await chromium.launch({ headless: true })
 try {
   const page = await browser.newPage()
-  const rendered = await page.evaluate(async svg => {
+  const fallback = await page.evaluate(async svg => {
     const image = new Image()
     image.src = `data:image/svg+xml;base64,${btoa(svg)}`
     await image.decode()
@@ -33,19 +33,46 @@ try {
     return canvas.toDataURL('image/png')
   }, svg)
 
-  for (const size of [16, 32, 48, 128]) {
-    const png = await page.evaluate(async ({ rendered, size }) => {
-      const image = new Image()
-      image.src = rendered
-      await image.decode()
-      const canvas = document.createElement('canvas')
-      canvas.width = canvas.height = size
-      const context = canvas.getContext('2d')
-      context.imageSmoothingQuality = 'high'
-      context.drawImage(image, 0, 0, size, size)
-      return canvas.toDataURL('image/png').split(',')[1]
-    }, { rendered, size })
-    await writeFile(new URL(`icon-${size}.png`, icons), Buffer.from(png, 'base64'))
+  const light = `data:image/png;base64,${source.toString('base64')}`
+  const dark = await page.evaluate(async light => {
+    const image = new Image()
+    image.src = light
+    await image.decode()
+    const canvas = document.createElement('canvas')
+    canvas.width = canvas.height = 128
+    const context = canvas.getContext('2d')
+    context.drawImage(image, 0, 0)
+    const pixels = context.getImageData(0, 0, 128, 128)
+    for (let i = 0; i < pixels.data.length; i += 4) {
+      if (!pixels.data[i + 3]) continue
+      const channels = [...pixels.data.slice(i, i + 3)]
+      const maximum = Math.max(...channels)
+      // Only the neutral charcoal body changes; violet and alpha stay intact.
+      if (maximum - Math.min(...channels) <= maximum * 0.3) {
+        pixels.data[i] = pixels.data[i + 1] = pixels.data[i + 2] = 240
+      }
+    }
+    context.putImageData(pixels, 0, 0)
+    return canvas.toDataURL('image/png')
+  }, light)
+
+  for (const [theme, rendered] of Object.entries({ fallback, light, dark })) {
+    const directory = theme === 'fallback' ? icons : new URL(`${theme}/`, icons)
+    await mkdir(directory, { recursive: true })
+    for (const size of [16, 32, 48, 128]) {
+      const png = await page.evaluate(async ({ rendered, size }) => {
+        const image = new Image()
+        image.src = rendered
+        await image.decode()
+        const canvas = document.createElement('canvas')
+        canvas.width = canvas.height = size
+        const context = canvas.getContext('2d')
+        context.imageSmoothingQuality = 'high'
+        context.drawImage(image, 0, 0, size, size)
+        return canvas.toDataURL('image/png').split(',')[1]
+      }, { rendered, size })
+      await writeFile(new URL(`icon-${size}.png`, directory), Buffer.from(png, 'base64'))
+    }
   }
 } finally {
   await browser.close()

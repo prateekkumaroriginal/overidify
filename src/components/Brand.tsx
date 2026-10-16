@@ -1,7 +1,12 @@
-import logo from '../../icons/icon-128.png'
+import { iconAssets } from '../lib/icon-assets'
 
 export function BrandIcon({ size = 32 }: { size?: 24 | 32 }) {
-  return <img src={logo} width={size} height={size} className="shrink-0" alt="" />
+  return (
+    <span className="inline-flex shrink-0">
+      <img src={iconAssets.light[128]} width={size} height={size} className="dark:hidden" alt="" />
+      <img src={iconAssets.dark[128]} width={size} height={size} className="hidden dark:block" alt="" />
+    </span>
+  )
 }
 
 export function Brand({ href = '#/header-rules' }: { href?: string }) {
