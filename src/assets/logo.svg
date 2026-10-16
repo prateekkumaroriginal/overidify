@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <title>Overidify logo</title>
+  <defs>
+    <!-- The insert's dimensions and rotation define the violet diamond. -->
+    <rect id="violet-shape" x="67.372583" y="41.372583" width="45.254834" height="45.254834" rx="4" transform="rotate(45 90 64)" />
+    <mask id="body-cutout" maskUnits="userSpaceOnUse" x="0" y="0" width="128" height="128">
+      <rect width="128" height="128" fill="white" />
+      <!-- The 18px stroke cuts a uniform 9px transparent gap around the insert. -->
+      <use href="#violet-shape" fill="black" stroke="black" stroke-width="18" stroke-linejoin="round" />
+    </mask>
+  </defs>
+  <g mask="url(#body-cutout)">
+    <rect data-body="" x="22.2807" y="22.2807" width="83.4386" height="83.4386" rx="8" transform="rotate(45 64 64)" fill="#131315" />
+  </g>
+  <use href="#violet-shape" fill="#5f3afc" />
+</svg>
