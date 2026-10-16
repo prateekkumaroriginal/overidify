@@ -1,4 +1,4 @@
-import logo from '../../icons/icon-128.png'
+import logo from '../assets/logo.png'
 
 export function BrandIcon({ size = 32 }: { size?: 24 | 32 }) {
   return <img src={logo} width={size} height={size} className="shrink-0 invert hue-rotate-180" alt="" />
