@@ -5,34 +5,24 @@ const source = await readFile(new URL('../src/assets/logo.png', import.meta.url)
 const icons = new URL('../icons/', import.meta.url)
 await mkdir(icons, { recursive: true })
 
-// An inner keyline preserves the transparent silhouette and gap between the
-// pieces while making the charcoal mark visible on dark browser toolbars.
-const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+// Chrome's management card uses a static manifest icon. A filled light mark
+// with a thin dark inner edge stays visible on light and dark backgrounds.
+const svg = artwork => `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
   <defs>
     <filter id="keyline" color-interpolation-filters="sRGB">
-      <feMorphology in="SourceAlpha" operator="erode" radius="4" result="inset" />
+      <feMorphology in="SourceAlpha" operator="erode" radius="2" result="inset" />
       <feComposite in="SourceAlpha" in2="inset" operator="out" result="edge" />
-      <feFlood flood-color="#d9d9de" result="ink" />
+      <feFlood flood-color="#343438" result="ink" />
       <feComposite in="ink" in2="edge" operator="in" result="keyline" />
       <feMerge><feMergeNode in="SourceGraphic" /><feMergeNode in="keyline" /></feMerge>
     </filter>
   </defs>
-  <image width="128" height="128" href="data:image/png;base64,${source.toString('base64')}" filter="url(#keyline)" />
+  <image width="128" height="128" href="${artwork}" filter="url(#keyline)" />
 </svg>`
 
 const browser = await chromium.launch({ headless: true })
 try {
   const page = await browser.newPage()
-  const fallback = await page.evaluate(async svg => {
-    const image = new Image()
-    image.src = `data:image/svg+xml;base64,${btoa(svg)}`
-    await image.decode()
-    const canvas = document.createElement('canvas')
-    canvas.width = canvas.height = 128
-    canvas.getContext('2d').drawImage(image, 0, 0)
-    return canvas.toDataURL('image/png')
-  }, svg)
-
   const light = `data:image/png;base64,${source.toString('base64')}`
   const dark = await page.evaluate(async light => {
     const image = new Image()
@@ -55,6 +45,16 @@ try {
     context.putImageData(pixels, 0, 0)
     return canvas.toDataURL('image/png')
   }, light)
+
+  const fallback = await page.evaluate(async svg => {
+    const image = new Image()
+    image.src = `data:image/svg+xml;base64,${btoa(svg)}`
+    await image.decode()
+    const canvas = document.createElement('canvas')
+    canvas.width = canvas.height = 128
+    canvas.getContext('2d').drawImage(image, 0, 0)
+    return canvas.toDataURL('image/png')
+  }, svg(dark))
 
   for (const [theme, rendered] of Object.entries({ fallback, light, dark })) {
     const directory = theme === 'fallback' ? icons : new URL(`${theme}/`, icons)
