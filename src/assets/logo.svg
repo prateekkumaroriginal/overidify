@@ -4,12 +4,13 @@
        The diagonal faces retain 9px clearance from the violet insert. -->
   <path data-body="" fill="#131315" d="
     M 69.656854 10.656854
-    L 83.842025 24.842025 A 4 4 0 0 1 83.842025 30.49888
-    L 59.533293 54.807612 A 13 13 0 0 0 59.533293 73.192388
-    L 83.842025 97.50112 A 4 4 0 0 1 83.842025 103.157975
+    L 85.965096 26.965096 A 4 4 0 0 1 85.965096 32.62195
+    L 63.779434 54.807612 A 13 13 0 0 0 63.779434 73.192388
+    L 85.965096 95.37805 A 4 4 0 0 1 85.965096 101.034904
     L 69.656854 117.343146 A 8 8 0 0 1 58.343146 117.343146
     L 10.656854 69.656854 A 8 8 0 0 1 10.656854 58.343146
     L 58.343146 10.656854 A 8 8 0 0 1 69.656854 10.656854 Z" />
-  <!-- Violet occupies 25% of the combined filled area, excluding transparency. -->
-  <rect id="violet-shape" x="70.956785" y="44.956785" width="38.08643" height="38.08643" rx="4" transform="rotate(45 90 64)" fill="#5f3afc" />
+  <!-- Violet occupies 25% of the filled area. Its outer diagonals align with
+       the main diamond's edges, meeting at the virtual right tip (123, 64). -->
+  <rect id="violet-shape" x="75.469852" y="44.312368" width="39.375264" height="39.375264" rx="4" transform="rotate(45 95.157484 64)" fill="#5f3afc" />
 </svg>
