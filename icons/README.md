@@ -1,4 +1,4 @@
-The source artwork is `src/assets/logo.png`. It is the input to the icon generator.
+The source artwork is `src/assets/logo.png`. It is the input to the icon generator. The larger violet insert sits deeper in the main diamond, separated by a wider transparent gap. Its fill is `#5f3afc` in both light and dark variants; only the neutral body changes color.
 
 `light/` contains the charcoal-and-violet mark for light backgrounds. `dark/` changes only the neutral charcoal body to light ink, preserving the violet insert and transparent silhouette. The options and popup select these assets using the page's `.dark` theme class. Both pages currently use a dark theme. The favicons and root README select the same variants using `prefers-color-scheme`.
 
