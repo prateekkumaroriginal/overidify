@@ -59,6 +59,7 @@ test('page logos select transparent light and dark artwork without recoloring vi
     }
     expect(Math.max(...samples[0].body.slice(0, 3))).toBeLessThan(40)
     expect(samples[1].body).toEqual([240, 240, 240, 255])
+    expect(samples[0].violet).toEqual([95, 58, 252, 255])
     expect(samples[0].violet).toEqual(samples[1].violet)
     await page.close()
   }
