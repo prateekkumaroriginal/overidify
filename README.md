@@ -1,4 +1,7 @@
-<img src="icons/icon-128.png" width="64" height="64" alt="" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="icons/dark/icon-128.png" />
+  <img src="icons/light/icon-128.png" width="64" height="64" alt="" />
+</picture>
 
 # Overidify
 

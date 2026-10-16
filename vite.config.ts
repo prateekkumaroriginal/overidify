@@ -36,6 +36,9 @@ function networkPageBundle(): CrxPlugin {
 }
 
 export default defineConfig({
+  build: {
+    rollupOptions: { input: { offscreen: fileURLToPath(new URL('./offscreen.html', import.meta.url)) } },
+  },
   plugins: [react(), tailwindcss(), crx({ manifest }), networkPageBundle()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
