@@ -1,16 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
   <title>Overidify logo</title>
-  <defs>
-    <!-- The insert's dimensions and rotation define the violet diamond. -->
-    <rect id="violet-shape" x="67.372583" y="41.372583" width="45.254834" height="45.254834" rx="4" transform="rotate(45 90 64)" />
-    <mask id="body-cutout" maskUnits="userSpaceOnUse" x="0" y="0" width="128" height="128">
-      <rect width="128" height="128" fill="white" />
-      <!-- The 18px stroke cuts a uniform 9px transparent gap around the insert. -->
-      <use href="#violet-shape" fill="black" stroke="black" stroke-width="18" stroke-linejoin="round" />
-    </mask>
-  </defs>
-  <g mask="url(#body-cutout)">
-    <rect data-body="" x="22.2807" y="22.2807" width="83.4386" height="83.4386" rx="8" transform="rotate(45 64 64)" fill="#131315" />
-  </g>
-  <use href="#violet-shape" fill="#5f3afc" />
+  <!-- Rounded body: 8px outer corners, 4px tips, and a 13px inner notch.
+       The diagonal faces retain 9px clearance from the violet insert. -->
+  <path data-body="" fill="#131315" d="
+    M 69.656854 10.656854
+    L 83.842025 24.842025 A 4 4 0 0 1 83.842025 30.49888
+    L 59.533293 54.807612 A 13 13 0 0 0 59.533293 73.192388
+    L 83.842025 97.50112 A 4 4 0 0 1 83.842025 103.157975
+    L 69.656854 117.343146 A 8 8 0 0 1 58.343146 117.343146
+    L 10.656854 69.656854 A 8 8 0 0 1 10.656854 58.343146
+    L 58.343146 10.656854 A 8 8 0 0 1 69.656854 10.656854 Z" />
+  <!-- Violet occupies 25% of the combined filled area, excluding transparency. -->
+  <rect id="violet-shape" x="70.956785" y="44.956785" width="38.08643" height="38.08643" rx="4" transform="rotate(45 90 64)" fill="#5f3afc" />
 </svg>
