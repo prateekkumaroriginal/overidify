@@ -5,6 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@11.20.0",
   "scripts": {
+    "icons:generate": "node scripts/generate-icons.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
