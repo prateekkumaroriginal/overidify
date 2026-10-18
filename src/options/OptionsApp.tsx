@@ -2,7 +2,8 @@ import { ArrowRight, Plus, Search, X } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { startTransition, useEffect, useState } from 'react'
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { startTransition, useEffect, useState, type ReactNode } from 'react'
 
 import { Brand } from '../components/Brand'
 import { Icon } from '../components/Icon'
@@ -18,6 +19,7 @@ import { getNetworkRules, updateNetworkRules, subscribeToNetworkRules } from '..
 import { createRuleId, getEntryHeaders, sanitizeHeaders } from '../lib/request-header-rules'
 import { getRequestHeaderRules, updateRequestHeaderRules, subscribeToRequestHeaderRules } from '../lib/request-header-storage'
 import type { RequestHeaderRule, HeaderRule, SwitchRule, HeaderRuleDraft, SwitchRuleDraft } from '../lib/types'
+import { cn } from '../lib/utils'
 
 function readRoute() {
   return window.location.hash.slice(1) || '/header-rules'
@@ -192,21 +194,21 @@ export function OptionsApp() {
 
   const selected = entries.find((entry) => route === entryRoute(entry))
   const selectedNetworkRule = networkRules.find(entry => route === `/network-rules/${encodeURIComponent(entry.id)}`)
-  const isHome = route === '/header-rules' || route === '/switch-rules' || route === '/network-rules'
+  const isHome = route === '/all' || route === '/header-rules' || route === '/switch-rules' || route === '/network-rules'
 
   return (
     <div className="mx-auto max-w-[1240px] px-16 min-[1440px]:max-w-[1280px] min-[1440px]:px-[90px] tablet:px-9 mobile:px-5">
       <header className="flex h-[78px] items-center justify-between gap-5 border-b tablet:h-[72px]"><Brand /></header>
       <main className="pt-[34px] pb-[50px] min-[1440px]:pt-10 tablet:pt-10 mobile:pt-[31px]">
         {error && <p className="mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 border-destructive/40 bg-destructive/10 text-destructive" role="alert">{error}</p>}
-        {networkNotice && route === '/network-rules' && <p className="mb-5 text-xs text-muted-foreground" role="status">{networkNotice}</p>}
+        {networkNotice && (route === '/all' || route === '/network-rules') && <p className="mb-5 text-xs text-muted-foreground" role="status">{networkNotice}</p>}
         {loading ? (
           <div className="flex min-h-[300px] items-center justify-center gap-2.5 text-xs text-muted-foreground" role="status"><span className="size-[7px] animate-loading-pulse rounded-full bg-primary" /> Loading...</div>
         ) : loadFailed ? null : isHome ? (
           <Workspace
             entries={entries}
             networkRules={networkRules}
-            view={route === '/network-rules' ? 'network-rule' : route === '/switch-rules' ? 'switch-rule' : 'header-rule'}
+            view={route === '/all' ? 'all' : route === '/network-rules' ? 'network-rule' : route === '/switch-rules' ? 'switch-rule' : 'header-rule'}
             pending={pending}
             onToggle={(entry, enabled) => { void handleToggle(entry, enabled) }}
             onSelectOption={(switchRule, optionId) => { void handleSelectOption(switchRule, optionId) }}
@@ -243,7 +245,7 @@ export function OptionsApp() {
 type WorkspaceProps = {
   entries: RequestHeaderRule[]
   networkRules: NetworkRule[]
-  view: RequestHeaderRule['kind'] | 'network-rule'
+  view: 'all' | RequestHeaderRule['kind'] | 'network-rule'
   pending: boolean
   onToggle: (entry: RequestHeaderRule, enabled: boolean) => void
   onSelectOption: (switchRule: SwitchRule, optionId: string) => void
@@ -251,16 +253,17 @@ type WorkspaceProps = {
 }
 
 function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOption, onToggleNetworkRule }: WorkspaceProps) {
-  const [queries, setQueries] = useState({ 'header-rule': '', 'switch-rule': '', 'network-rule': '' })
+  const [queries, setQueries] = useState({ all: '', 'header-rule': '', 'switch-rule': '', 'network-rule': '' })
   const query = queries[view]
+  const isAll = view === 'all'
   const isSwitchRules = view === 'switch-rule'
   const isNetwork = view === 'network-rule'
-  const noun = isNetwork ? 'network rule' : isSwitchRules ? 'switch rule' : 'header rule'
+  const noun = isAll ? 'rule' : isNetwork ? 'network rule' : isSwitchRules ? 'switch rule' : 'header rule'
   const plural = `${noun}s`
-  const title = isNetwork ? 'Network Rules' : isSwitchRules ? 'Switch Rules' : 'Header Rules'
+  const title = isAll ? 'All Rules' : isNetwork ? 'Network Rules' : isSwitchRules ? 'Switch Rules' : 'Header Rules'
   const newTitle = isNetwork ? 'New Network Rule' : isSwitchRules ? 'New Switch Rule' : 'New Header Rule'
   const newRoute = isNetwork ? '#/network-rules/new' : isSwitchRules ? '#/switch-rules/new' : '#/header-rules/new'
-  const group = entries.filter((entry) => entry.kind === view)
+  const group = entries.filter((entry) => isAll || entry.kind === view)
   const visible = group.filter((entry) => {
     const term = query.trim().toLowerCase()
     const options = entry.kind === 'switch-rule'
@@ -269,21 +272,34 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
     return !term || `${entry.name} ${entry.url} ${options}`.toLowerCase().includes(term)
   })
   const visibleNetworkRules = networkRules.filter(entry => !query.trim() || `${entry.name} ${entry.url} ${entry.requestUrl} ${entry.method}`.toLowerCase().includes(query.trim().toLowerCase()))
-  const groupCount = isNetwork ? networkRules.length : group.length
-  const visibleCount = isNetwork ? visibleNetworkRules.length : visible.length
+  const groupCount = isAll ? entries.length + networkRules.length : isNetwork ? networkRules.length : group.length
+  const visibleCount = isAll ? visible.length + visibleNetworkRules.length : isNetwork ? visibleNetworkRules.length : visible.length
+  const visibleHeaderRules: HeaderRule[] = []
+  const visibleSwitchRules: SwitchRule[] = []
+  for (const entry of visible) {
+    if (entry.kind === 'switch-rule') visibleSwitchRules.push(entry)
+    else visibleHeaderRules.push(entry)
+  }
+
+  const createActions = isAll ? (
+    <NewRuleButton />
+  ) : (
+    <Button asChild className="mobile:px-3 mobile:text-xs mobile:shrink-0 mobile:whitespace-nowrap"><a href={newRoute}><Icon icon={Plus} /> {newTitle}</a></Button>
+  )
 
 
   return (
-    <Tabs value={view} onValueChange={(value) => { window.location.hash = value === 'network-rule' ? '/network-rules' : value === 'switch-rule' ? '/switch-rules' : '/header-rules' }} className="animate-[rise-in_550ms_80ms_both] gap-0">
+    <Tabs value={view} onValueChange={(value) => { window.location.hash = value === 'all' ? '/all' : value === 'network-rule' ? '/network-rules' : value === 'switch-rule' ? '/switch-rules' : '/header-rules' }} className="animate-[rise-in_550ms_80ms_both] gap-0">
       <TabsList aria-label="Rule settings" className="mb-6 max-w-full [&_button]:mobile:px-2">
+        <TabsTrigger value="all">All</TabsTrigger>
         <TabsTrigger value="header-rule">Header Rules</TabsTrigger>
         <TabsTrigger value="switch-rule">Switch Rules</TabsTrigger>
         <TabsTrigger value="network-rule">Network Rules</TabsTrigger>
       </TabsList>
       <TabsContent value={view}>
-        <div className={`mb-5 flex items-center justify-between gap-5 mobile:gap-3 [&_h1]:text-xl [&_h1]:font-semibold [&_h1]:flex [&_h1]:items-center [&_h1]:gap-2.5 mobile:[&_h1]:gap-2 mobile:[&_h1]:whitespace-nowrap ${isNetwork ? 'mobile:flex-wrap' : ''}`}>
+        <div className={cn('mb-5 flex items-center justify-between gap-5 mobile:gap-3 [&_h1]:text-xl [&_h1]:font-semibold [&_h1]:flex [&_h1]:items-center [&_h1]:gap-2.5 mobile:[&_h1]:gap-2 mobile:[&_h1]:whitespace-nowrap', isNetwork && 'mobile:flex-wrap')}>
           <h1>{title}</h1>
-          <Button asChild className="mobile:px-3 mobile:text-xs mobile:shrink-0 mobile:whitespace-nowrap"><a href={newRoute}><Icon icon={Plus} /> {newTitle}</a></Button>
+          {createActions}
         </div>
         <div className="overflow-hidden rounded-lg border bg-card shadow-panel">
           <div className="flex min-h-[66px] items-center gap-5 border-b px-6 py-[17px] mobile:px-[15px] mobile:py-3.5 mobile:flex-col mobile:items-stretch mobile:gap-2.5">
@@ -296,17 +312,29 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
           {!groupCount ? (
             <div className="flex flex-col items-center px-5 pt-[45px] pb-11 text-center mobile:px-4 mobile:py-[33px] [&_h3]:mt-[11px] [&_h3]:text-base [&_h3]:font-semibold [&_h3]:tracking-[-0.3px]">
               <h3>No {plural} yet</h3>
-              <Button asChild className="mt-[23px] mobile:px-3 mobile:text-xs mobile:shrink-0 mobile:whitespace-nowrap"><a href={newRoute}>
+              {isAll ? <NewRuleButton className="mt-[23px]" /> : <Button asChild className="mt-[23px] mobile:px-3 mobile:text-xs mobile:shrink-0 mobile:whitespace-nowrap"><a href={newRoute}>
                 <Icon icon={Plus} /> {newTitle}
-              </a></Button>
+              </a></Button>}
             </div>
           ) : visibleCount ? (
-            isNetwork ? <NetworkRulesList networkRules={visibleNetworkRules} pending={pending} onToggle={onToggleNetworkRule} /> : isSwitchRules ? (
-              <SwitchRulesList switchRules={visible.filter((entry): entry is SwitchRule => entry.kind === 'switch-rule')} pending={pending} switchRuleHref={(switchRule) => `#${entryRoute(switchRule)}`} onToggle={onToggle} onSelectOption={onSelectOption} />
+            isAll ? (
+              <>
+                <RuleSection title="Header Rules" count={visibleHeaderRules.length}>
+                  <HeaderRulesList headerRules={visibleHeaderRules} pending={pending} headerRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} />
+                </RuleSection>
+                <RuleSection title="Switch Rules" count={visibleSwitchRules.length}>
+                  <SwitchRulesList switchRules={visibleSwitchRules} pending={pending} switchRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} onSelectOption={onSelectOption} />
+                </RuleSection>
+                <RuleSection title="Network Rules" count={visibleNetworkRules.length}>
+                  <NetworkRulesList networkRules={visibleNetworkRules} pending={pending} onToggle={onToggleNetworkRule} />
+                </RuleSection>
+              </>
+            ) : isNetwork ? <NetworkRulesList networkRules={visibleNetworkRules} pending={pending} onToggle={onToggleNetworkRule} /> : isSwitchRules ? (
+              <SwitchRulesList switchRules={visibleSwitchRules} pending={pending} switchRuleHref={(switchRule) => `#${entryRoute(switchRule)}`} onToggle={onToggle} onSelectOption={onSelectOption} />
             ) : (
               <>
                 <div className="grid grid-cols-[32px_minmax(0,1fr)_92px] gap-4 px-6 pt-[17px] pb-2 text-[8px] tracking-[1.1px] text-muted-foreground tablet:grid-cols-[32px_minmax(0,1fr)_68px] mobile:hidden" aria-hidden="true"><span /><span>HEADER RULE / URL PATTERN</span><span>HEADERS</span></div>
-                <HeaderRulesList headerRules={visible.filter((entry): entry is HeaderRule => entry.kind === 'header-rule')} pending={pending} headerRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} />
+                <HeaderRulesList headerRules={visibleHeaderRules} pending={pending} headerRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} />
               </>
             )
           ) : (
@@ -315,5 +343,45 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
         </div>
       </TabsContent>
     </Tabs>
+  )
+}
+
+function NewRuleButton({ className }: { className?: string }) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild><Button className={className}><Icon icon={Plus} data-icon="inline-start" /> New</Button></DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>New rule</DialogTitle>
+          <DialogDescription className="sr-only">Choose the type of rule to create.</DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-3">
+          {[
+            { title: 'Header Rule', route: 'header-rules' },
+            { title: 'Switch Rule', route: 'switch-rules' },
+            { title: 'Network Rule', route: 'network-rules' },
+          ].map(choice => (
+            <DialogClose asChild key={choice.route}>
+              <Button asChild variant="outline" className="h-auto justify-between gap-4 p-4">
+                <a href={`#/${choice.route}/new`}>
+                  {choice.title}
+                  <Icon icon={ArrowRight} data-icon="inline-end" />
+                </a>
+              </Button>
+            </DialogClose>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function RuleSection({ title, count, children }: { title: string; count: number; children: ReactNode }) {
+  if (!count) return null
+  return (
+    <section aria-label={title} className="border-b last:border-b-0">
+      <h2 className="px-6 pt-5 pb-2 text-xs font-semibold mobile:px-[15px]">{title}</h2>
+      {children}
+    </section>
   )
 }
