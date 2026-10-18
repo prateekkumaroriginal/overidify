@@ -7,10 +7,10 @@ type SwitchRulesListProps = {
   switchRuleHref: (rule: SwitchRule) => string
   onToggle: (rule: SwitchRule, enabled: boolean) => void
   onSelectOption: (rule: SwitchRule, optionId: string) => void
-  disabled?: boolean
+  pending?: boolean
 }
 
-export function SwitchRulesList({ switchRules, switchRuleHref, onToggle, onSelectOption, disabled }: SwitchRulesListProps) {
+export function SwitchRulesList({ switchRules, switchRuleHref, onToggle, onSelectOption, pending }: SwitchRulesListProps) {
   return (
     <ul className="m-0 list-none p-0">
       {switchRules.map((rule, index) => {
@@ -24,7 +24,7 @@ export function SwitchRulesList({ switchRules, switchRuleHref, onToggle, onSelec
               <ToggleSwitch
                 checked={rule.enabled}
                 label={`Enable ${rule.name}`}
-                disabled={disabled}
+                pending={pending}
                 onChange={(enabled) => onToggle(rule, enabled)}
               />
               <a
@@ -36,7 +36,7 @@ export function SwitchRulesList({ switchRules, switchRuleHref, onToggle, onSelec
               </a>
               <SwitchRuleOptionSelect
                 switchRule={rule}
-                disabled={disabled}
+                pending={pending}
                 onChange={(optionId) => onSelectOption(rule, optionId)}
               />
             </div>
