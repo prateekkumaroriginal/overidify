@@ -29,6 +29,8 @@ Open Overidify from Chrome's extensions menu and click **Settings**. Choose a ru
 - **Switch Rules** let you choose between named header sets, such as different test accounts.
 - **Network Rules** match an API URL and return a response body, status, and headers you choose.
 
+The **All** tab shows all three rule types together. Search across your rules, toggle them, choose Switch Rule options, or open a rule to edit it. Click **+ New** to choose which type of rule to create.
+
 For example, to add a token to requests from your local app:
 
 1. Under **Header Rules**, click **New Header Rule** and give it a name.
