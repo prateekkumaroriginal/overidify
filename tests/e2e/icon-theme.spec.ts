@@ -1,37 +1,4 @@
-import type { BrowserContext, Page } from '@playwright/test'
 import { test, expect } from './extension'
-
-async function attachObserver(context: BrowserContext, page: Page, url: string) {
-  const client = await context.newCDPSession(page)
-  const { targetInfos } = await client.send('Target.getTargets')
-  const target = targetInfos.find(target => target.url === url)!
-  expect(target).toBeDefined()
-  const { sessionId } = await client.send('Target.attachToTarget', { targetId: target.targetId, flatten: false })
-  let nextId = 0
-  const pending = new Map<number, { resolve: () => void; reject: (error: Error) => void }>()
-  client.on('Target.receivedMessageFromTarget', event => {
-    if (event.sessionId !== sessionId) return
-    const response = JSON.parse(event.message)
-    const request = pending.get(response.id)
-    if (!request) return
-    pending.delete(response.id)
-    if (response.error) request.reject(new Error(response.error.message))
-    else request.resolve()
-  })
-  return {
-    client,
-    theme: (value: 'light' | 'dark') => new Promise<void>((resolve, reject) => {
-      const id = ++nextId
-      pending.set(id, { resolve, reject })
-      const message = JSON.stringify({ id, method: 'Emulation.setEmulatedMedia',
-        params: { features: [{ name: 'prefers-color-scheme', value }] } })
-      void client.send('Target.sendMessageToTarget', { sessionId, message }).catch(error => {
-        pending.delete(id)
-        reject(error)
-      })
-    }),
-  }
-}
 
 test('page logos select transparent light and dark artwork without recoloring violet', async ({ extension }) => {
   for (const name of ['options', 'popup']) {
@@ -65,60 +32,47 @@ test('page logos select transparent light and dark artwork without recoloring vi
   }
 })
 
-test('toolbar follows live theme changes without open extension pages and reuses its observer after restart', async ({ extension }) => {
+test('toolbar follows Chrome appearance from options and with extension pages closed', async ({ extension, server }) => {
   const prefix = `chrome-extension://${extension.id}/`
   const worker = extension.context.serviceWorkers().find(worker => worker.url().startsWith(prefix))!
-  await expect.poll(() => worker.evaluate(() => chrome.runtime.sendMessage({ type: 'read-icon-theme' })).catch(() => undefined))
-    .toHaveProperty('theme')
-  const before = await worker.evaluate(() => chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] }))
-  expect(before).toHaveLength(1)
   const light = await extension.settings.locator('header img').nth(0).getAttribute('src')
   const dark = await extension.settings.locator('header img').nth(1).getAttribute('src')
   const driver = await extension.context.newPage()
-  const observer = await attachObserver(extension.context, driver, `${prefix}offscreen.html`)
+  await driver.goto('chrome://settings/appearance')
+  // Playwright otherwise forces a light media preference on visible pages.
+  await driver.emulateMedia({ colorScheme: null })
+  await extension.settings.emulateMedia({ colorScheme: null })
+  await driver.locator('#colorSchemeModeSelect').selectOption({ label: 'Dark' })
+  await extension.settings.bringToFront()
+  await expect.poll(() => worker.evaluate(() => chrome.storage.session.get('browserIconTheme'))).toEqual({ browserIconTheme: 'dark' })
   try {
     await worker.evaluate(() => {
       const original = chrome.action.setIcon.bind(chrome.action)
-      const updates: object[] = []
-      Reflect.set(globalThis, 'iconUpdates', updates)
       Reflect.set(chrome.action, 'setIcon', async (details: Parameters<typeof chrome.action.setIcon>[0]) => {
         await original(details)
-        updates.push(details)
+        Reflect.set(globalThis, 'lastIconPath', details.path)
       })
     })
-    // Wait for each transition, including hidden-document sampling.
-    await observer.theme('light')
-    await expect.poll(() => worker.evaluate(() => chrome.runtime.sendMessage({ type: 'read-icon-theme' }))).toEqual({ theme: 'light' })
-    await observer.theme('dark')
-    await expect.poll(() => worker.evaluate(() => Reflect.get(globalThis, 'iconUpdates').at(-1)?.path[128])).toBe(dark)
-    const paths = await worker.evaluate(() => Reflect.get(globalThis, 'iconUpdates').at(-1).path)
+    for (const [label, path] of [['Light', light], ['Dark', dark]] as const) {
+      await driver.bringToFront()
+      await driver.locator('#colorSchemeModeSelect').selectOption({ label })
+      await extension.settings.bringToFront()
+      await expect.poll(() => worker.evaluate(() => Reflect.get(globalThis, 'lastIconPath')?.[128])).toBe(path)
+    }
+    const paths = await worker.evaluate(() => Reflect.get(globalThis, 'lastIconPath'))
     for (const path of Object.values(paths)) expect(path).toMatch(/^\/assets\/.*\.png$/)
 
     await extension.settings.close()
     expect(extension.context.pages().every(page => !page.url().startsWith(prefix))).toBe(true)
-    await observer.theme('light')
-    await expect.poll(() => worker.evaluate(() => Reflect.get(globalThis, 'iconUpdates').at(-1)?.path[128])).toBe(light)
 
-    const { targetInfos } = await observer.client.send('Target.getTargets')
-    const target = targetInfos.find(target => target.type === 'service_worker' && target.url.startsWith(prefix))!
-    await worker.evaluate(() => Reflect.set(globalThis, 'restartMarker', true))
-    expect((await observer.client.send('Target.closeTarget', { targetId: target.targetId })).success).toBe(true)
-    await observer.theme('dark')
-    // Chromium can reuse the worker target across restarts, so check execution
-    // state rather than waiting for a new Playwright serviceworker event.
-    await expect.poll(async () => {
-      const current = extension.context.serviceWorkers().find(worker => worker.url().startsWith(prefix))
-      if (!current) return 'stopped'
-      return current.evaluate(() => Reflect.get(globalThis, 'restartMarker')).catch(() => 'stopped')
-    }).toBeUndefined()
-    const replacement = extension.context.serviceWorkers().find(worker => worker.url().startsWith(prefix))!
-    await expect.poll(() => replacement.evaluate(() => chrome.runtime.sendMessage({ type: 'read-icon-theme' })))
-      .toEqual({ theme: 'dark' })
-    const after = await replacement.evaluate(() => chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] }))
-    expect(after).toHaveLength(1)
-    expect(after[0].documentId).toBe(before[0].documentId)
+    const website = await extension.context.newPage()
+    await website.emulateMedia({ colorScheme: null })
+    await website.goto(server.origin)
+    await driver.bringToFront()
+    await driver.locator('#colorSchemeModeSelect').selectOption({ label: 'Light' })
+    await website.bringToFront()
+    await expect.poll(() => worker.evaluate(() => Reflect.get(globalThis, 'lastIconPath')?.[128])).toBe(light)
   } finally {
-    await observer.client.detach().catch(() => {})
     await driver.close().catch(() => {})
   }
 })

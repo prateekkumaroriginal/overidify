@@ -38,7 +38,7 @@ export default defineManifest({
     },
     {
       matches: ['http://*/*', 'https://*/*'],
-      js: ['src/network/bridge.ts'],
+      js: ['src/network/bridge.ts', 'src/icon-theme/main.ts'],
       run_at: 'document_start', all_frames: true,
       match_about_blank: true, ...{ match_origin_as_fallback: true },
     },

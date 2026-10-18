@@ -5,7 +5,7 @@ import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 
 const source = readFileSync(new URL('../src/background/action-icon.ts', import.meta.url), 'utf8')
-const worker = ts.transpileModule(source.replace(/^import .*\n/gm, ''), {
+const worker = ts.transpileModule(source.replace(/^import .*\r?\n/gm, ''), {
   compilerOptions: { target: ts.ScriptTarget.ES2023 },
 }).outputText
 const tick = () => new Promise<void>(resolve => setImmediate(resolve))
@@ -29,6 +29,8 @@ function harness(options: {
   readTheme?: () => Promise<unknown>
   create?: () => Promise<void>
   apply?: () => Promise<void>
+  storedTheme?: string
+  restore?: () => Promise<Record<string, unknown>>
 } = {}) {
   const url = 'chrome-extension://test/offscreen.html'
   const contexts = options.existing ? [{}] : []
@@ -36,9 +38,14 @@ function harness(options: {
   const applied: string[] = []
   const errors: unknown[] = []
   let creations = 0
+  const stored: Record<string, unknown> = { browserIconTheme: options.storedTheme }
   const api = {
+    storage: { session: {
+      get: async () => options.restore ? options.restore() : stored,
+      set: async (next: object) => { Object.assign(stored, next) },
+    } },
     runtime: {
-      id: 'test', getURL: () => url,
+      id: 'test', getURL: (path: string) => `chrome-extension://test/${path}`,
       onMessage: event(), onInstalled: event(), onStartup: event(),
       getContexts: async () => contexts,
       sendMessage: async () => options.readTheme ? options.readTheme() : { theme: 'light' },
@@ -65,7 +72,12 @@ function harness(options: {
     iconAssets: { light: { 16: 'light.png' }, dark: { 16: 'dark.png' } },
   })
   return {
-    api, applied, started, errors, creations: () => creations,
+    api, applied, started, errors, stored, creations: () => creations,
+    async browserChange(theme: unknown, sender: object = { id: 'test', url: 'chrome-extension://test/options.html' }) {
+      const response = deferred<unknown>()
+      const results = api.runtime.onMessage.emit({ type: 'browser-icon-theme-changed', theme }, sender, response.resolve)
+      return results.includes(true) ? response.promise : false
+    },
     async change(theme: unknown, sender = { id: 'test', url }) {
       const response = deferred<unknown>()
       const results = api.runtime.onMessage.emit({ type: 'icon-theme-changed', theme }, sender, response.resolve)
@@ -159,4 +171,57 @@ test('a failed icon update does not prevent later theme changes', async () => {
   fail = false
   await app.change('dark')
   assert.deepEqual(app.applied, ['dark.png'])
+})
+
+test('browser appearance overrides the offscreen OS theme and survives a worker restart', async () => {
+  const app = harness({ existing: true, readTheme: async () => ({ theme: 'dark' }) })
+  await tick()
+  await app.browserChange('light')
+  await app.change('dark')
+  assert.equal(app.applied.at(-1), 'light.png')
+  assert.equal(app.stored.browserIconTheme, 'light')
+
+  const restarted = harness({ existing: true, storedTheme: 'light', readTheme: async () => ({ theme: 'dark' }) })
+  await tick()
+  await restarted.change('dark')
+  assert.deepEqual(restarted.applied, ['light.png', 'light.png'])
+})
+
+test('only extension UI and active top-level websites can report browser appearance', async () => {
+  const app = harness({ existing: true })
+  await tick()
+  const website = { id: 'test', url: 'https://example.com/', frameId: 0, tab: { active: true } }
+  for (const sender of [
+    { ...website, id: 'other' }, { ...website, frameId: 1 },
+    { ...website, tab: { active: false } }, { ...website, tab: { active: true, incognito: true } },
+    { ...website, url: 'chrome://settings/' }, { id: 'test', url: 'chrome-extension://test/unknown.html' },
+    { id: 'test', url: 'chrome-extension://test/offscreen.html' },
+  ]) assert.equal(await app.browserChange('dark', sender), false)
+  assert.equal(await app.browserChange('unexpected', website), false)
+  assert.deepEqual(app.applied, ['light.png'])
+  await app.browserChange('dark', website)
+  await app.browserChange('light', { id: 'test', url: 'chrome-extension://test/popup.html' })
+  assert.deepEqual(app.applied, ['light.png', 'dark.png', 'light.png'])
+})
+
+test('a new browser theme takes precedence over delayed session restoration', async () => {
+  const restore = deferred<Record<string, unknown>>()
+  const app = harness({ existing: true, restore: () => restore.promise })
+  const changed = app.browserChange('light')
+  restore.resolve({ browserIconTheme: 'dark' })
+  await changed
+  await tick()
+  assert.ok(app.applied.every(theme => theme === 'light.png'))
+  assert.equal(app.stored.browserIconTheme, 'light')
+})
+
+test('an early offscreen report cannot discard a browser theme still being restored', async () => {
+  const restore = deferred<Record<string, unknown>>()
+  const app = harness({ existing: true, restore: () => restore.promise })
+  const changed = app.change('dark')
+  restore.resolve({ browserIconTheme: 'light' })
+  await changed
+  await tick()
+  assert.ok(app.applied.length > 0)
+  assert.ok(app.applied.every(theme => theme === 'light.png'))
 })
