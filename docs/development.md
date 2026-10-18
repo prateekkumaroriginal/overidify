@@ -58,6 +58,8 @@ The extension uses React, TypeScript, Vite, and Manifest V3 with `@crxjs/vite-pl
 
 Styling uses Tailwind CSS v4 utilities and local shadcn components with Radix primitives in `src/components/ui`. Theme tokens and shared base styles live in `src/styles.css`.
 
+Shadcn's fade and zoom animations use `tw-animate-css`, imported by `src/styles.css`.
+
 All UI text uses locally bundled Manrope, including buttons, domain and header fields, and response editors. The unlayered `html body` font rule overrides Chrome's injected extension-page font. Keep it outside Tailwind's layers so the packaged extension renders the same font as development previews.
 
 Icons use named component imports from `lucide-react`. The shared `Icon` wrapper sets the default size, stroke width, and decorative accessibility attributes. Pass the imported component through its `icon` prop.
