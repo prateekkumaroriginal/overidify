@@ -7,7 +7,7 @@ import ts from 'typescript'
 const source = readFileSync(new URL('../src/offscreen/main.ts', import.meta.url), 'utf8')
 const observer = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2023 } }).outputText
 const workerSource = readFileSync(new URL('../src/background/action-icon.ts', import.meta.url), 'utf8')
-const worker = ts.transpileModule(workerSource.replace(/^import .*\n/gm, ''), {
+const worker = ts.transpileModule(workerSource.replace(/^import .*\r?\n/gm, ''), {
   compilerOptions: { target: ts.ScriptTarget.ES2023 },
 }).outputText
 const tick = () => new Promise<void>(resolve => setImmediate(resolve))
@@ -52,6 +52,7 @@ for (const theme of ['light', 'dark']) {
     const applied: string[] = []
     runInNewContext(worker, {
       chrome: {
+        storage: { session: { get: async () => ({}) } },
         runtime: {
           id: 'test', getURL: () => url,
           getContexts: async () => [{}], sendMessage: () => app.read(),

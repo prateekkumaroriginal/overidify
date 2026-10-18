@@ -24,7 +24,7 @@ const { requestHeaderRulesToSessionRules } = await import('../src/lib/dnr.ts')
 
 // Run the actual worker with isolated Chrome events and storage adapters.
 const source = readFileSync(new URL('../src/background/index.ts', import.meta.url), 'utf8')
-const worker = ts.transpileModule(source.replace(/^import .*\n/gm, ''), {
+const worker = ts.transpileModule(source.replace(/^import .*\r?\n/gm, ''), {
   compilerOptions: { target: ts.ScriptTarget.ES2023 },
 }).outputText
 
