@@ -4,6 +4,13 @@ import { ActivationResultSchema } from './settings-messages'
 
 export const REQUEST_HEADER_STORAGE_KEY = 'requestHeaderRules'
 
+export async function updateRequestHeaderRules(update: (rules: RequestHeaderRule[]) => RequestHeaderRule[]): Promise<RequestHeaderRule[]> {
+  // Each extension page must read the latest rules inside the shared write lock.
+  return navigator.locks.request(REQUEST_HEADER_STORAGE_KEY, async () =>
+    saveRequestHeaderRules(update(await getRequestHeaderRules())),
+  )
+}
+
 export async function getRequestHeaderRules(): Promise<RequestHeaderRule[]> {
   if (isBrowserPreview()) {
     return normalizeRequestHeaderRules(JSON.parse(localStorage.getItem(REQUEST_HEADER_STORAGE_KEY) ?? '[]'))
@@ -12,7 +19,7 @@ export async function getRequestHeaderRules(): Promise<RequestHeaderRule[]> {
   return normalizeRequestHeaderRules(stored[REQUEST_HEADER_STORAGE_KEY])
 }
 
-export async function saveRequestHeaderRules(rules: RequestHeaderRule[]): Promise<RequestHeaderRule[]> {
+async function saveRequestHeaderRules(rules: RequestHeaderRule[]): Promise<RequestHeaderRule[]> {
   const normalized = normalizeRequestHeaderRules(rules)
   if (isBrowserPreview()) {
     localStorage.setItem(REQUEST_HEADER_STORAGE_KEY, JSON.stringify(normalized))

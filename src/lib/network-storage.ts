@@ -6,6 +6,12 @@ export type { NetworkApplyResult } from './settings-messages'
 export const NETWORK_STORAGE_KEY = 'networkRules'
 const isPreview = () => import.meta.env.DEV && !globalThis.chrome?.storage?.local
 
+export async function updateNetworkRules(update: (rules: NetworkRule[]) => NetworkRule[]) {
+  return navigator.locks.request(NETWORK_STORAGE_KEY, async () =>
+    saveNetworkRules(update(await getNetworkRules())),
+  )
+}
+
 export async function getNetworkRules(): Promise<NetworkRule[]> {
   const data = isPreview()
     ? JSON.parse(localStorage.getItem(NETWORK_STORAGE_KEY) ?? '[]')
@@ -13,7 +19,7 @@ export async function getNetworkRules(): Promise<NetworkRule[]> {
   return normalizeNetworkRules(data)
 }
 
-export async function saveNetworkRules(entries: NetworkRule[]): Promise<{ entries: NetworkRule[]; reloadTabIds: number[] }> {
+async function saveNetworkRules(entries: NetworkRule[]): Promise<{ entries: NetworkRule[]; reloadTabIds: number[] }> {
   for (const entry of entries) {
     if (entry.enabled) {
       const error = validateNetworkRule(entry)
