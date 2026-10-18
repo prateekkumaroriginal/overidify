@@ -8,7 +8,7 @@ const source = readFileSync(new URL('../src/icon-theme/main.ts', import.meta.url
 const reporter = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2023 } }).outputText
 const tick = () => new Promise<void>(resolve => setImmediate(resolve))
 
-function harness(send: () => Promise<unknown> = async () => ({ ok: true }), subframe = false, incognito = false) {
+function harness(send: () => Promise<unknown> = async () => ({ ok: true }), subframe = false, incognito = false, protocol = 'https:') {
   let dark = false
   let visible = true
   const events = new Map<string, () => void>()
@@ -17,6 +17,7 @@ function harness(send: () => Promise<unknown> = async () => ({ ok: true }), subf
   let nextTimer = 0
   const window = {
     top: undefined as unknown,
+    location: { protocol },
     matchMedia: () => ({ get matches() { return dark },
       addEventListener: (_type: string, listener: () => void) => events.set('change', listener) }),
     addEventListener: (type: string, listener: () => void) => events.set(type, listener),
@@ -42,6 +43,12 @@ test('unsupported contexts are ignored and reactivation resynchronizes the globa
   for (const chrome of [undefined, {}]) assert.doesNotThrow(() => runInNewContext(reporter, { window: previewWindow, chrome }))
   assert.deepEqual(harness(undefined, true).reports, [])
   assert.deepEqual(harness(undefined, false, true).reports, [])
+  for (const protocol of ['about:', 'blob:', 'data:', 'filesystem:']) {
+    const page = harness(undefined, false, false, protocol)
+    page.event('focus')
+    page.retry()
+    assert.deepEqual(page.reports, [], `${protocol} documents must not report or retry`)
+  }
   const app = harness()
   await tick()
   app.visible(false)

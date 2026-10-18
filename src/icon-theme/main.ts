@@ -1,6 +1,7 @@
 // Visible documents inherit Chrome's appearance setting. Offscreen documents
 // can keep reporting the OS theme even when Chrome uses a different theme.
-if (window.top === window && globalThis.chrome?.runtime?.id && !chrome.extension?.inIncognitoContext) {
+if (window.top === window && globalThis.chrome?.runtime?.id && !chrome.extension?.inIncognitoContext
+  && /^(https?|chrome-extension):$/.test(window.location.protocol)) {
   const preference = window.matchMedia('(prefers-color-scheme: dark)')
   const theme = () => preference.matches ? 'dark' : 'light'
   let reported: ReturnType<typeof theme> | undefined
