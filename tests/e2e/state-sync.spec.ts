@@ -1,8 +1,70 @@
 import type { Page } from '@playwright/test'
-import { test, expect } from './extension'
+import { test, expect, fetchResult } from './extension'
 
 declare global {
   interface Window { releaseActivation?: () => void; releaseWrite?: () => void; releaseInitialRead?: () => void }
+}
+
+for (const recoveryFails of [false, true]) {
+  test(`queued network activation ${recoveryFails ? 'reports a failed recovery pass' : 'recovers after the first pass fails'}`, async ({ extension, site, server, networkRule, seed }) => {
+    const first = extension.settings
+    await seed([networkRule, { ...networkRule, id: 'second', name: 'Second response', order: 1,
+      requestUrl: `${server.origin}/api/second`, status: 202 }])
+    await site.goto(server.origin)
+    expect((await fetchResult(site)).status).toBe(201)
+    expect((await fetchResult(site, '/api/second')).status).toBe(202)
+    await first.evaluate(() => { location.hash = '/network-rules' })
+    const second = await extension.context.newPage()
+    await second.goto(`chrome-extension://${extension.id}/options.html#/network-rules`)
+    const firstToggle = first.getByRole('switch', { name: `Enable ${networkRule.name}`, exact: true })
+    const secondToggle = second.getByRole('switch', { name: 'Enable Second response', exact: true })
+    await expect(firstToggle).toBeChecked()
+    await expect(secondToggle).toBeChecked()
+    // Drain setup events before intercepting the next network activation query.
+    await first.evaluate(async () => {
+      await chrome.runtime.sendMessage({ type: 'sync-request-header-rules' })
+      await chrome.runtime.sendMessage({ type: 'sync-network-rules' })
+    })
+    const worker = extension.context.serviceWorkers()[0]
+    await worker.evaluate(recoveryFails => {
+      const query = chrome.tabs.query.bind(chrome.tabs)
+      const probe: { calls: number; requests: number; release?: () => void } = { calls: 0, requests: 0 }
+      Reflect.set(globalThis, 'networkSyncProbe', probe)
+      chrome.runtime.onMessage.addListener(message => {
+        if (message?.type === 'sync-network-rules') probe.requests++
+      })
+      Object.defineProperty(chrome.tabs, 'query', {
+        configurable: true,
+        value: async (info: chrome.tabs.QueryInfo) => {
+          const call = ++probe.calls
+          if (call === 1) await new Promise<void>(resolve => { probe.release = resolve })
+          if (call === 1 || recoveryFails) throw new Error('Network activation query failed for this test.')
+          return query(info)
+        },
+      })
+    }, recoveryFails)
+    await firstToggle.click()
+    await expect.poll(() => worker.evaluate(() => Boolean(Reflect.get(globalThis, 'networkSyncProbe').release))).toBe(true)
+    await expect.poll(() => worker.evaluate(() => Reflect.get(globalThis, 'networkSyncProbe').requests)).toBe(1)
+    await secondToggle.click()
+    await expect.poll(() => worker.evaluate(() => Reflect.get(globalThis, 'networkSyncProbe').requests)).toBe(2)
+    expect(await first.evaluate(async () => ((await chrome.storage.local.get('networkRules')).networkRules as { enabled: boolean }[]).map(rule => rule.enabled))).toEqual([false, false])
+    await worker.evaluate(() => Reflect.get(globalThis, 'networkSyncProbe').release())
+    await expect(firstToggle).not.toHaveAttribute('aria-busy', 'true')
+    await expect(secondToggle).not.toHaveAttribute('aria-busy', 'true')
+    expect(await worker.evaluate(() => Reflect.get(globalThis, 'networkSyncProbe').calls)).toBeGreaterThanOrEqual(2)
+    if (recoveryFails) {
+      await expect(first.getByRole('alert')).toContainText('Network activation query failed')
+      await expect(second.getByRole('alert')).toContainText('Network activation query failed')
+      expect((await fetchResult(site)).status).toBe(201)
+      expect((await fetchResult(site, '/api/second')).status).toBe(202)
+    } else {
+      await expect(first.getByRole('alert')).toHaveCount(0)
+      await expect(second.getByRole('alert')).toHaveCount(0)
+      expect((await fetchResult(site)).status).toBe(200)
+      expect((await fetchResult(site, '/api/second')).status).toBe(200)
+    }
+  })
 }
 
 for (const kind of ['header', 'network'] as const) {

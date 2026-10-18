@@ -70,15 +70,27 @@ function sync(): Promise<number[]> {
   if (syncing) return syncing
   syncing = (async () => {
     let reloadTabIds: number[] = []
+    let lastError: unknown
     try {
       while (requested) {
         requested = false
         const priorPatterns = [...previousPatterns]
         previousPatterns.clear()
-        const tabs = (await chrome.tabs.query({})).filter(tab => /^https?:\/\//.test(pageUrls.get(tab.id ?? -1) ?? tab.url ?? ''))
-        const results = await Promise.all(tabs.map(async tab => await updateTab(tab, priorPatterns) ? tab.id! : undefined))
-        reloadTabIds = results.filter((id): id is number => id !== undefined)
+        try {
+          const tabs = (await chrome.tabs.query({})).filter(tab => /^https?:\/\//.test(pageUrls.get(tab.id ?? -1) ?? tab.url ?? ''))
+          // Finish this pass's tab updates before a retry delivers newer settings.
+          const results = await Promise.allSettled(tabs.map(async tab => await updateTab(tab, priorPatterns) ? tab.id! : undefined))
+          const failure = results.find(result => result.status === 'rejected')
+          if (failure) throw failure.reason
+          reloadTabIds = results.flatMap(result => result.status === 'fulfilled' && result.value !== undefined ? [result.value] : [])
+          lastError = undefined
+        } catch (error) {
+          // A queued pass still needs the old website scopes to remove stale mocks.
+          for (const pattern of priorPatterns) previousPatterns.add(pattern)
+          lastError = error
+        }
       }
+      if (lastError) throw lastError
       return reloadTabIds
     } finally { syncing = undefined }
   })()
