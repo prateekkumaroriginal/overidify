@@ -11,7 +11,7 @@ Overidify is a Chrome extension for changing request headers and mocking API res
 
 Requires Chrome 119 or newer.
 
-- [Stable ZIP, v0.2.1](https://github.com/prateekkumaroriginal/overidify/releases/download/v0.2.1/overidify-v0.2.1.zip) is the versioned release.
+- [Stable ZIP, v0.2.2](https://github.com/prateekkumaroriginal/overidify/releases/download/v0.2.2/overidify-v0.2.2.zip) is the versioned release.
 - [Nightly ZIP](https://github.com/prateekkumaroriginal/overidify/releases/download/nightly/overidify-nightly.zip) contains the latest changes from `main` that pass CI.
 
 1. Download a ZIP and extract it into a folder you'll keep.
