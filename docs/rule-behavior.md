@@ -65,6 +65,8 @@ Saved edits and toggles affect subsequent requests. An in-flight request keeps t
 
 The settings page and popup follow the latest saved rules. Changes from multiple open extension pages are applied in sequence, so editing one rule preserves changes to other rules made in another page.
 
+Only reading and writing saved rules is serialized. Waiting for activation in one extension page does not block another page from saving an edit. Each page keeps its own controls busy until its activation attempt finishes.
+
 Reload website tabs after installing, updating, or reloading the extension, and whenever the settings page or popup asks you to.
 
 The [Network Rules specification](network-rules/spec.md) covers further technical details and implementation decisions.

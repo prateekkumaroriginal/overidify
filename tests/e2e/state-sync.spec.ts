@@ -6,6 +6,34 @@ declare global {
 }
 
 for (const kind of ['header', 'network'] as const) {
+  test(`delayed ${kind} activation does not block edits in another settings page`, async ({ extension, networkRule, seed }) => {
+    const first = extension.settings
+    const key = kind === 'header' ? 'requestHeaderRules' : 'networkRules'
+    await first.evaluate(() => chrome.storage.local.set({ requestHeaderRules: ['first', 'second'].map((id, order) => ({
+      kind: 'header-rule', id, name: id, url: '*', enabled: true, order,
+      headers: [{ key: `X-${id}`, value: 'local' }],
+    })) }))
+    await seed(['first', 'second'].map((id, order) => ({ ...networkRule, id, name: id, order })))
+    await first.evaluate(kind => { location.hash = `/${kind}-rules` }, kind)
+    const second = await extension.context.newPage()
+    await second.goto(`chrome-extension://${extension.id}/options.html#/${kind}-rules`)
+    const firstToggle = first.getByRole('switch', { name: 'Enable first', exact: true })
+    const secondToggle = second.getByRole('switch', { name: 'Enable second', exact: true })
+    await expect(firstToggle).toBeChecked()
+    await expect(secondToggle).toBeChecked()
+    await holdActivation(first)
+    await firstToggle.click()
+    await expect.poll(() => first.evaluate(() => Boolean(window.releaseActivation))).toBe(true)
+    await secondToggle.click()
+    await expect(secondToggle).not.toHaveAttribute('aria-busy', 'true')
+    await expect(secondToggle).not.toBeChecked()
+    await expect(firstToggle).toHaveAttribute('aria-busy', 'true')
+    expect(await first.evaluate(async key => ((await chrome.storage.local.get(key))[key] as { enabled: boolean }[]).map(rule => rule.enabled), key)).toEqual([false, false])
+    await first.evaluate(() => { window.releaseActivation!(); delete window.releaseActivation })
+    await expect(firstToggle).not.toHaveAttribute('aria-busy', 'true')
+    await expect(firstToggle).not.toBeChecked()
+  })
+
   test(`concurrent ${kind} toggles from two settings pages preserve both edits`, async ({ extension, networkRule, seed }) => {
     const first = extension.settings
     const key = kind === 'header' ? 'requestHeaderRules' : 'networkRules'

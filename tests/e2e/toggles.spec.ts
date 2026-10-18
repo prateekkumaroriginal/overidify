@@ -1,7 +1,7 @@
 import type { Locator, Page } from '@playwright/test'
-import { test, expect } from './extension'
+import { test, expect, fetchResult } from './extension'
 
-type SaveGate = { calls: number; release?: () => void; fail: boolean }
+type SaveGate = { calls: number; release?: () => void; response?: unknown }
 
 declare global {
   interface Window { saveGate: SaveGate }
@@ -9,7 +9,7 @@ declare global {
 
 async function delayActivation(page: Page) {
   await page.evaluate(() => {
-    const state: SaveGate = { calls: 0, fail: false }
+    const state: SaveGate = { calls: 0 }
     window.saveGate = state
     const sendMessage = chrome.runtime.sendMessage.bind(chrome.runtime)
     Object.defineProperty(chrome.runtime, 'sendMessage', {
@@ -17,8 +17,9 @@ async function delayActivation(page: Page) {
         if (!['sync-request-header-rules', 'sync-network-rules'].includes(message.type)) return sendMessage(message)
         state.calls++
         const response = await sendMessage(message)
+        state.response = response
         await new Promise<void>(resolve => { state.release = resolve })
-        return state.fail ? { ok: false, error: 'Activation failed for this test.' } : response
+        return response
       },
     })
   })
@@ -65,10 +66,12 @@ for (const surface of ['settings', 'popup'] as const) {
       })),
     ]
     await extension.settings.evaluate(rules => chrome.storage.local.set({ requestHeaderRules: rules }), requestHeaderRules)
-    await seed([networkRule, { ...networkRule, id: 'other-network', name: 'Other network rule', order: 1 }])
+    await seed([networkRule, { ...networkRule, id: 'other-network', name: 'Other network rule', order: 1,
+      requestUrl: `${server.origin}/api/unmatched` }])
+    await site.goto(server.origin)
+    await expect.poll(async () => (await fetchResult(site)).status).toBe(201)
     const page = surface === 'settings' ? extension.settings : await extension.context.newPage()
     if (surface === 'popup') {
-      await site.goto(server.origin)
       await site.bringToFront()
       await page.goto(`chrome-extension://${extension.id}/popup.html`)
     }
@@ -100,18 +103,36 @@ for (const surface of ['settings', 'popup'] as const) {
       }
     }
 
-    // A failed activation must clear the busy state and allow a retry.
-    await page.evaluate(() => { window.saveGate.fail = true })
+    // Fail inside the actual worker, before either sync path can apply the change.
+    const worker = extension.context.serviceWorkers()[0]
+    await worker.evaluate(() => {
+      Reflect.set(globalThis, 'originalTabsQuery', chrome.tabs.query)
+      Object.defineProperty(chrome.tabs, 'query', {
+        configurable: true,
+        value: async () => { throw new Error('Activation failed for this test.') },
+      })
+    })
     const toggle = page.getByRole('switch', { name: `Enable ${networkRule.name}`, exact: true })
     await toggle.click()
     await expectStableControls(page, toggle)
+    expect(await page.evaluate(() => window.saveGate.response)).toMatchObject({ ok: false })
     await finishSave(page, toggle)
     await expect(page.getByRole('alert')).toContainText('Activation failed for this test.')
-    await page.evaluate(() => { window.saveGate.fail = false })
+    // Persistence succeeded, but the page still receives the previous active mock.
+    expect((await fetchResult(site)).status).toBe(201)
+    await worker.evaluate(() => {
+      Object.defineProperty(chrome.tabs, 'query', { configurable: true, value: Reflect.get(globalThis, 'originalTabsQuery') })
+      Reflect.deleteProperty(globalThis, 'originalTabsQuery')
+    })
     await toggle.click()
     await expectStableControls(page, toggle)
+    expect(await page.evaluate(() => window.saveGate.response)).toMatchObject({ ok: true })
     await finishSave(page, toggle)
     await expect(page.getByRole('alert')).toHaveCount(0)
     await expect(toggle).toBeChecked()
+    await toggle.click()
+    await expectStableControls(page, toggle)
+    await finishSave(page, toggle)
+    await expect.poll(async () => (await fetchResult(site)).status).toBe(200)
   })
 }

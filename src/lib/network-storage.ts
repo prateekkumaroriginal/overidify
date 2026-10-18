@@ -7,9 +7,13 @@ export const NETWORK_STORAGE_KEY = 'networkRules'
 const isPreview = () => import.meta.env.DEV && !globalThis.chrome?.storage?.local
 
 export async function updateNetworkRules(update: (rules: NetworkRule[]) => NetworkRule[]) {
-  return navigator.locks.request(NETWORK_STORAGE_KEY, async () =>
+  const entries = await navigator.locks.request(NETWORK_STORAGE_KEY, async () =>
     saveNetworkRules(update(await getNetworkRules())),
   )
+  if (isPreview()) return { entries, reloadTabIds: [] }
+  const parsed = ActivationResultSchema.safeParse(await chrome.runtime.sendMessage({ type: 'sync-network-rules' }))
+  if (!parsed.success || !parsed.data.ok) throw new Error((parsed.success && !parsed.data.ok ? parsed.data.error : undefined) ?? 'Settings were saved, but activation was not confirmed. Reload the extension and website.')
+  return { entries, reloadTabIds: parsed.data.reloadTabIds ?? [] }
 }
 
 export async function getNetworkRules(): Promise<NetworkRule[]> {
@@ -19,7 +23,7 @@ export async function getNetworkRules(): Promise<NetworkRule[]> {
   return normalizeNetworkRules(data)
 }
 
-async function saveNetworkRules(entries: NetworkRule[]): Promise<{ entries: NetworkRule[]; reloadTabIds: number[] }> {
+async function saveNetworkRules(entries: NetworkRule[]): Promise<NetworkRule[]> {
   for (const entry of entries) {
     if (entry.enabled) {
       const error = validateNetworkRule(entry)
@@ -30,12 +34,10 @@ async function saveNetworkRules(entries: NetworkRule[]): Promise<{ entries: Netw
   if (isPreview()) {
     localStorage.setItem(NETWORK_STORAGE_KEY, JSON.stringify(normalized))
     window.dispatchEvent(new Event('network-rules-updated'))
-    return { entries: normalized, reloadTabIds: [] }
+  } else {
+    await chrome.storage.local.set({ [NETWORK_STORAGE_KEY]: normalized })
   }
-  await chrome.storage.local.set({ [NETWORK_STORAGE_KEY]: normalized })
-  const parsed = ActivationResultSchema.safeParse(await chrome.runtime.sendMessage({ type: 'sync-network-rules' }))
-  if (!parsed.success || !parsed.data.ok) throw new Error((parsed.success && !parsed.data.ok ? parsed.data.error : undefined) ?? 'Settings were saved, but activation was not confirmed. Reload the extension and website.')
-  return { entries: normalized, reloadTabIds: parsed.data.reloadTabIds ?? [] }
+  return normalized
 }
 
 export function subscribeToNetworkRules(onChange: (entries: NetworkRule[]) => void): () => void {

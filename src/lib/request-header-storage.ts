@@ -6,9 +6,17 @@ export const REQUEST_HEADER_STORAGE_KEY = 'requestHeaderRules'
 
 export async function updateRequestHeaderRules(update: (rules: RequestHeaderRule[]) => RequestHeaderRule[]): Promise<RequestHeaderRule[]> {
   // Each extension page must read the latest rules inside the shared write lock.
-  return navigator.locks.request(REQUEST_HEADER_STORAGE_KEY, async () =>
+  const saved = await navigator.locks.request(REQUEST_HEADER_STORAGE_KEY, async () =>
     saveRequestHeaderRules(update(await getRequestHeaderRules())),
   )
+  // Activation can wait on browser work without holding up other pages' writes.
+  if (!isBrowserPreview()) {
+    const result = ActivationResultSchema.safeParse(await chrome.runtime.sendMessage({ type: 'sync-request-header-rules' }))
+    if (!result.success || !result.data.ok) {
+      throw new Error((result.success && !result.data.ok ? result.data.error : undefined) ?? 'The extension did not confirm that the headers were applied. Reload the extension and try again.')
+    }
+  }
+  return saved
 }
 
 export async function getRequestHeaderRules(): Promise<RequestHeaderRule[]> {
@@ -26,10 +34,6 @@ async function saveRequestHeaderRules(rules: RequestHeaderRule[]): Promise<Reque
     window.dispatchEvent(new Event('request-header-rules-updated'))
   } else {
     await chrome.storage.local.set({ [REQUEST_HEADER_STORAGE_KEY]: normalized })
-    const result = ActivationResultSchema.safeParse(await chrome.runtime.sendMessage({ type: 'sync-request-header-rules' }))
-    if (!result.success || !result.data.ok) {
-      throw new Error((result.success && !result.data.ok ? result.data.error : undefined) ?? 'The extension did not confirm that the headers were applied. Reload the extension and try again.')
-    }
   }
   return normalized
 }
