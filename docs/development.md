@@ -46,6 +46,12 @@ Matching, normalization, priority, and validation tests use Node's TypeScript st
 
 On Linux, install browser system dependencies with `pnpm exec playwright install --with-deps chromium` if needed. CI runs the same checks.
 
+## Reviewing tests
+
+For each added test, reviewers should identify the failure mode or integration boundary it protects and compare it with existing coverage. Extend an existing test when it already exercises the same scenario. Keep overlapping tests only when they provide distinct protection that the reviewer can explain.
+
+Use browser tests for behavior that depends on Chrome, extension loading, or page integration. Use unit tests for isolated logic, validation, and controlled races or failures. Check that each regression test would fail for the bug it is intended to catch.
+
 ## UI and dependencies
 
 The extension uses React, TypeScript, Vite, and Manifest V3 with `@crxjs/vite-plugin`. Zod schemas and React Hook Form with Zod resolvers handle forms and validation.
