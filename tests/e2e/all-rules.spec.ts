@@ -12,8 +12,6 @@ test('All settings searches and updates every rule type', async ({ extension, ne
       ] },
   ] }))
   await seed([networkRule])
-  await page.getByRole('tab', { name: 'All', exact: true }).click()
-  await expect(page).toHaveURL(/#\/all$/)
   await expect(page.getByRole('switch')).toHaveCount(3)
 
   for (const name of ['Request context', 'Accounts', networkRule.name]) {

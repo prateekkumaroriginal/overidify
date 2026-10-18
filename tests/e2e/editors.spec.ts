@@ -68,7 +68,7 @@ test('Header rule editor keeps header rows stable and preserves Enter and save b
   await expect(page).toHaveURL(new RegExp(`#/header-rules/${entries[0].id}$`))
   await expect(page.getByLabel('Header 1 value')).toHaveValue('Bearer test')
   await page.getByRole('link', { name: 'Overidify home' }).click()
-  await expect(page.getByRole('heading', { name: 'Header Rules', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'All Rules', exact: true })).toBeVisible()
 })
 
 test('Switch rule editor retains option identity, inactive fields, selection, validation and undo', async ({ extension }) => {
@@ -151,7 +151,7 @@ test('Header and Switch Rules share website scope and popup edits reach real req
   const entries = z.array(RequestHeaderRuleSchema).parse((await extension.settings.evaluate(() => chrome.storage.local.get('requestHeaderRules'))).requestHeaderRules)
   expect(entries[0].enabled).toBe(false)
   expect(SwitchRuleSchema.parse(entries[1]).selectedOptionId).toBe('guest')
-  await expect(popup.getByRole('link', { name: 'Settings', exact: true })).toHaveAttribute('href', 'options.html#/header-rules')
+  await expect(popup.getByRole('link', { name: 'Settings', exact: true })).toHaveAttribute('href', 'options.html')
 })
 
 test('popup toggles apply live and layouts fit desktop and mobile', async ({ extension, site, server, networkRule, seed }, testInfo) => {

@@ -119,7 +119,7 @@ export function PopupApp() {
           {getDomainPattern(pageUrl) || pageUrl}
         </span>
         <Button variant="ghost" size="icon" asChild>
-          <a href="options.html#/header-rules" target="_blank" rel="noreferrer" aria-label="Settings">
+          <a href="options.html" target="_blank" rel="noreferrer" aria-label="Settings">
             <Icon icon={Settings} />
           </a>
         </Button>

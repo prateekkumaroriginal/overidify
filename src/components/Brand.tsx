@@ -9,7 +9,7 @@ export function BrandIcon({ size = 32 }: { size?: 24 | 32 }) {
   )
 }
 
-export function Brand({ href = '#/header-rules' }: { href?: string }) {
+export function Brand({ href = '#/all' }: { href?: string }) {
   return (
     <a className="inline-flex items-center gap-2.5 text-[23px] font-bold tracking-[-1.1px] no-underline mobile:text-[21px]" href={href} aria-label="Overidify home">
       <BrandIcon />

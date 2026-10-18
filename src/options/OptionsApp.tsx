@@ -22,7 +22,7 @@ import type { RequestHeaderRule, HeaderRule, SwitchRule, HeaderRuleDraft, Switch
 import { cn } from '../lib/utils'
 
 function readRoute() {
-  return window.location.hash.slice(1) || '/header-rules'
+  return window.location.hash.slice(1) || '/all'
 }
 
 function entryRoute(entry: RequestHeaderRule) {
@@ -235,7 +235,7 @@ export function OptionsApp() {
             onDelete={selected ? () => { void handleDelete(selected) } : undefined}
           />
         ) : (
-          <div className="flex flex-col items-center px-5 pt-[45px] pb-11 text-center mobile:px-4 mobile:py-[33px] [&_h3]:mt-[11px] [&_h3]:text-base [&_h3]:font-semibold [&_h3]:tracking-[-0.3px]"><h1 className="text-[28px] font-semibold">Not found.</h1><Button asChild variant="ghost" size="default" className="min-h-[46px] gap-[9px] rounded-[7px] border border-transparent px-5 py-[13px] text-xs font-bold hover:bg-transparent"><a href="#/header-rules">Back to header rules <Icon icon={ArrowRight} /></a></Button></div>
+          <div className="flex flex-col items-center px-5 pt-[45px] pb-11 text-center mobile:px-4 mobile:py-[33px] [&_h3]:mt-[11px] [&_h3]:text-base [&_h3]:font-semibold [&_h3]:tracking-[-0.3px]"><h1 className="text-[28px] font-semibold">Not found.</h1><Button asChild variant="ghost" size="default" className="min-h-[46px] gap-[9px] rounded-[7px] border border-transparent px-5 py-[13px] text-xs font-bold hover:bg-transparent"><a href="#/all">Back to all rules <Icon icon={ArrowRight} /></a></Button></div>
         )}
       </main>
     </div>
