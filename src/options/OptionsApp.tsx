@@ -293,12 +293,12 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
               </a></Button>
             </div>
           ) : visibleCount ? (
-            isNetwork ? <NetworkRulesList networkRules={visibleNetworkRules} disabled={pending} onToggle={onToggleNetworkRule} /> : isSwitchRules ? (
-              <SwitchRulesList switchRules={visible.filter((entry): entry is SwitchRule => entry.kind === 'switch-rule')} disabled={pending} switchRuleHref={(switchRule) => `#${entryRoute(switchRule)}`} onToggle={onToggle} onSelectOption={onSelectOption} />
+            isNetwork ? <NetworkRulesList networkRules={visibleNetworkRules} pending={pending} onToggle={onToggleNetworkRule} /> : isSwitchRules ? (
+              <SwitchRulesList switchRules={visible.filter((entry): entry is SwitchRule => entry.kind === 'switch-rule')} pending={pending} switchRuleHref={(switchRule) => `#${entryRoute(switchRule)}`} onToggle={onToggle} onSelectOption={onSelectOption} />
             ) : (
               <>
                 <div className="grid grid-cols-[32px_minmax(0,1fr)_92px] gap-4 px-6 pt-[17px] pb-2 text-[8px] tracking-[1.1px] text-muted-foreground tablet:grid-cols-[32px_minmax(0,1fr)_68px] mobile:hidden" aria-hidden="true"><span /><span>HEADER RULE / URL PATTERN</span><span>HEADERS</span></div>
-                <HeaderRulesList headerRules={visible.filter((entry): entry is HeaderRule => entry.kind === 'header-rule')} disabled={pending} headerRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} />
+                <HeaderRulesList headerRules={visible.filter((entry): entry is HeaderRule => entry.kind === 'header-rule')} pending={pending} headerRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} />
               </>
             )
           ) : (

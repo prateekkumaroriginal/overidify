@@ -155,7 +155,7 @@ export function PopupApp() {
                           size="sm"
                           checked={rule.enabled}
                           label={`Enable ${rule.name}`}
-                          disabled={pending}
+                          pending={pending}
                           onChange={(enabled) => {
                             void handleUpdate(rule, { enabled })
                           }}
@@ -164,7 +164,7 @@ export function PopupApp() {
                         {rule.kind === 'switch-rule' && <SwitchRuleOptionSelect
                           size="sm"
                           switchRule={rule}
-                          disabled={pending}
+                          pending={pending}
                           onChange={(selectedOptionId) => { void handleUpdate(rule, { selectedOptionId }) }}
                         />}
                       </li>
@@ -175,7 +175,7 @@ export function PopupApp() {
                           size="sm"
                           checked={networkRule.enabled}
                           label={`Enable ${networkRule.name}`}
-                          disabled={pending}
+                          pending={pending}
                           onChange={enabled => { void toggleNetworkRule(networkRule, enabled) }}
                         />
                         <span className="min-w-0 flex-1 text-xs wrap-anywhere">{networkRule.name}</span>

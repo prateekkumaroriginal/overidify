@@ -7,24 +7,31 @@ import { cn } from '../lib/utils'
 type SwitchRuleOptionSelectProps = {
   switchRule: SwitchRule
   disabled?: boolean
+  pending?: boolean
   onChange: (optionId: string) => void
   size?: 'sm' | 'default'
 }
 
-export function SwitchRuleOptionSelect({ switchRule, disabled, onChange, size = 'default' }: SwitchRuleOptionSelectProps) {
+export function SwitchRuleOptionSelect({ switchRule, disabled, pending = false, onChange, size = 'default' }: SwitchRuleOptionSelectProps) {
   if (switchRule.options.length < 2) return null
   return (
     <Select.Root
       value={switchRule.selectedOptionId}
       disabled={disabled}
-      onValueChange={onChange}
+      onValueChange={(optionId) => { if (!pending) onChange(optionId) }}
     >
       <Select.Trigger
         className={cn(
           'flex h-9 w-[132px] shrink-0 items-center justify-between gap-2 rounded-md border border-input bg-field px-3 text-xs text-foreground hover:border-primary/20 data-[state=open]:border-primary/25 mobile:w-28 mobile:text-[11px] [&>span:first-child]:truncate',
           size === 'sm' && 'h-7 w-[104px] px-2 text-[11px] mobile:w-[104px]',
+          'aria-busy:cursor-wait aria-busy:opacity-100',
         )}
         aria-label={`Option for ${switchRule.name}`}
+        aria-disabled={disabled || pending}
+        aria-busy={pending || undefined}
+        onPointerDown={(event) => { if (pending) event.preventDefault() }}
+        onClick={(event) => { if (pending) event.preventDefault() }}
+        onKeyDown={(event) => { if (pending && event.key !== 'Tab') event.preventDefault() }}
       >
         <Select.Value />
         <Select.Icon asChild>
