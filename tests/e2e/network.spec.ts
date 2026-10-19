@@ -56,7 +56,7 @@ for (const mode of ['bypass', 'call-server'] as const) {
 test('call-server preserves Header Rules, transport failures, aborts and timeouts', async ({ site, server, extension, networkRule, seed }) => {
   await seed([{ ...networkRule, mode: 'call-server' }]); await site.goto(server.origin)
   await extension.settings.evaluate(async url => {
-    await chrome.storage.local.set({ requestHeaderRules: [{ kind: 'header-rule', id: 'headers', name: 'Headers', url, enabled: true, order: 0, headers: [{ key: 'X-Test-Header', value: 'header-rule' }] }] })
+    await chrome.storage.local.set({ requestHeaderRules: [{ kind: 'header-rule', id: '00000000-0000-4000-8000-00000000000d', name: 'Headers', url, enabled: true, order: 0, headers: [{ key: 'X-Test-Header', value: 'header-rule' }] }] })
     await chrome.runtime.sendMessage({ type: 'sync-request-header-rules' })
   }, networkRule.url)
   expect(await fetchResult(site)).toMatchObject({ status: 201, body: networkRule.body })

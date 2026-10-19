@@ -265,7 +265,7 @@ test('fetch retains Request cancellation for undefined options and allows explic
 
 for (const mode of ['bypass', 'call-server'] as const) {
   test(`${mode} XHR abort handlers can reopen and complete the same instance`, async ({ site, server, networkRule, seed }) => {
-    await seed([{ ...networkRule, mode, requestUrl: `${server.origin}/api/slow` }, { ...networkRule, id: 'retry', order: 1, mode }])
+    await seed([{ ...networkRule, mode, requestUrl: `${server.origin}/api/slow` }, { ...networkRule, id: '00000000-0000-4000-8000-000000000011', order: 1, mode }])
     await site.goto(server.origin)
     await site.evaluate(() => Reflect.get(window, 'firstFetch'))
     const result = await site.evaluate(() => new Promise(resolve => {

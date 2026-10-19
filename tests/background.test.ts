@@ -24,14 +24,14 @@ const { requestHeaderRulesToSessionRules } = await import('../src/lib/dnr.ts')
 
 // Run the actual worker with isolated Chrome events and storage adapters.
 const source = readFileSync(new URL('../src/background/index.ts', import.meta.url), 'utf8')
-const worker = ts.transpileModule(source.replace(/^import .*\n/gm, ''), {
+const worker = ts.transpileModule(source.replace(/^import .*\r?\n/gm, ''), {
   compilerOptions: { target: ts.ScriptTarget.ES2023 },
 }).outputText
 
 function harness(initialTabs: PageTab[]) {
   let tabs = initialTabs
   let entries: RequestHeaderRule[] = [{
-    kind: 'header-rule', id: 'localhost', name: 'Test', url: 'localhost:4200', enabled: true, order: 0,
+    kind: 'header-rule', id: '00000000-0000-4000-8000-00000000000f', name: 'Test', url: 'localhost:4200', enabled: true, order: 0,
     headers: [{ key: 'Origin', value: 'https://www.up50.co.in' }],
   }]
   let applied: chrome.declarativeNetRequest.Rule[] = []

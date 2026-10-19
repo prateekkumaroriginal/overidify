@@ -51,7 +51,9 @@ export function normalizeNetworkRules(input: unknown): NetworkRule[] {
   if (!Array.isArray(input)) return []
   return input.flatMap((value, index) => {
     if (!value || typeof value !== 'object') return []
-    const item = PersistedNetworkRuleSchema.parse(value)
+    const parsed = PersistedNetworkRuleSchema.safeParse(value)
+    if (!parsed.success) return []
+    const item = parsed.data
     const entry: NetworkRule = {
       ...item, name: item.name.trim(), url: getDomainPattern(item.url), requestUrl: item.requestUrl.trim(),
       order: item.order ?? index, headers: cleanResponseHeaders(item.headers),

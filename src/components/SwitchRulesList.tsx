@@ -1,6 +1,8 @@
 import type { SwitchRule } from '../lib/types'
 import { SwitchRuleOptionSelect } from './SwitchRuleOptionSelect'
 import { ToggleSwitch } from './ToggleSwitch'
+import { RuleSelectionCheckbox } from './RuleSelection'
+import type { RuleSelection } from './RuleSelection'
 
 type SwitchRulesListProps = {
   switchRules: SwitchRule[]
@@ -8,9 +10,10 @@ type SwitchRulesListProps = {
   onToggle: (rule: SwitchRule, enabled: boolean) => void
   onSelectOption: (rule: SwitchRule, optionId: string) => void
   disabled?: boolean
+  selection?: RuleSelection
 }
 
-export function SwitchRulesList({ switchRules, switchRuleHref, onToggle, onSelectOption, disabled }: SwitchRulesListProps) {
+export function SwitchRulesList({ switchRules, switchRuleHref, onToggle, onSelectOption, disabled, selection }: SwitchRulesListProps) {
   return (
     <ul className="m-0 list-none p-0">
       {switchRules.map((rule, index) => {
@@ -21,6 +24,7 @@ export function SwitchRulesList({ switchRules, switchRuleHref, onToggle, onSelec
             style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
           >
             <div className="flex min-h-20 items-center gap-4 mobile:gap-2.5">
+              <RuleSelectionCheckbox id={rule.id} name={rule.name} selection={selection} disabled={disabled} />
               <ToggleSwitch
                 checked={rule.enabled}
                 label={`Enable ${rule.name}`}

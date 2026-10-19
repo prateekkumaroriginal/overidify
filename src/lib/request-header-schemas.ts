@@ -1,10 +1,10 @@
 import * as z from 'zod/mini'
-import { EntryShape, HeaderPairSchema, requiredName, WebsiteSchema } from './schema-fields.ts'
+import { EntryShape, HeaderPairSchema, requiredName, RuleIdSchema, WebsiteSchema } from './schema-fields.ts'
 
 export const HeaderRuleSchema = z.object({ ...EntryShape, kind: z.literal('header-rule'), headers: z.array(HeaderPairSchema) })
-export const SwitchRuleOptionSchema = z.object({ id: z.string(), name: z.string(), headers: z.array(HeaderPairSchema) })
+export const SwitchRuleOptionSchema = z.object({ id: RuleIdSchema, name: z.string(), headers: z.array(HeaderPairSchema) })
 export const SwitchRuleSchema = z.object({
-  ...EntryShape, kind: z.literal('switch-rule'), options: z.array(SwitchRuleOptionSchema), selectedOptionId: z.string(),
+  ...EntryShape, kind: z.literal('switch-rule'), options: z.array(SwitchRuleOptionSchema), selectedOptionId: RuleIdSchema,
 })
 export const RequestHeaderRuleSchema = z.discriminatedUnion('kind', [HeaderRuleSchema, SwitchRuleSchema])
 const RequestHeadersSchema = z.array(HeaderPairSchema).check(
@@ -22,8 +22,8 @@ export const HeaderRuleDraftSchema = z.object({
   name: requiredName('Header rule name'), url: WebsiteSchema, enabled: z.boolean(), headers: RequestHeadersSchema,
 })
 export const SwitchRuleDraftSchema = z.object({
-  name: requiredName('Switch rule name'), url: WebsiteSchema, enabled: z.boolean(), selectedOptionId: z.string(),
-  options: z.array(z.object({ id: z.string(), name: requiredName('Option name'), headers: RequestHeadersSchema })).check(z.minLength(1)),
+  name: requiredName('Switch rule name'), url: WebsiteSchema, enabled: z.boolean(), selectedOptionId: RuleIdSchema,
+  options: z.array(z.object({ id: RuleIdSchema, name: requiredName('Option name'), headers: RequestHeadersSchema })).check(z.minLength(1)),
 }).check(z.superRefine((draft, context) => {
   const names = new Set<string>()
   draft.options.forEach((option, index) => {

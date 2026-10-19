@@ -79,7 +79,7 @@ export const test = base.extend<Fixtures>({
     try { await provide(page) } finally { await page.close() }
   },
   networkRule: async ({ server }, provide) => {
-    await provide({ ...createNetworkRuleDraft(), id: 'test', name: 'Mock response', order: 0,
+    await provide({ ...createNetworkRuleDraft(), id: '00000000-0000-4000-8000-000000000016', name: 'Mock response', order: 0,
       url: new URL(server.origin).host, requestUrl: `${server.origin}/api/start?a=1&b=2`,
       status: 201, body: '{"mock":true}', headers: [{ key: 'Content-Type', value: 'application/json' }, { key: 'X-Mock', value: 'configured' }],
     })

@@ -89,7 +89,7 @@ function normalizeEntry(input: unknown, index: number): RequestHeaderRule[] {
   const parsed = PersistedRequestHeaderRuleSchema.safeParse(input)
   if (!parsed.success) return []
   const candidate = parsed.data
-  const id = candidate.id?.trim() ? candidate.id : createRuleId()
+  const id = candidate.id
   const url = candidate.url.trim() || '*'
   const base = {
     id,
@@ -108,11 +108,12 @@ function normalizeEntry(input: unknown, index: number): RequestHeaderRule[] {
 
   const rawOptions = candidate.options
   const usedIds = new Set<string>()
+  if (rawOptions.some(option => !PersistedSwitchRuleOptionSchema.safeParse(option).success)) return []
   const options: SwitchRuleOption[] = rawOptions.length
     ? rawOptions.map((input: unknown, optionIndex) => {
         const option = PersistedSwitchRuleOptionSchema.parse(input)
-        let optionId = option.id?.trim() ? option.id : `${id}-option-${optionIndex + 1}`
-        while (usedIds.has(optionId)) optionId += '-copy'
+        let optionId = option.id
+        while (usedIds.has(optionId)) optionId = createRuleId()
         usedIds.add(optionId)
         return {
           id: optionId,
@@ -120,7 +121,7 @@ function normalizeEntry(input: unknown, index: number): RequestHeaderRule[] {
           headers: normalizeHeaders(option.headers),
         }
       })
-    : [{ id: `${id}-option-1`, name: 'Option 1', headers: [] }]
+    : [{ id: createRuleId(), name: 'Option 1', headers: [] }]
   return [{
     ...base,
     kind: 'switch-rule',

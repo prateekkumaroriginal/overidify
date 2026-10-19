@@ -74,10 +74,10 @@ test('Header rule editor keeps header rows stable and preserves Enter and save b
 test('Switch rule editor retains option identity, inactive fields, selection, validation and undo', async ({ extension }) => {
   const page = extension.settings
   await page.evaluate(() => chrome.storage.local.set({ requestHeaderRules: [{
-    id: 'switch-rule', kind: 'switch-rule', name: 'Accounts', url: '*', enabled: true, order: 0, selectedOptionId: 'guest',
-    options: [{ id: 'admin', name: 'Admin', headers: [{ key: 'Authorization', value: 'admin' }] }, { id: 'guest', name: 'Guest', headers: [{ key: 'X-Role', value: 'guest' }] }],
+    id: '00000000-0000-4000-8000-000000000015', kind: 'switch-rule', name: 'Accounts', url: '*', enabled: true, order: 0, selectedOptionId: '00000000-0000-4000-8000-00000000000b',
+    options: [{ id: '00000000-0000-4000-8000-000000000004', name: 'Admin', headers: [{ key: 'Authorization', value: 'admin' }] }, { id: '00000000-0000-4000-8000-00000000000b', name: 'Guest', headers: [{ key: 'X-Role', value: 'guest' }] }],
   }] }))
-  await page.goto(`chrome-extension://${extension.id}/options.html#/switch-rules/switch-rule`)
+  await page.goto(`chrome-extension://${extension.id}/options.html#/switch-rules/00000000-0000-4000-8000-000000000015`)
   await expect(page.getByLabel('Option name', { exact: true })).toHaveValue('Guest')
   await page.getByLabel('Header 1 value').fill('guest-edited')
   await page.getByRole('button', { name: 'Admin', exact: true }).click()
@@ -103,16 +103,16 @@ test('Switch rule editor retains option identity, inactive fields, selection, va
   await expect(page).toHaveURL(/#\/switch-rules$/)
   const entries = z.array(RequestHeaderRuleSchema).parse((await page.evaluate(() => chrome.storage.local.get('requestHeaderRules'))).requestHeaderRules)
   const switchRule = SwitchRuleSchema.parse(entries[0])
-  expect(switchRule.selectedOptionId).toBe('guest')
+  expect(switchRule.selectedOptionId).toBe('00000000-0000-4000-8000-00000000000b')
   expect(switchRule.options.slice(0, 2)).toEqual([
-    { id: 'admin', name: 'Admin', headers: [{ key: 'Authorization', value: 'admin' }] },
-    { id: 'guest', name: 'Guest', headers: [{ key: 'X-Role', value: 'guest-edited' }] },
+    { id: '00000000-0000-4000-8000-000000000004', name: 'Admin', headers: [{ key: 'Authorization', value: 'admin' }] },
+    { id: '00000000-0000-4000-8000-00000000000b', name: 'Guest', headers: [{ key: 'X-Role', value: 'guest-edited' }] },
   ])
   expect(new Set(switchRule.options.map(option => option.id)).size).toBe(3)
   expect(switchRule.options[2]).toMatchObject({ name: 'New account', headers: [{ key: 'X-New', value: 'new' }] })
   await page.reload()
   await page.getByRole('link', { name: /Accounts/ }).click()
-  await expect(page).toHaveURL(/#\/switch-rules\/switch-rule$/)
+  await expect(page).toHaveURL(/#\/switch-rules\/00000000-0000-4000-8000-000000000015$/)
   await expect(page.getByLabel('Option name', { exact: true })).toHaveValue('Guest')
 })
 
@@ -120,14 +120,14 @@ test('Header and Switch Rules share website scope and popup edits reach real req
   await extension.settings.evaluate(async url => {
     const base = { url, enabled: true }
     await chrome.storage.local.set({ requestHeaderRules: [
-      { ...base, kind: 'header-rule', id: 'headers', name: 'Request context', order: 0,
+      { ...base, kind: 'header-rule', id: '00000000-0000-4000-8000-00000000000d', name: 'Request context', order: 0,
         headers: [{ key: 'X-Context', value: 'local' }] },
-      { ...base, kind: 'switch-rule', id: 'accounts', name: 'Accounts', order: 1, selectedOptionId: 'admin',
+      { ...base, kind: 'switch-rule', id: '00000000-0000-4000-8000-000000000002', name: 'Accounts', order: 1, selectedOptionId: '00000000-0000-4000-8000-000000000004',
         options: [
-          { id: 'admin', name: 'Admin', headers: [{ key: 'X-Account', value: 'admin' }] },
-          { id: 'guest', name: 'Guest', headers: [{ key: 'X-Account', value: 'guest' }] },
+          { id: '00000000-0000-4000-8000-000000000004', name: 'Admin', headers: [{ key: 'X-Account', value: 'admin' }] },
+          { id: '00000000-0000-4000-8000-00000000000b', name: 'Guest', headers: [{ key: 'X-Account', value: 'guest' }] },
         ] },
-      { ...base, url: 'unmatched.example.com', kind: 'header-rule', id: 'unmatched', name: 'Other website', order: 2,
+      { ...base, url: 'unmatched.example.com', kind: 'header-rule', id: '00000000-0000-4000-8000-000000000017', name: 'Other website', order: 2,
         headers: [{ key: 'X-Other', value: 'hidden' }] },
     ] })
     await chrome.runtime.sendMessage({ type: 'sync-request-header-rules' })
@@ -150,7 +150,7 @@ test('Header and Switch Rules share website scope and popup edits reach real req
   await expect.poll(async () => { await fetchResult(site); return server.hits.at(-1)?.headers['x-context'] }).toBeUndefined()
   const entries = z.array(RequestHeaderRuleSchema).parse((await extension.settings.evaluate(() => chrome.storage.local.get('requestHeaderRules'))).requestHeaderRules)
   expect(entries[0].enabled).toBe(false)
-  expect(SwitchRuleSchema.parse(entries[1]).selectedOptionId).toBe('guest')
+  expect(SwitchRuleSchema.parse(entries[1]).selectedOptionId).toBe('00000000-0000-4000-8000-00000000000b')
   await expect(popup.getByRole('link', { name: 'Settings', exact: true })).toHaveAttribute('href', 'options.html#/header-rules')
 })
 
