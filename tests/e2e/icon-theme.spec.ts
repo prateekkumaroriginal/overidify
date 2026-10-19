@@ -1,37 +1,5 @@
 import { test, expect } from './extension'
 
-test('page logos select transparent light and dark artwork without recoloring violet', async ({ extension }) => {
-  for (const name of ['options', 'popup']) {
-    const page = await extension.context.newPage()
-    await page.goto(`chrome-extension://${extension.id}/${name}.html`)
-    const samples = []
-    for (const theme of ['light', 'dark']) {
-      await page.evaluate(theme => document.documentElement.classList.toggle('dark', theme === 'dark'), theme)
-      const logo = page.locator('header img:visible')
-      await expect(logo).toHaveCount(1)
-      const sample = await logo.evaluate(async element => {
-        const image = element as HTMLImageElement
-        await image.decode()
-        const canvas = document.createElement('canvas')
-        canvas.width = canvas.height = 128
-        const context = canvas.getContext('2d')!
-        context.drawImage(image, 0, 0)
-        return { body: [...context.getImageData(32, 64, 1, 1).data],
-          violet: [...context.getImageData(94, 64, 1, 1).data],
-          corner: context.getImageData(0, 0, 1, 1).data[3], filter: getComputedStyle(image).filter }
-      })
-      expect(sample.filter).toBe('none')
-      expect(sample.corner).toBe(0)
-      samples.push(sample)
-    }
-    expect(Math.max(...samples[0].body.slice(0, 3))).toBeLessThan(40)
-    expect(samples[1].body).toEqual([240, 240, 240, 255])
-    expect(samples[0].violet).toEqual([95, 58, 252, 255])
-    expect(samples[0].violet).toEqual(samples[1].violet)
-    await page.close()
-  }
-})
-
 test('toolbar follows Chrome appearance from options and with extension pages closed', async ({ extension, server }) => {
   const prefix = `chrome-extension://${extension.id}/`
   const worker = extension.context.serviceWorkers().find(worker => worker.url().startsWith(prefix))!

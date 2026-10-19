@@ -52,20 +52,20 @@ async function finishSave(page: Page, active: Locator) {
 for (const surface of ['settings', 'popup'] as const) {
   test(`${surface} toggles keep controls opaque and focused throughout activation`, async ({ extension, site, server, networkRule, seed }) => {
     const requestHeaderRules = [
-      { kind: 'header-rule', id: 'headers', name: 'Request context', url: '*', enabled: true, order: 0,
+      { kind: 'header-rule', id: '00000000-0000-4000-8000-000000000031', name: 'Request context', url: '*', enabled: true, order: 0,
         headers: [{ key: 'X-Context', value: 'local' }] },
-      { kind: 'header-rule', id: 'other-headers', name: 'Other headers', url: '*', enabled: true, order: 1,
+      { kind: 'header-rule', id: '00000000-0000-4000-8000-000000000032', name: 'Other headers', url: '*', enabled: true, order: 1,
         headers: [{ key: 'X-Other', value: 'local' }] },
-      ...['accounts', 'other-accounts'].map((id, index) => ({ kind: 'switch-rule', id,
-        name: index ? 'Other accounts' : 'Accounts', url: '*', enabled: true, order: index + 2, selectedOptionId: 'admin',
+      ...['00000000-0000-4000-8000-000000000033', '00000000-0000-4000-8000-000000000034'].map((id, index) => ({ kind: 'switch-rule', id,
+        name: index ? 'Other accounts' : 'Accounts', url: '*', enabled: true, order: index + 2, selectedOptionId: '00000000-0000-4000-8000-000000000035',
         options: [
-          { id: 'admin', name: 'Admin', headers: [{ key: `X-Account-${index}`, value: 'admin' }] },
-          { id: 'guest', name: 'Guest', headers: [{ key: `X-Account-${index}`, value: 'guest' }] },
+          { id: '00000000-0000-4000-8000-000000000035', name: 'Admin', headers: [{ key: `X-Account-${index}`, value: 'admin' }] },
+          { id: '00000000-0000-4000-8000-000000000036', name: 'Guest', headers: [{ key: `X-Account-${index}`, value: 'guest' }] },
         ],
       })),
     ]
     await extension.settings.evaluate(rules => chrome.storage.local.set({ requestHeaderRules: rules }), requestHeaderRules)
-    await seed([networkRule, { ...networkRule, id: 'other-network', name: 'Other network rule', order: 1 }])
+    await seed([networkRule, { ...networkRule, id: '00000000-0000-4000-8000-000000000037', name: 'Other network rule', order: 1 }])
     const page = surface === 'settings' ? extension.settings : await extension.context.newPage()
     if (surface === 'popup') {
       await site.goto(server.origin)

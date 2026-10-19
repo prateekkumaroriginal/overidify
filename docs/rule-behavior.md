@@ -59,7 +59,7 @@ Chrome DevTools can stay open. In call-server mode, its native Network panel sho
 
 The popup shows the current website's domain and lists matching rules. It opens on **All**. Use the **Header Rules**, **Switch Rules**, and **Network Rules** tabs to filter by type. Use it to toggle rules and select Switch Rule options. Open **Settings** from the icon beside the domain to edit responses and headers, search rules, or delete entries and options.
 
-All three rule editors place a ghost Back arrow beside the title and a **Delete rule** button with a trash icon at the top right for saved rules. **Cancel** and **Save** remain below the form.
+All three rule editors place a ghost Back arrow beside the title and **Export** and **Delete rule** actions at the top right. Export requires a saved rule without unsaved changes. **Cancel** and **Save** remain below the form.
 
 Saved edits and toggles affect subsequent requests. An in-flight request keeps the Network Rule settings captured when it started. Changing a rule does not repeat a request or update content already on the page.
 
@@ -68,3 +68,17 @@ The settings page and popup follow the latest saved rules. Changes from multiple
 Reload website tabs after installing, updating, or reloading the extension, and whenever the settings page or popup asks you to.
 
 The [Network Rules specification](network-rules/spec.md) covers further technical details and implementation decisions.
+
+## Transferring rules
+
+Import, Export, and Select appear to the right of the rule-type tabs on the options page. Without selection mode, Export includes every saved rule in the active tab, regardless of search. Export on All produces a full backup across the three types. Select reveals list checkboxes; selections carry across the tabs and searches. Export selected is disabled until at least one rule is selected. Cancel selection clears the selection.
+
+Exports use Overidify JSON format version 1. They preserve saved values, enabled states, relative order, and all Switch Rule options and the selected option. Rule and option identities are UUIDs.
+
+Import always shows a review before applying changes. Same-UUID rules count as overlaps even when unchanged. Replace updates only overlaps in their existing positions; Add keeps existing rules and gives overlapping copies new UUIDs. Other imported rules are added. New rules and copies go after existing rules in their exported relative order, so later enabled rules can take priority.
+
+A supported file with invalid rules offers a partial import. Whole invalid rules are excluded only after the user chooses to import the valid ones. Every occurrence of a repeated rule UUID in the file is invalid. Unreadable JSON and unsupported formats import nothing. Non-JSON mock response bodies remain allowed.
+
+Saving and activation have separate outcomes. A save failure keeps the previous saved setup. If saved rules cannot be activated immediately, the review reports that they were saved, offers Retry activation without re-importing, and reports any required website reload.
+
+See the [import/export specification](import-export/spec.md) for the complete behavior.

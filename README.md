@@ -42,6 +42,17 @@ The domain identifies the website in your address bar. Requests from that websit
 
 Open the extension popup on a website to toggle matching rules or choose a Switch Rule option. Your rules are saved locally in your browser.
 
+## Import and export
+
+On the Settings home page, **Import**, **Export**, and **Select** sit beside the rule-type tabs.
+
+- **Export** downloads all saved rules in the current tab. On **All**, it downloads a full backup across the three types.
+- **Select** reveals checkboxes. Select rules across the rule-type tabs, then export the selection. Select every rule across the three types for a full backup.
+- Inside a saved rule, **Export** downloads that rule. Save any edits first. Switch Rules include all options and the selected option.
+- **Import** opens a JSON file picker and review. Overlapping UUIDs get one **Replace** or **Add** choice. Replace updates those rules; Add keeps both as separate copies. Invalid rules can be excluded after you accept a partial import.
+
+Files contain exact saved header values and response bodies. Enabled states are preserved on import. If activation is not confirmed after saving, use **Retry activation** without importing the file again.
+
 ## Things to know
 
 - Network Rules use **Bypass server** by default, which returns your mock without calling the API. **Call server, then replace response** makes the real request first.

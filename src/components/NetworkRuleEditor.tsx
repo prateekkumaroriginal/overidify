@@ -8,6 +8,7 @@ import { Icon } from './Icon'
 import { RuleEditorHeader } from './RuleEditorHeader'
 import { ToggleSwitch } from './ToggleSwitch'
 import { useEditorForm } from './useEditorForm'
+import { downloadRules } from '../lib/rule-download'
 import { createNetworkRuleDraft, jsonBodyWarning, NETWORK_METHODS } from '../lib/network-rules'
 import type { NetworkRule, NetworkRuleDraft } from '../lib/network-rules'
 
@@ -34,7 +35,8 @@ export function NetworkRuleEditor({ networkRule, pending, onSave, onDelete }: Pr
 
   return (
     <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="network-editor-title">
-      <RuleEditorHeader kind="network" editing={!!networkRule} busy={busy} titleId="network-editor-title" onDelete={onDelete} />
+      <RuleEditorHeader kind="network" editing={!!networkRule} busy={busy} titleId="network-editor-title" onDelete={onDelete} unsaved={form.formState.isDirty}
+        onExport={() => { if (networkRule) downloadRules({ requestHeaderRules: [], networkRules: [networkRule] }, 'network-rule') }} />
       <form ref={formRef} onSubmit={onSubmit}>
         <fieldset disabled={busy} className="m-0 min-w-0 border-0 p-0">
           <div className={panelClass}>

@@ -42,15 +42,19 @@ pnpm test:e2e
 
 Matching, normalization, priority, and validation tests use Node's TypeScript stripping support. ESLint checks project code and excludes bundled agent skills under `.agents/`.
 
-`pnpm test:e2e` builds the production extension, typechecks the browser tests, and runs Playwright against bundled Chromium with the unpacked extension installed. Each test owns a temporary browser profile and local HTTP server. The suite covers the three editors, popup controls, early requests under CSP, fetch/XHR behavior, live updates, iframe scope, and native DevTools.
+`pnpm test:e2e` builds the production extension, typechecks the browser tests, and runs Playwright against bundled Chromium with the unpacked extension installed. Each test owns a temporary browser profile and local HTTP server. The retained browser suite covers extension integration, activation, early requests under CSP, fetch/XHR behavior, live updates, iframe scope, and native DevTools. Import/export format, validation, overlap handling, order, and save/activation failures are tested through the public functions in the Node suite.
 
 On Linux, install browser system dependencies with `pnpm exec playwright install --with-deps chromium` if needed. CI runs the same checks.
 
+## One-time verification
+
+Use `.scratch/verification/<task>/` for temporary verification scripts, screenshots, and logs. Create the task directory when needed. Git and ESLint ignore this location, and the normal unit and browser test commands discover tests only under `tests/`.
+
+Run temporary checks explicitly during implementation or relevant UI changes. Report their results with the change, then remove that task's temporary files. Keep lasting application-behavior tests in `tests/`; the [testing policy](../AGENTS.md#testing) defines which checks belong there.
+
 ## Reviewing tests
 
-For each added test, reviewers should identify the failure mode or integration boundary it protects and compare it with existing coverage. Extend an existing test when it already exercises the same scenario. Keep overlapping tests only when they provide distinct protection that the reviewer can explain.
-
-Use browser tests for behavior that depends on Chrome, extension loading, or page integration. Use unit tests for isolated logic, validation, and controlled races or failures. Check that each regression test would fail for the bug it is intended to catch.
+For each added test, identify the failure mode or integration boundary it protects and compare it with existing coverage. Use the [testing policy](../AGENTS.md#testing) to choose permanent regression coverage or one-time verification. Browser tests should protect behavior that requires Chrome or extension/page integration.
 
 ## UI and dependencies
 

@@ -7,7 +7,7 @@ import { createNetworkRuleDraft, normalizeNetworkRules } from '../src/lib/networ
 import { NetworkBridgeMessageSchema, NetworkPageMessageSchema, NetworkRuntimeMessageSchema, NetworkSettingsResponseSchema, ActivationResultSchema } from '../src/lib/settings-messages.ts'
 
 test('draft schemas preserve response text and distinguish request and response header validation', () => {
-  const draft = { ...createNetworkRuleDraft(), name: 'Mock', requestUrl: 'http://localhost:4200/api', body: '  {broken json\n ' }
+  const draft = { ...createNetworkRuleDraft(), id: '00000000-0000-4000-8000-000000000099', name: 'Mock', requestUrl: 'http://localhost:4200/api', body: '  {broken json\n ' }
   assert.equal(NetworkRuleDraftSchema.parse(draft).body, draft.body)
   assert.equal(NetworkRuleDraftSchema.safeParse({ ...draft, headers: [{ key: 'X-Empty', value: '' }] }).success, true)
   assert.equal(HeaderRuleDraftSchema.safeParse({ ...createHeaderRuleDraft(), name: 'Rule', headers: [{ key: 'X-Empty', value: '' }] }).success, false)
@@ -18,8 +18,8 @@ test('Switch Rule schema identifies duplicate option names by field path', () =>
   const draft = createSwitchRuleDraft()
   draft.name = 'Accounts'
   draft.options = [
-    { id: 'a', name: 'Admin', headers: [{ key: 'X-Role', value: 'a' }] },
-    { id: 'b', name: ' ADMIN ', headers: [{ key: 'X-Role', value: 'b' }] },
+    { id: '00000000-0000-4000-8000-000000000001', name: 'Admin', headers: [{ key: 'X-Role', value: 'a' }] },
+    { id: '00000000-0000-4000-8000-000000000006', name: ' ADMIN ', headers: [{ key: 'X-Role', value: 'b' }] },
   ]
   const parsed = SwitchRuleDraftSchema.safeParse(draft)
   assert.equal(parsed.success, false)
@@ -27,9 +27,9 @@ test('Switch Rule schema identifies duplicate option names by field path', () =>
 })
 
 test('persisted invalid Network Rules stay editable and disabled without losing valid siblings or raw bodies', () => {
-  const draft = { ...createNetworkRuleDraft(), name: 'Mock', requestUrl: 'http://localhost/api', body: ' {broken\n' }
-  const entries = normalizeNetworkRules([{ ...draft, id: 'invalid', status: 600 }, { ...draft, id: 'valid', order: 0 }])
-  assert.deepEqual(entries.map(entry => entry.id), ['invalid', 'valid'])
+  const draft = { ...createNetworkRuleDraft(), id: '00000000-0000-4000-8000-000000000099', name: 'Mock', requestUrl: 'http://localhost/api', body: ' {broken\n' }
+  const entries = normalizeNetworkRules([{ ...draft, id: '00000000-0000-4000-8000-00000000000e', status: 600 }, { ...draft, id: '00000000-0000-4000-8000-000000000019', order: 0 }])
+  assert.deepEqual(entries.map(entry => entry.id), ['00000000-0000-4000-8000-00000000000e', '00000000-0000-4000-8000-000000000019'])
   assert.equal(entries[0].enabled, false)
   assert.equal(entries[0].status, 600)
   assert.equal(entries[0].body, draft.body)

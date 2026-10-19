@@ -12,12 +12,12 @@ import {
 
 const headerRule = {
   kind: 'header-rule',
-  id: 'authentication', name: 'Authentication', url: '*://api.example.com/*',
+  id: '00000000-0000-4000-8000-000000000005', name: 'Authentication', url: '*://api.example.com/*',
   enabled: false, order: 5, headers: [{ key: 'Authorization', value: 'Bearer original' }],
 }
 const options = [
-  { id: 'admin', name: 'Admin', headers: [{ key: 'Authorization', value: 'admin' }] },
-  { id: 'guest', name: 'Guest', headers: [{ key: 'X-Role', value: 'guest' }] },
+  { id: '00000000-0000-4000-8000-000000000004', name: 'Admin', headers: [{ key: 'Authorization', value: 'admin' }] },
+  { id: '00000000-0000-4000-8000-00000000000b', name: 'Guest', headers: [{ key: 'X-Role', value: 'guest' }] },
 ]
 
 test('Header Rules normalize their domains and retain their direct headers, identity, and enabled state', () => {
@@ -36,27 +36,31 @@ test('entries require an explicit supported kind and malformed siblings do not h
 })
 
 test('Switch Rules retain their selected option and header sets', () => {
-  const [switchRule] = normalizeRequestHeaderRules([{ ...headerRule, kind: 'switch-rule', options, selectedOptionId: 'guest' }])
-  assert.equal(switchRule.kind, 'switch-rule')
-  if (switchRule.kind !== 'switch-rule') throw new Error('Expected Switch Rule')
-  assert.equal(switchRule.selectedOptionId, 'guest')
-  assert.deepEqual(getEntryHeaders(switchRule), options[1].headers)
-  assert.deepEqual(normalizeRequestHeaderRules([switchRule]), [switchRule])
+  for (const selectedOptionId of [options[1].id, options[1].id.toUpperCase()]) {
+    for (const savedOptions of [options, options.map(option => ({ ...option, id: option.id.toUpperCase() }))]) {
+      const [switchRule] = normalizeRequestHeaderRules([{ ...headerRule, kind: 'switch-rule', options: savedOptions, selectedOptionId }])
+      assert.equal(switchRule.kind, 'switch-rule')
+      if (switchRule.kind !== 'switch-rule') throw new Error('Expected Switch Rule')
+      assert.equal(switchRule.selectedOptionId, options[1].id)
+      assert.deepEqual(getEntryHeaders(switchRule), options[1].headers)
+      assert.deepEqual(normalizeRequestHeaderRules([switchRule]), [switchRule])
+    }
+  }
 })
 
 test('Switch Rules keep their type with a single option', () => {
   const [switchRule] = normalizeRequestHeaderRules([{ ...headerRule, kind: 'switch-rule', options: [
-    { id: 'default', name: 'Only option', headers: headerRule.headers },
-  ], selectedOptionId: 'default' }])
+    { id: '00000000-0000-4000-8000-000000000008', name: 'Only option', headers: headerRule.headers },
+  ], selectedOptionId: '00000000-0000-4000-8000-000000000008' }])
   assert.equal(switchRule.kind, 'switch-rule')
   assert.deepEqual(getEntryHeaders(switchRule), headerRule.headers)
 })
 
 test('Switch Rules normalize full URLs to domains without changing headers or selection', () => {
-  const [entry] = normalizeRequestHeaderRules([{ ...headerRule, kind: 'switch-rule', url: 'http://localhost:4200/messages', options, selectedOptionId: 'guest' }])
+  const [entry] = normalizeRequestHeaderRules([{ ...headerRule, kind: 'switch-rule', url: 'http://localhost:4200/messages', options, selectedOptionId: '00000000-0000-4000-8000-00000000000b' }])
   if (entry.kind !== 'switch-rule') throw new Error('Expected Switch Rule')
   assert.equal(entry.url, 'localhost:4200')
-  assert.equal(entry.selectedOptionId, 'guest')
+  assert.equal(entry.selectedOptionId, '00000000-0000-4000-8000-00000000000b')
   assert.deepEqual(entry.options, options)
   assert.deepEqual(normalizeRequestHeaderRules([entry]), [entry])
 })
@@ -71,7 +75,7 @@ test('Header Rules and Switch Rules normalize the same patterns to identical dom
   ]) {
     const entries = normalizeRequestHeaderRules([
       { ...headerRule, kind: 'header-rule', url: input },
-      { ...headerRule, id: 'switch-rule', kind: 'switch-rule', url: input, options },
+      { ...headerRule, id: '00000000-0000-4000-8000-000000000015', kind: 'switch-rule', url: input, options },
     ])
     assert.deepEqual(entries.map((entry) => entry.url), [domain, domain])
     assert.deepEqual(getEntryHeaders(entries[0]), headerRule.headers)
@@ -81,30 +85,32 @@ test('Header Rules and Switch Rules normalize the same patterns to identical dom
 
 test('switching a Switch Rule replaces its header set while preserving Header Rules and priority order', () => {
   const entries = normalizeRequestHeaderRules([
-    { ...headerRule, kind: 'switch-rule', order: 6, options, selectedOptionId: 'admin' },
-    { ...headerRule, id: 'regular', order: 4 },
+    { ...headerRule, kind: 'switch-rule', order: 6, options, selectedOptionId: '00000000-0000-4000-8000-000000000004' },
+    { ...headerRule, id: '00000000-0000-4000-8000-000000000010', order: 4 },
   ])
-  assert.deepEqual(entries.map((entry) => [entry.id, entry.order]), [['regular', 0], ['authentication', 1]])
+  assert.deepEqual(entries.map((entry) => [entry.id, entry.order]), [['00000000-0000-4000-8000-000000000010', 0], ['00000000-0000-4000-8000-000000000005', 1]])
   const switchRule = entries[1]
   if (switchRule.kind !== 'switch-rule') throw new Error('Expected Switch Rule')
-  const switched = { ...switchRule, selectedOptionId: 'guest' }
+  const switched = { ...switchRule, selectedOptionId: '00000000-0000-4000-8000-00000000000b' }
   assert.deepEqual(getEntryHeaders(switched), [{ key: 'X-Role', value: 'guest' }])
   assert.deepEqual(getEntryHeaders(switchRule), [{ key: 'Authorization', value: 'admin' }])
   assert.deepEqual(getEntryHeaders(entries[0]), headerRule.headers)
 })
 
-test('deleting the selected option falls back to an existing option without changing Switch Rule type', () => {
-  const [entry] = normalizeRequestHeaderRules([{ ...headerRule, kind: 'switch-rule', options: [options[0]], selectedOptionId: 'guest' }])
-  if (entry.kind !== 'switch-rule') throw new Error('Expected Switch Rule')
-  assert.equal(entry.selectedOptionId, 'admin')
-  assert.deepEqual(getSelectedOption(entry).headers, options[0].headers)
+test('missing, invalid, or removed selected options fall back without changing Switch Rule type', () => {
+  for (const selectedOptionId of [options[1].id, 'invalid-id', undefined, { invalid: true }]) {
+    const [entry] = normalizeRequestHeaderRules([{ ...headerRule, kind: 'switch-rule', options: [options[0]], selectedOptionId }])
+    if (entry.kind !== 'switch-rule') throw new Error('Expected Switch Rule')
+    assert.equal(entry.selectedOptionId, options[0].id)
+    assert.deepEqual(getSelectedOption(entry).headers, options[0].headers)
+  }
 })
 
 test('normalization supplies unique option IDs and preserves all valid header sets', () => {
   const [entry] = normalizeRequestHeaderRules([{ ...headerRule, kind: 'switch-rule', options: [
-    { id: 'same', name: ' A ', headers: [{ key: ' X-A ', value: ' a ' }] },
-    { id: 'same', name: 'B', headers: [{ key: 'X-B', value: 'b' }] },
-    { name: 'C', headers: [{ key: 'X-C', value: 'c' }, null] },
+    { id: '00000000-0000-4000-8000-000000000012', name: ' A ', headers: [{ key: ' X-A ', value: ' a ' }] },
+    { id: '00000000-0000-4000-8000-000000000012', name: 'B', headers: [{ key: 'X-B', value: 'b' }] },
+    { id: '00000000-0000-4000-8000-000000000099', name: 'C', headers: [{ key: 'X-C', value: 'c' }, null] },
   ] }])
   if (entry.kind !== 'switch-rule') throw new Error('Expected Switch Rule')
   assert.equal(new Set(entry.options.map((option) => option.id)).size, 3)
@@ -114,7 +120,7 @@ test('normalization supplies unique option IDs and preserves all valid header se
 })
 
 test('Header Rule and Switch Rule drafts do not mutate stored header data', () => {
-  const [rule, switchRule] = normalizeRequestHeaderRules([headerRule, { ...headerRule, id: 'switch-rule', kind: 'switch-rule', options }])
+  const [rule, switchRule] = normalizeRequestHeaderRules([headerRule, { ...headerRule, id: '00000000-0000-4000-8000-000000000015', kind: 'switch-rule', options }])
   if (rule.kind !== 'header-rule' || switchRule.kind !== 'switch-rule') throw new Error('Expected both types')
   const headerRuleDraft = headerRuleToDraft(rule)
   const switchRuleDraft = switchRuleToDraft(switchRule)

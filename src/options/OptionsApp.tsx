@@ -1,7 +1,8 @@
-import { ArrowRight, Plus, Search, X } from 'lucide-react'
+import { ArrowRight, Download, ListChecks, Plus, Search, Upload, X } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { startTransition, useEffect, useState, type ReactNode } from 'react'
 
@@ -20,6 +21,9 @@ import { createRuleId, getEntryHeaders, sanitizeHeaders } from '../lib/request-h
 import { getRequestHeaderRules, updateRequestHeaderRules, subscribeToRequestHeaderRules } from '../lib/request-header-storage'
 import type { RequestHeaderRule, HeaderRule, SwitchRule, HeaderRuleDraft, SwitchRuleDraft } from '../lib/types'
 import { cn } from '../lib/utils'
+import { ImportRulesDialog } from '../components/ImportRulesDialog'
+import { downloadRules } from '../lib/rule-download'
+import type { RuleCollection } from '../lib/rule-transfer'
 
 function readRoute() {
   return window.location.hash.slice(1) || '/all'
@@ -210,6 +214,8 @@ export function OptionsApp() {
             networkRules={networkRules}
             view={route === '/all' ? 'all' : route === '/network-rules' ? 'network-rule' : route === '/switch-rules' ? 'switch-rule' : 'header-rule'}
             pending={pending}
+            onImportBusy={setPending}
+            onImported={rules => { setEntries(rules.requestHeaderRules); setNetworkRules(rules.networkRules) }}
             onToggle={(entry, enabled) => { void handleToggle(entry, enabled) }}
             onSelectOption={(switchRule, optionId) => { void handleSelectOption(switchRule, optionId) }}
             onToggleNetworkRule={(entry, enabled) => { void handleToggleNetworkRule(entry, enabled) }}
@@ -250,10 +256,15 @@ type WorkspaceProps = {
   onToggle: (entry: RequestHeaderRule, enabled: boolean) => void
   onSelectOption: (switchRule: SwitchRule, optionId: string) => void
   onToggleNetworkRule: (networkRule: NetworkRule, enabled: boolean) => void
+  onImported: (rules: RuleCollection) => void
+  onImportBusy: (busy: boolean) => void
 }
 
-function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOption, onToggleNetworkRule }: WorkspaceProps) {
+function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOption, onToggleNetworkRule, onImported, onImportBusy }: WorkspaceProps) {
   const [queries, setQueries] = useState({ all: '', 'header-rule': '', 'switch-rule': '', 'network-rule': '' })
+  const [selecting, setSelecting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
+  const [importOpen, setImportOpen] = useState(false)
   const query = queries[view]
   const isAll = view === 'all'
   const isSwitchRules = view === 'switch-rule'
@@ -281,6 +292,21 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
     else visibleHeaderRules.push(entry)
   }
 
+  const selectedEntries = entries.filter(rule => selectedIds.has(rule.id))
+  const selectedNetwork = networkRules.filter(rule => selectedIds.has(rule.id))
+  const selectedCount = selectedEntries.length + selectedNetwork.length
+  function selectRule(id: string, checked: boolean) {
+    setSelectedIds(current => { const next = new Set(current); if (checked) next.add(id); else next.delete(id); return next })
+  }
+  const selection = selecting ? { selected: selectedIds, onChange: selectRule } : undefined
+  const visibleIds = (isAll ? [...visible, ...visibleNetworkRules] : isNetwork ? visibleNetworkRules : visible).map(rule => rule.id)
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every(id => selectedIds.has(id))
+  function exportCurrent() {
+    downloadRules(selecting
+      ? { requestHeaderRules: selectedEntries, networkRules: selectedNetwork }
+      : { requestHeaderRules: group, networkRules: isAll || isNetwork ? networkRules : [] }, selecting ? 'selected-rules' : isAll ? 'all-rules' : `${view}s`)
+  }
+
   const createActions = isAll ? (
     <NewRuleButton />
   ) : (
@@ -290,18 +316,31 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
 
   return (
     <Tabs value={view} onValueChange={(value) => { window.location.hash = value === 'all' ? '/all' : value === 'network-rule' ? '/network-rules' : value === 'switch-rule' ? '/switch-rules' : '/header-rules' }} className="animate-[rise-in_550ms_80ms_both] gap-0">
-      <TabsList aria-label="Rule settings" className="mb-6 max-w-full [&_button]:mobile:px-2">
-        <TabsTrigger value="all">All</TabsTrigger>
-        <TabsTrigger value="header-rule">Header Rules</TabsTrigger>
-        <TabsTrigger value="switch-rule">Switch Rules</TabsTrigger>
-        <TabsTrigger value="network-rule">Network Rules</TabsTrigger>
-      </TabsList>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <TabsList aria-label="Rule settings" className="max-w-full [&_button]:mobile:px-2">
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="header-rule">Header Rules</TabsTrigger>
+          <TabsTrigger value="switch-rule">Switch Rules</TabsTrigger>
+          <TabsTrigger value="network-rule">Network Rules</TabsTrigger>
+        </TabsList>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" disabled={pending} aria-pressed={selecting} onClick={() => { setSelecting(!selecting); setSelectedIds(new Set()) }}><Icon icon={ListChecks} data-icon="inline-start" />{selecting ? 'Cancel selection' : 'Select'}</Button>
+          <Button variant="outline" disabled={pending} onClick={() => setImportOpen(true)}><Icon icon={Upload} data-icon="inline-start" />Import</Button>
+          <Button variant="outline" disabled={pending || (selecting ? !selectedCount : !groupCount)} onClick={exportCurrent}><Icon icon={Download} data-icon="inline-start" />{selecting ? `Export selected (${selectedCount})` : 'Export'}</Button>
+        </div>
+      </div>
       <TabsContent value={view}>
         <div className={cn('mb-5 flex items-center justify-between gap-5 mobile:gap-3 [&_h1]:text-xl [&_h1]:font-semibold [&_h1]:flex [&_h1]:items-center [&_h1]:gap-2.5 mobile:[&_h1]:gap-2 mobile:[&_h1]:whitespace-nowrap', isNetwork && 'mobile:flex-wrap')}>
           <h1>{title}</h1>
           {createActions}
         </div>
         <div className="overflow-hidden rounded-lg border bg-card shadow-panel">
+          {selecting && <div className="flex flex-wrap items-center gap-3 border-b px-6 py-3 mobile:px-[15px]">
+            <label className="flex items-center gap-2 text-xs"><Checkbox aria-label="Select all visible rules" disabled={pending || !visibleIds.length}
+              checked={allVisibleSelected ? true : visibleIds.some(id => selectedIds.has(id)) ? 'indeterminate' : false}
+              onCheckedChange={checked => setSelectedIds(current => { const next = new Set(current); for (const id of visibleIds) { if (checked === true) next.add(id); else next.delete(id) } return next })} />Select all visible</label>
+            <span className="text-xs text-muted-foreground" role="status">{selectedCount} selected across rule types</span>
+          </div>}
           <div className="flex min-h-[66px] items-center gap-5 border-b px-6 py-[17px] mobile:px-[15px] mobile:py-3.5 mobile:flex-col mobile:items-stretch mobile:gap-2.5">
             <label className="flex w-full min-w-0 items-center gap-2 text-muted-foreground focus-within:text-foreground focus-within:shadow-[0_1px_0_var(--ring)] [&>svg]:size-[15px]">
               <Icon icon={Search} />
@@ -320,21 +359,21 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
             isAll ? (
               <>
                 <RuleSection title="Header Rules" count={visibleHeaderRules.length}>
-                  <HeaderRulesList headerRules={visibleHeaderRules} pending={pending} headerRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} />
+                  <HeaderRulesList headerRules={visibleHeaderRules} pending={pending} headerRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} selection={selection} />
                 </RuleSection>
                 <RuleSection title="Switch Rules" count={visibleSwitchRules.length}>
-                  <SwitchRulesList switchRules={visibleSwitchRules} pending={pending} switchRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} onSelectOption={onSelectOption} />
+                  <SwitchRulesList switchRules={visibleSwitchRules} pending={pending} switchRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} onSelectOption={onSelectOption} selection={selection} />
                 </RuleSection>
                 <RuleSection title="Network Rules" count={visibleNetworkRules.length}>
-                  <NetworkRulesList networkRules={visibleNetworkRules} pending={pending} onToggle={onToggleNetworkRule} />
+                  <NetworkRulesList networkRules={visibleNetworkRules} pending={pending} onToggle={onToggleNetworkRule} selection={selection} />
                 </RuleSection>
               </>
-            ) : isNetwork ? <NetworkRulesList networkRules={visibleNetworkRules} pending={pending} onToggle={onToggleNetworkRule} /> : isSwitchRules ? (
-              <SwitchRulesList switchRules={visibleSwitchRules} pending={pending} switchRuleHref={(switchRule) => `#${entryRoute(switchRule)}`} onToggle={onToggle} onSelectOption={onSelectOption} />
+            ) : isNetwork ? <NetworkRulesList networkRules={visibleNetworkRules} pending={pending} onToggle={onToggleNetworkRule} selection={selection} /> : isSwitchRules ? (
+              <SwitchRulesList switchRules={visibleSwitchRules} pending={pending} switchRuleHref={(switchRule) => `#${entryRoute(switchRule)}`} onToggle={onToggle} onSelectOption={onSelectOption} selection={selection} />
             ) : (
               <>
                 <div className="grid grid-cols-[32px_minmax(0,1fr)_92px] gap-4 px-6 pt-[17px] pb-2 text-[8px] tracking-[1.1px] text-muted-foreground tablet:grid-cols-[32px_minmax(0,1fr)_68px] mobile:hidden" aria-hidden="true"><span /><span>HEADER RULE / URL PATTERN</span><span>HEADERS</span></div>
-                <HeaderRulesList headerRules={visibleHeaderRules} pending={pending} headerRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} />
+                <HeaderRulesList headerRules={visibleHeaderRules} pending={pending} headerRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} selection={selection} />
               </>
             )
           ) : (
@@ -342,6 +381,8 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
           )}
         </div>
       </TabsContent>
+      {importOpen && <ImportRulesDialog open onClose={() => setImportOpen(false)} existing={{ requestHeaderRules: entries, networkRules }}
+        onBusy={onImportBusy} onSaved={rules => { onImported(rules); setSelecting(false); setSelectedIds(new Set()) }} />}
     </Tabs>
   )
 }

@@ -31,7 +31,7 @@ const worker = ts.transpileModule(source.replace(/^import .*\r?\n/gm, ''), {
 function harness(initialTabs: PageTab[]) {
   let tabs = initialTabs
   let entries: RequestHeaderRule[] = [{
-    kind: 'header-rule', id: 'localhost', name: 'Test', url: 'localhost:4200', enabled: true, order: 0,
+    kind: 'header-rule', id: '00000000-0000-4000-8000-00000000000f', name: 'Test', url: 'localhost:4200', enabled: true, order: 0,
     headers: [{ key: 'Origin', value: 'https://www.up50.co.in' }],
   }]
   let applied: chrome.declarativeNetRequest.Rule[] = []

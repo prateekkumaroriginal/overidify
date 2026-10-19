@@ -18,7 +18,7 @@ Object.assign(globalThis, {
 const { requestHeaderRulesToSessionRules, syncRequestHeaderSessionRules } = await import('../src/lib/dnr.ts')
 
 const localhostRule: RequestHeaderRule = {
-  kind: 'header-rule', id: 'localhost', name: 'up50', url: 'localhost:4200', order: 0, enabled: true,
+  kind: 'header-rule', id: '00000000-0000-4000-8000-00000000000f', name: 'up50', url: 'localhost:4200', order: 0, enabled: true,
   headers: [
     { key: 'Origin', value: 'https://www.up50.co.in' },
     { key: 'Referer', value: 'https://www.up50.co.in/' },
@@ -59,10 +59,10 @@ test('disabled or empty rules and tabs without a supported page or ID cannot app
 
 test('ordered priorities and selected Switch Rule headers survive tab scoping', () => {
   const switchRule: RequestHeaderRule = {
-    ...localhostRule, kind: 'switch-rule', id: 'switch-rule', order: 1, selectedOptionId: 'selected',
+    ...localhostRule, kind: 'switch-rule', id: '00000000-0000-4000-8000-000000000015', order: 1, selectedOptionId: '00000000-0000-4000-8000-000000000014',
     options: [
-      { id: 'unused', name: 'Unused', headers: [{ key: 'Origin', value: 'https://unused.example.com' }] },
-      { id: 'selected', name: 'Selected', headers: [{ key: 'Origin', value: 'https://selected.example.com' }] },
+      { id: '00000000-0000-4000-8000-000000000018', name: 'Unused', headers: [{ key: 'Origin', value: 'https://unused.example.com' }] },
+      { id: '00000000-0000-4000-8000-000000000014', name: 'Selected', headers: [{ key: 'Origin', value: 'https://selected.example.com' }] },
     ],
   }
   const compiled = requestHeaderRulesToSessionRules([switchRule, localhostRule], [{ id: 1, url: 'http://localhost:4200/messages' }])
@@ -138,9 +138,9 @@ test('Header Rules, Switch Rules, and popup match identical page domains regardl
     const headers = [{ key: 'X-Test', value: 'same' }]
     const base = { name: 'Test', url: pattern, enabled: true }
     const entries: RequestHeaderRule[] = [
-      { ...base, kind: 'header-rule', id: 'header-rule', order: 0, headers },
-      { ...base, kind: 'switch-rule', id: 'switch-rule', order: 1, selectedOptionId: 'active', options: [
-        { id: 'active', name: 'Active', headers },
+      { ...base, kind: 'header-rule', id: '00000000-0000-4000-8000-00000000000c', order: 0, headers },
+      { ...base, kind: 'switch-rule', id: '00000000-0000-4000-8000-000000000015', order: 1, selectedOptionId: '00000000-0000-4000-8000-000000000003', options: [
+        { id: '00000000-0000-4000-8000-000000000003', name: 'Active', headers },
       ] },
     ]
     const tabs = [...matches, ...excludes].map((url, id) => ({ id, url }))

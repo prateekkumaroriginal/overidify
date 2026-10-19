@@ -9,6 +9,7 @@ import { Icon } from './Icon'
 import { RuleEditorHeader } from './RuleEditorHeader'
 import { ToggleSwitch } from './ToggleSwitch'
 import { useEditorForm } from './useEditorForm'
+import { downloadRules } from '../lib/rule-download'
 
 type HeaderRuleEditorProps = {
   headerRule?: HeaderRule
@@ -28,7 +29,8 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
 
   return (
     <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="editor-title">
-      <RuleEditorHeader kind="header" editing={!!headerRule} busy={busy} onDelete={onDelete} />
+      <RuleEditorHeader kind="header" editing={!!headerRule} busy={busy} onDelete={onDelete} unsaved={form.formState.isDirty}
+        onExport={() => { if (headerRule) downloadRules({ requestHeaderRules: [headerRule], networkRules: [] }, 'header-rule') }} />
       <form
         ref={formRef}
         onSubmit={onSubmit}

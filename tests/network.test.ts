@@ -5,7 +5,7 @@ import { matchesPageDomain } from '../src/lib/pattern.ts'
 import type { NetworkRule } from '../src/lib/network-rules.ts'
 
 function networkRule(patch: Partial<NetworkRule> = {}): NetworkRule {
-  return { ...createNetworkRuleDraft(), id: 'chat', name: 'Chats', order: 0,
+  return { ...createNetworkRuleDraft(), id: '00000000-0000-4000-8000-000000000007', name: 'Chats', order: 0,
     requestUrl: 'https://backendapi-qa.topfan.dev/api/get-chatGroups-and-users?tab=featured&counts=true', ...patch }
 }
 
@@ -39,9 +39,9 @@ test('website eligibility uses the same matcher as Header Rules and Switch Rules
 })
 
 test('later enabled entries win and selection captures independent response settings', () => {
-  const first = networkRule({ id: 'first', order: 0 })
-  const second = networkRule({ id: 'second', order: 1, body: 'old', headers: [{ key: 'X-Test', value: 'old' }] })
-  const disabled = networkRule({ id: 'disabled', order: 2, enabled: false })
+  const first = networkRule({ id: '00000000-0000-4000-8000-00000000000a', order: 0 })
+  const second = networkRule({ id: '00000000-0000-4000-8000-000000000013', order: 1, body: 'old', headers: [{ key: 'X-Test', value: 'old' }] })
+  const disabled = networkRule({ id: '00000000-0000-4000-8000-000000000009', order: 2, enabled: false })
   const selected = selectNetworkRule([disabled, second, first], first.requestUrl, 'GET')!
   assert.equal(selected.id, second.id)
   second.body = 'changed'

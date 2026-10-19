@@ -10,10 +10,10 @@ for (const kind of ['header', 'network'] as const) {
     const first = extension.settings
     const key = kind === 'header' ? 'requestHeaderRules' : 'networkRules'
     await first.evaluate(() => chrome.storage.local.set({ requestHeaderRules: ['first', 'second'].map((id, order) => ({
-      kind: 'header-rule', id, name: id, url: '*', enabled: true, order,
+      kind: 'header-rule', id: order ? '00000000-0000-4000-8000-000000000042' : '00000000-0000-4000-8000-000000000041', name: id, url: '*', enabled: true, order,
       headers: [{ key: `X-${id}`, value: 'local' }],
     })) }))
-    await seed(['first', 'second'].map((id, order) => ({ ...networkRule, id, name: id, order })))
+    await seed(['first', 'second'].map((id, order) => ({ ...networkRule, id: order ? '00000000-0000-4000-8000-000000000042' : '00000000-0000-4000-8000-000000000041', name: id, order })))
     await first.evaluate(kind => { location.hash = `/${kind}-rules` }, kind)
     const second = await extension.context.newPage()
     await second.goto(`chrome-extension://${extension.id}/options.html#/${kind}-rules`)
@@ -61,7 +61,7 @@ for (const surface of ['settings', 'popup'] as const) {
   for (const kind of ['header', 'network'] as const) {
     test(`${surface} ${kind} startup read cannot overwrite a newer storage update`, async ({ extension, site, server, networkRule, seed }) => {
       await extension.settings.evaluate(() => chrome.storage.local.set({ requestHeaderRules: [
-        { kind: 'header-rule', id: 'headers', name: 'Request context', url: '*', enabled: true, order: 0,
+        { kind: 'header-rule', id: '00000000-0000-4000-8000-000000000031', name: 'Request context', url: '*', enabled: true, order: 0,
           headers: [{ key: 'X-Context', value: 'local' }] },
       ] }))
       await seed([networkRule])
@@ -105,7 +105,7 @@ for (const surface of ['settings', 'popup'] as const) {
 
     test(`${surface} ${kind} activation cannot overwrite a newer storage update`, async ({ extension, site, server, networkRule, seed }) => {
       await extension.settings.evaluate(() => chrome.storage.local.set({ requestHeaderRules: [
-        { kind: 'header-rule', id: 'headers', name: 'Request context', url: '*', enabled: true, order: 0,
+        { kind: 'header-rule', id: '00000000-0000-4000-8000-000000000031', name: 'Request context', url: '*', enabled: true, order: 0,
           headers: [{ key: 'X-Context', value: 'local' }] },
       ] }))
       await seed([networkRule])
