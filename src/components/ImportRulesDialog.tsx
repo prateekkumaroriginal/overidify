@@ -4,12 +4,12 @@ import { Alert, AlertDescription, AlertTitle } from './ui/alert'
 import { Button } from './ui/button'
 import { applyImport, reviewImport } from '../lib/rule-transfer'
 import type { ImportAction, ImportReview, RuleCollection } from '../lib/rule-transfer'
-import { activateImportedRules, saveImportedRules } from '../lib/rule-transfer-storage'
+import { activateImportedRules, getSavedRules, saveImportedRules } from '../lib/rule-transfer-storage'
 import type { TransferActivation } from '../lib/rule-transfer-storage'
 
-export function ImportRulesDialog({ open, onClose, existing, onSaved, onBusy }: {
-  open: boolean; onClose: () => void; existing: RuleCollection
-  onSaved: (rules: RuleCollection) => void; onBusy: (busy: boolean) => void
+export function ImportRulesDialog({ open, onClose, onSaved }: {
+  open: boolean; onClose: () => void
+  onSaved: (rules: RuleCollection) => void
 }) {
   const [review, setReview] = useState<ImportReview | null>(null)
   const [fileName, setFileName] = useState('')
@@ -24,25 +24,28 @@ export function ImportRulesDialog({ open, onClose, existing, onSaved, onBusy }: 
   async function chooseFile(file?: File) {
     if (!file) return
     setReview(null); setActivation(null); setError(''); setFileName(file.name)
-    setBusy(true); onBusy(true)
-    try { setReview(reviewImport(await file.text(), existing)) }
+    setBusy(true)
+    try {
+      const [text, existing] = await Promise.all([file.text(), getSavedRules()])
+      setReview(reviewImport(text, existing))
+    }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not read the file.') }
-    finally { setBusy(false); onBusy(false) }
+    finally { setBusy(false) }
   }
 
   async function run(action?: ImportAction) {
     if (submitting.current || (!review && action)) return
-    submitting.current = true; setBusy(true); onBusy(true); setError('')
+    submitting.current = true; setBusy(true); setError('')
     try {
       if (action && review) {
-        const rules = applyImport(existing, review, action)
+        const rules = applyImport(await getSavedRules(), review, action)
         const result = await saveImportedRules(rules)
         onSaved(rules)
         setActivation(result)
       } else setActivation(await activateImportedRules())
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not save the import. Try again.')
-    } finally { submitting.current = false; setBusy(false); onBusy(false) }
+    } finally { submitting.current = false; setBusy(false) }
   }
 
   return <Dialog open={open} onOpenChange={next => { if (!next && !busy) onClose() }}>

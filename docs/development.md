@@ -64,7 +64,7 @@ Styling uses Tailwind CSS v4 utilities and local shadcn components with Radix pr
 
 Shadcn's fade and zoom animations use `tw-animate-css`, imported by `src/styles.css`.
 
-Use the shared Button's `pending` prop to block interaction temporarily during saving while keeping available actions opaque. Use `disabled` for unavailable actions, such as exporting an empty selection; these stay dimmed even while pending.
+Rule storage locks cover reading and saving, and release before background activation. Home-page Select, Import, and Export stay usable during rule saves. Export and import review read saved rules under those locks, so they wait for unfinished writes without waiting for activation. Keep import submission state local to its modal dialog; selection does not change saved rules. Use `disabled` for unavailable actions, such as exporting an empty selection.
 
 All UI text uses locally bundled Manrope, including buttons, domain and header fields, and response editors. The unlayered `html body` font rule overrides Chrome's injected extension-page font. Keep it outside Tailwind's layers so the packaged extension renders the same font as development previews.
 

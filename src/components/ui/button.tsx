@@ -34,13 +34,10 @@ function Button({
   variant = "default",
   size,
   asChild = false,
-  disabled = false,
-  pending = false,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
-    pending?: boolean
   }) {
   const Comp = asChild ? Slot.Root : "button"
 
@@ -49,12 +46,7 @@ function Button({
       data-slot="button"
       data-variant={variant}
       data-size={size}
-      className={cn(
-        buttonVariants({ variant, size: size ?? (variant === "ghost" || variant === "link" ? "icon" : "default"), className }),
-        pending && !disabled && "disabled:cursor-wait disabled:opacity-100"
-      )}
-      disabled={disabled || pending}
-      aria-busy={pending || undefined}
+      className={cn(buttonVariants({ variant, size: size ?? (variant === "ghost" || variant === "link" ? "icon" : "default"), className }))}
       {...props}
     />
   )

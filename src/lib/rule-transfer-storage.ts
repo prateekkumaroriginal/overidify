@@ -1,8 +1,22 @@
 import { ActivationResultSchema } from './settings-messages.ts'
 import type { RuleCollection } from './rule-transfer.ts'
+import { getRequestHeaderRules, REQUEST_HEADER_STORAGE_KEY } from './request-header-storage.ts'
+import { getNetworkRules, NETWORK_STORAGE_KEY } from './network-storage.ts'
 
 export type TransferActivation = { ok: boolean; reloadTabIds: number[]; error?: string }
 const isPreview = () => import.meta.env?.DEV && !globalThis.chrome?.storage?.local
+
+async function withRuleStorageLocks<T>(action: () => Promise<T>): Promise<T> {
+  return await navigator.locks.request(REQUEST_HEADER_STORAGE_KEY, async () =>
+    await navigator.locks.request(NETWORK_STORAGE_KEY, action))
+}
+
+export async function getSavedRules(): Promise<RuleCollection> {
+  return withRuleStorageLocks(async () => {
+    const [requestHeaderRules, networkRules] = await Promise.all([getRequestHeaderRules(), getNetworkRules()])
+    return { requestHeaderRules, networkRules }
+  })
+}
 
 export async function activateImportedRules(): Promise<TransferActivation> {
   if (isPreview()) return { ok: true, reloadTabIds: [] }
@@ -21,6 +35,11 @@ export async function activateImportedRules(): Promise<TransferActivation> {
 }
 
 export async function saveImportedRules(rules: RuleCollection): Promise<TransferActivation> {
+  await withRuleStorageLocks(() => persistImportedRules(rules))
+  return activateImportedRules()
+}
+
+async function persistImportedRules(rules: RuleCollection): Promise<void> {
   if (isPreview()) {
     const keys = ['requestHeaderRules', 'networkRules'] as const
     const previous = keys.map(key => localStorage.getItem(key))
@@ -38,5 +57,4 @@ export async function saveImportedRules(rules: RuleCollection): Promise<Transfer
     // One write keeps the two rule collections together; activation is a separate result.
     await chrome.storage.local.set(rules)
   }
-  return activateImportedRules()
 }
