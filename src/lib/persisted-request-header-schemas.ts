@@ -10,5 +10,5 @@ export const PersistedRequestHeaderRuleSchema = z.object({
   url: z.catch(z.string(), '*'), enabled: z.catch(z.boolean(), true),
   order: z.catch(z.optional(z.number()), undefined), kind: z.enum(['header-rule', 'switch-rule']),
   headers: z.optional(z.unknown()), options: z.catch(z.array(z.unknown()), []),
-  selectedOptionId: z.optional(z.unknown()),
+  selectedOptionId: z.catch(z.optional(RuleIdSchema), undefined),
 })

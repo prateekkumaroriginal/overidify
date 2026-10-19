@@ -36,12 +36,16 @@ test('entries require an explicit supported kind and malformed siblings do not h
 })
 
 test('Switch Rules retain their selected option and header sets', () => {
-  const [switchRule] = normalizeRequestHeaderRules([{ ...headerRule, kind: 'switch-rule', options, selectedOptionId: '00000000-0000-4000-8000-00000000000b' }])
-  assert.equal(switchRule.kind, 'switch-rule')
-  if (switchRule.kind !== 'switch-rule') throw new Error('Expected Switch Rule')
-  assert.equal(switchRule.selectedOptionId, '00000000-0000-4000-8000-00000000000b')
-  assert.deepEqual(getEntryHeaders(switchRule), options[1].headers)
-  assert.deepEqual(normalizeRequestHeaderRules([switchRule]), [switchRule])
+  for (const selectedOptionId of [options[1].id, options[1].id.toUpperCase()]) {
+    for (const savedOptions of [options, options.map(option => ({ ...option, id: option.id.toUpperCase() }))]) {
+      const [switchRule] = normalizeRequestHeaderRules([{ ...headerRule, kind: 'switch-rule', options: savedOptions, selectedOptionId }])
+      assert.equal(switchRule.kind, 'switch-rule')
+      if (switchRule.kind !== 'switch-rule') throw new Error('Expected Switch Rule')
+      assert.equal(switchRule.selectedOptionId, options[1].id)
+      assert.deepEqual(getEntryHeaders(switchRule), options[1].headers)
+      assert.deepEqual(normalizeRequestHeaderRules([switchRule]), [switchRule])
+    }
+  }
 })
 
 test('Switch Rules keep their type with a single option', () => {
@@ -93,11 +97,13 @@ test('switching a Switch Rule replaces its header set while preserving Header Ru
   assert.deepEqual(getEntryHeaders(entries[0]), headerRule.headers)
 })
 
-test('deleting the selected option falls back to an existing option without changing Switch Rule type', () => {
-  const [entry] = normalizeRequestHeaderRules([{ ...headerRule, kind: 'switch-rule', options: [options[0]], selectedOptionId: '00000000-0000-4000-8000-00000000000b' }])
-  if (entry.kind !== 'switch-rule') throw new Error('Expected Switch Rule')
-  assert.equal(entry.selectedOptionId, '00000000-0000-4000-8000-000000000004')
-  assert.deepEqual(getSelectedOption(entry).headers, options[0].headers)
+test('missing, invalid, or removed selected options fall back without changing Switch Rule type', () => {
+  for (const selectedOptionId of [options[1].id, 'invalid-id', undefined, { invalid: true }]) {
+    const [entry] = normalizeRequestHeaderRules([{ ...headerRule, kind: 'switch-rule', options: [options[0]], selectedOptionId }])
+    if (entry.kind !== 'switch-rule') throw new Error('Expected Switch Rule')
+    assert.equal(entry.selectedOptionId, options[0].id)
+    assert.deepEqual(getSelectedOption(entry).headers, options[0].headers)
+  }
 })
 
 test('normalization supplies unique option IDs and preserves all valid header sets', () => {
