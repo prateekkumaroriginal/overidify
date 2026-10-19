@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <title>Overidify logo</title>
+  <!-- Rounded body: 8px outer corners, 4px tips, and a 19px inner notch.
+       The notch follows the violet insert's 10px left corner at 9px clearance. -->
+  <path data-body="" fill="#131315" d="
+    M 69.656854 10.656854
+    L 85.763459 26.763459 A 4 4 0 0 1 85.763459 32.420313
+    L 67.618801 50.564971 A 19 19 0 0 0 67.618801 77.435029
+    L 85.763459 95.579687 A 4 4 0 0 1 85.763459 101.236541
+    L 69.656854 117.343146 A 8 8 0 0 1 58.343146 117.343146
+    L 10.656854 69.656854 A 8 8 0 0 1 10.656854 58.343146
+    L 58.343146 10.656854 A 8 8 0 0 1 69.656854 10.656854 Z" />
+  <!-- Violet occupies 25% of the filled area. Its outer diagonals align with
+       the main diamond's edges, meeting at the virtual right tip (123, 64). -->
+  <!-- Only the left corner uses a 10px radius; the other corners retain 4px. -->
+  <path id="violet-shape" fill="#5f3afc" d="
+    M 97.784274 38.784274
+    L 120.171573 61.171573 A 4 4 0 0 1 120.171573 66.828427
+    L 97.784274 89.215726 A 4 4 0 0 1 92.12742 89.215726
+    L 73.982762 71.071068 A 10 10 0 0 1 73.982762 56.928932
+    L 92.12742 38.784274 A 4 4 0 0 1 97.784274 38.784274 Z" />
+</svg>

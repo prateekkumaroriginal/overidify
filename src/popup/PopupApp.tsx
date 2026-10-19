@@ -8,11 +8,11 @@ import { Icon } from '../components/Icon'
 import { SwitchRuleOptionSelect } from '../components/SwitchRuleOptionSelect'
 import { ToggleSwitch } from '../components/ToggleSwitch'
 import { getDomainPattern, matchesPageDomain } from '../lib/pattern'
-import { getRequestHeaderRules, saveRequestHeaderRules, subscribeToRequestHeaderRules } from '../lib/request-header-storage'
+import { getRequestHeaderRules, updateRequestHeaderRules, subscribeToRequestHeaderRules } from '../lib/request-header-storage'
 import type { RequestHeaderRule } from '../lib/types'
 import { networkRulesForPage } from '../lib/network-rules'
 import type { NetworkRule } from '../lib/network-rules'
-import { getNetworkRules, saveNetworkRules, subscribeToNetworkRules } from '../lib/network-storage'
+import { getNetworkRules, updateNetworkRules, subscribeToNetworkRules } from '../lib/network-storage'
 
 const ruleTabs = [
   { value: 'all', label: 'All' },
@@ -40,6 +40,8 @@ export function PopupApp() {
 
   useEffect(() => {
     let alive = true
+    let rulesChanged = false
+    let networkRulesChanged = false
     async function load() {
       try {
         const [nextRules, currentPageUrl, nextNetworkRules] = await Promise.all([
@@ -49,8 +51,8 @@ export function PopupApp() {
         ])
         if (alive) {
           startTransition(() => {
-            setRules(nextRules)
-            setNetworkRules(nextNetworkRules)
+            if (!rulesChanged) setRules(nextRules)
+            if (!networkRulesChanged) setNetworkRules(nextNetworkRules)
             setPageUrl(currentPageUrl)
             setLoading(false)
           })
@@ -64,9 +66,11 @@ export function PopupApp() {
     }
     void load()
     const unsubscribe = subscribeToRequestHeaderRules((nextRules) => {
+      rulesChanged = true
       if (alive) startTransition(() => setRules(nextRules))
     })
     const unsubscribeNetwork = subscribeToNetworkRules(next => {
+      networkRulesChanged = true
       if (alive) startTransition(() => setNetworkRules(next))
     })
     return () => {
@@ -80,13 +84,11 @@ export function PopupApp() {
     setPending(true)
     setError('')
     try {
-      setRules(
-        await saveRequestHeaderRules(
-          rules.map((current) =>
-            current.id !== rule.id ? current : current.kind === 'switch-rule'
-              ? { ...current, ...patch }
-              : { ...current, enabled: patch.enabled ?? current.enabled },
-          ),
+      await updateRequestHeaderRules(
+        currentRules => currentRules.map((current) =>
+          current.id !== rule.id ? current : current.kind === 'switch-rule'
+            ? { ...current, ...patch }
+            : { ...current, enabled: patch.enabled ?? current.enabled },
         ),
       )
     } catch (error) {
@@ -103,8 +105,7 @@ export function PopupApp() {
     setPending(true)
     setError('')
     try {
-      const result = await saveNetworkRules(networkRules.map(entry => entry.id === networkRule.id ? { ...entry, enabled } : entry))
-      setNetworkRules(result.entries)
+      const result = await updateNetworkRules(rules => rules.map(entry => entry.id === networkRule.id ? { ...entry, enabled } : entry))
       setNotice(result.reloadTabIds.length ? 'Reload matching website tabs to activate the latest network rules.' : '')
     } catch (reason) { setError(`Could not apply the network rule. ${reason instanceof Error ? reason.message : 'Try again.'}`) }
     finally { setPending(false) }
@@ -118,7 +119,7 @@ export function PopupApp() {
           {getDomainPattern(pageUrl) || pageUrl}
         </span>
         <Button variant="ghost" size="icon" asChild>
-          <a href="options.html#/header-rules" target="_blank" rel="noreferrer" aria-label="Settings">
+          <a href="options.html" target="_blank" rel="noreferrer" aria-label="Settings">
             <Icon icon={Settings} />
           </a>
         </Button>
@@ -155,7 +156,7 @@ export function PopupApp() {
                           size="sm"
                           checked={rule.enabled}
                           label={`Enable ${rule.name}`}
-                          disabled={pending}
+                          pending={pending}
                           onChange={(enabled) => {
                             void handleUpdate(rule, { enabled })
                           }}
@@ -164,7 +165,7 @@ export function PopupApp() {
                         {rule.kind === 'switch-rule' && <SwitchRuleOptionSelect
                           size="sm"
                           switchRule={rule}
-                          disabled={pending}
+                          pending={pending}
                           onChange={(selectedOptionId) => { void handleUpdate(rule, { selectedOptionId }) }}
                         />}
                       </li>
@@ -175,7 +176,7 @@ export function PopupApp() {
                           size="sm"
                           checked={networkRule.enabled}
                           label={`Enable ${networkRule.name}`}
-                          disabled={pending}
+                          pending={pending}
                           onChange={enabled => { void toggleNetworkRule(networkRule, enabled) }}
                         />
                         <span className="min-w-0 flex-1 text-xs wrap-anywhere">{networkRule.name}</span>

@@ -12,11 +12,11 @@ Export exact saved values, including credentials and response bodies. Preserve e
 
 On the options page, place Select, Import, and Export to the right of the existing rule-type tabs. On narrow layouts, allow the controls to wrap. The extension popup has no import/export controls.
 
-With selection mode off, hide selection checkboxes. Export downloads every saved rule belonging to the active rule-type tab, including enabled and disabled rules.
+With selection mode off, hide selection checkboxes. Export downloads every saved rule belonging to the active rule-type tab, including enabled and disabled rules. The All tab exports every saved rule across the three types as a full backup.
 
 Clicking Select enters selection mode and reveals checkboxes in the existing rule lists. In selection mode, Export downloads the selected rules and is disabled when nothing is selected. Show the selection count so the scope is visible.
 
-Retain selections when switching between the rule-type tabs within this options page. This supports a file containing selected rules of different types. Selecting all saved rules across the three types produces a full backup. Ordinary Export remains a tab export.
+Retain selections when switching between the rule-type tabs within this options page. This supports a file containing selected rules of different types. Selecting all saved rules across the three types produces a full backup. Ordinary Export follows the active tab, so Export on All is also a full backup.
 
 ## Export inside a rule
 
@@ -88,7 +88,7 @@ The envelope is `{ "format": "overidify", "version": 1, "requestHeaderRules": []
 
 No migration for old IDs or existing data. No handling of multiple browser tabs changing settings during an import review, no stale-review detection, and no cross-tab import conflicts.
 
-No third-party formats, clipboard JSON input/output, or drag-and-drop in version one. A separate export-selection dialog and a default export of all types were superseded by selection in the existing lists and ordinary tab export.
+No third-party formats, clipboard JSON input/output, or drag-and-drop in version one. A separate export-selection dialog and an export that ignores the active tab were superseded by selection in the existing lists and ordinary tab export.
 
 ## Acceptance scenarios
 

@@ -7,7 +7,7 @@ type HeaderRulesListProps = {
   headerRules: HeaderRule[]
   headerRuleHref: (headerRule: HeaderRule) => string
   onToggle: (headerRule: HeaderRule, enabled: boolean) => void
-  disabled?: boolean
+  pending?: boolean
   openInTab?: boolean
   selection?: RuleSelection
 }
@@ -16,7 +16,7 @@ export function HeaderRulesList({
   headerRules,
   headerRuleHref,
   onToggle,
-  disabled,
+  pending,
   openInTab,
   selection,
 }: HeaderRulesListProps) {
@@ -28,11 +28,11 @@ export function HeaderRulesList({
           key={headerRule.id}
           style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
         >
-          <RuleSelectionCheckbox id={headerRule.id} name={headerRule.name} selection={selection} disabled={disabled} />
+          <RuleSelectionCheckbox id={headerRule.id} name={headerRule.name} selection={selection} disabled={pending} />
           <ToggleSwitch
             checked={headerRule.enabled}
             label={`Enable ${headerRule.name}`}
-            disabled={disabled}
+            pending={pending}
             onChange={(enabled) => onToggle(headerRule, enabled)}
           />
           <a

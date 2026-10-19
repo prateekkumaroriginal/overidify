@@ -63,13 +63,15 @@ All three rule editors place a ghost Back arrow beside the title and **Export** 
 
 Saved edits and toggles affect subsequent requests. An in-flight request keeps the Network Rule settings captured when it started. Changing a rule does not repeat a request or update content already on the page.
 
+The settings page and popup follow the latest saved rules. Changes from multiple open extension pages are applied in sequence, so editing one rule preserves changes to other rules made in another page.
+
 Reload website tabs after installing, updating, or reloading the extension, and whenever the settings page or popup asks you to.
 
 The [Network Rules specification](network-rules/spec.md) covers further technical details and implementation decisions.
 
 ## Transferring rules
 
-Import, Export, and Select appear to the right of the rule-type tabs on the options page. Without selection mode, Export includes every saved rule in the active type, regardless of search. Select reveals list checkboxes; selections carry across the rule-type tabs and searches. Export selected is disabled until at least one rule is selected. Cancel selection clears the selection.
+Import, Export, and Select appear to the right of the rule-type tabs on the options page. Without selection mode, Export includes every saved rule in the active tab, regardless of search. Export on All produces a full backup across the three types. Select reveals list checkboxes; selections carry across the tabs and searches. Export selected is disabled until at least one rule is selected. Cancel selection clears the selection.
 
 Exports use Overidify JSON format version 1. They preserve saved values, enabled states, relative order, and all Switch Rule options and the selected option. Rule and option identities are UUIDs.
 

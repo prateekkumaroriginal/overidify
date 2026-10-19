@@ -10,11 +10,11 @@ const icons = {
 export default defineManifest({
   manifest_version: 3,
   name: 'Overidify',
-  version: '0.2.1',
+  version: '0.2.3',
   minimum_chrome_version: '119',
   description: 'Override request headers and mock API responses with website-scoped rules.',
   icons,
-  permissions: ['storage', 'tabs', 'webNavigation', 'declarativeNetRequest', 'declarativeNetRequestWithHostAccess'],
+  permissions: ['storage', 'tabs', 'webNavigation', 'declarativeNetRequest', 'declarativeNetRequestWithHostAccess', 'offscreen'],
   host_permissions: ['<all_urls>'],
   action: {
     default_icon: icons,
@@ -38,7 +38,7 @@ export default defineManifest({
     },
     {
       matches: ['http://*/*', 'https://*/*'],
-      js: ['src/network/bridge.ts'],
+      js: ['src/network/bridge.ts', 'src/icon-theme/main.ts'],
       run_at: 'document_start', all_frames: true,
       match_about_blank: true, ...{ match_origin_as_fallback: true },
     },

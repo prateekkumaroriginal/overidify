@@ -42,7 +42,7 @@ pnpm test:e2e
 
 Matching, normalization, priority, and validation tests use Node's TypeScript stripping support. ESLint checks project code and excludes bundled agent skills under `.agents/`.
 
-`pnpm test:e2e` builds the production extension, typechecks the browser tests, and runs Playwright against bundled Chromium with the unpacked extension installed. Each test owns a temporary browser profile and local HTTP server. The suite covers the three editors, popup controls, early requests under CSP, fetch/XHR behavior, live updates, iframe scope, and native DevTools.
+`pnpm test:e2e` builds the production extension, typechecks the browser tests, and runs Playwright against bundled Chromium with the unpacked extension installed. Each test owns a temporary browser profile and local HTTP server. The retained browser suite covers extension integration, activation, early requests under CSP, fetch/XHR behavior, live updates, iframe scope, and native DevTools. Import/export format, validation, overlap handling, order, and save/activation failures are tested through the public functions in the Node suite.
 
 On Linux, install browser system dependencies with `pnpm exec playwright install --with-deps chromium` if needed. CI runs the same checks.
 
@@ -52,11 +52,17 @@ Use `.scratch/verification/<task>/` for temporary verification scripts, screensh
 
 Run temporary checks explicitly during implementation or relevant UI changes. Report their results with the change, then remove that task's temporary files. Keep lasting application-behavior tests in `tests/`; the [testing policy](../AGENTS.md#testing) defines which checks belong there.
 
+## Reviewing tests
+
+For each added test, identify the failure mode or integration boundary it protects and compare it with existing coverage. Use the [testing policy](../AGENTS.md#testing) to choose permanent regression coverage or one-time verification. Browser tests should protect behavior that requires Chrome or extension/page integration.
+
 ## UI and dependencies
 
 The extension uses React, TypeScript, Vite, and Manifest V3 with `@crxjs/vite-plugin`. Zod schemas and React Hook Form with Zod resolvers handle forms and validation.
 
 Styling uses Tailwind CSS v4 utilities and local shadcn components with Radix primitives in `src/components/ui`. Theme tokens and shared base styles live in `src/styles.css`.
+
+Shadcn's fade and zoom animations use `tw-animate-css`, imported by `src/styles.css`.
 
 All UI text uses locally bundled Manrope, including buttons, domain and header fields, and response editors. The unlayered `html body` font rule overrides Chrome's injected extension-page font. Keep it outside Tailwind's layers so the packaged extension renders the same font as development previews.
 
