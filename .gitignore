@@ -10,6 +10,9 @@ dist-ssr
 playwright-report/
 test-results/
 
+# One-time verification scripts and artifacts
+/.scratch/verification/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

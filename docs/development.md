@@ -46,6 +46,12 @@ Matching, normalization, priority, and validation tests use Node's TypeScript st
 
 On Linux, install browser system dependencies with `pnpm exec playwright install --with-deps chromium` if needed. CI runs the same checks.
 
+## One-time verification
+
+Use `.scratch/verification/<task>/` for temporary verification scripts, screenshots, and logs. Create the task directory when needed. Git and ESLint ignore this location, and the normal unit and browser test commands discover tests only under `tests/`.
+
+Run temporary checks explicitly during implementation or relevant UI changes. Report their results with the change, then remove that task's temporary files. Keep lasting application-behavior tests in `tests/`; the [testing policy](../AGENTS.md#testing) defines which checks belong there.
+
 ## UI and dependencies
 
 The extension uses React, TypeScript, Vite, and Manifest V3 with `@crxjs/vite-plugin`. Zod schemas and React Hook Form with Zod resolvers handle forms and validation.
