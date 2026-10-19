@@ -1,4 +1,4 @@
-import { ArrowLeft, Download, Trash2 } from 'lucide-react'
+import { ArrowLeft, Upload, Trash2 } from 'lucide-react'
 import { Button } from './ui/button'
 import { Icon } from './Icon'
 
@@ -24,9 +24,8 @@ export function RuleEditorHeader({ kind, editing, busy, titleId = 'editor-title'
       </Button>
       <h1 id={titleId} className="min-w-0 flex-1 text-xl font-semibold">{editing ? 'Edit' : 'New'} {kind} rule</h1>
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" type="button" disabled={busy || !editing || unsaved} onClick={onExport}
-          aria-describedby={!editing || unsaved ? 'export-save-help' : undefined}>
-          <Icon icon={Download} data-icon="inline-start" /> Export
+        <Button variant="outline" size="sm" type="button" disabled={busy || !editing || unsaved} onClick={onExport}>
+          <Icon icon={Upload} data-icon="inline-start" /> Export
         </Button>
       {onDelete && (
         <Button variant="destructive-outline" size="sm" type="button" className="shrink-0" disabled={busy} onClick={onDelete}>
@@ -35,7 +34,6 @@ export function RuleEditorHeader({ kind, editing, busy, titleId = 'editor-title'
         </Button>
       )}
       </div>
-      {(!editing || unsaved) && <p id="export-save-help" className="w-full text-right text-xs text-muted-foreground">Save changes to export</p>}
     </div>
   )
 }

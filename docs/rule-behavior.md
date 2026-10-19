@@ -71,7 +71,7 @@ The [Network Rules specification](network-rules/spec.md) covers further technica
 
 ## Transferring rules
 
-Import, Export, and Select appear to the right of the rule-type tabs on the options page. Without selection mode, Export includes every saved rule in the active tab, regardless of search. Export on All produces a full backup across the three types. Select reveals list checkboxes; selections carry across the tabs and searches. Export selected is disabled until at least one rule is selected. Cancel selection clears the selection.
+Import, Export, and Select appear to the right of the rule-type tabs on the options page. Without selection mode, Export includes every saved rule in the active tab, regardless of search. Export on All produces a full backup across the three types. Select reveals list checkboxes; selections carry across the tabs and searches. In selection mode, Export (n) shows the selection count and is disabled until at least one rule is selected. Cancel clears the selection. The All checkbox selects the visible rules; checked and mixed checkboxes use violet.
 
 Exports use Overidify JSON format version 1. They preserve saved values, enabled states, relative order, and all Switch Rule options and the selected option. Rule and option identities are UUIDs.
 

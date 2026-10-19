@@ -59,10 +59,8 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
                   {...form.register('url')}
                   placeholder="e.g. localhost:4200 or api.example.com"
                   aria-label="Domain"
-                  aria-describedby="header-rule-domain-help"
                   required
                 />
-                <span id="header-rule-domain-help" className="font-normal text-muted-foreground">Matches the page's domain on every path. Applies to requests made from that page, including other API hosts. Include a port to match only that port.</span>
               </label>
             </div>
             <div className="flex items-center justify-between gap-5 border-t py-[17px]">

@@ -43,9 +43,8 @@ export function NetworkRuleEditor({ networkRule, pending, onSave, onDelete }: Pr
             <h2 className="mb-5 text-[13px] font-bold">Request matching</h2>
             <div className="grid grid-cols-2 gap-5 mobile:grid-cols-1">
               <label className={fieldClass}>Network rule name<Input {...form.register('name')} placeholder="e.g. Featured chats" required autoFocus /></label>
-              <label className={fieldClass}>Website domain<Input {...form.register('url')} placeholder="e.g. localhost:4200" required aria-describedby="network-domain-help" /></label>
+              <label className={fieldClass}>Website domain<Input {...form.register('url')} placeholder="e.g. localhost:4200" required /></label>
             </div>
-            <p id="network-domain-help" className="mt-3 text-[11px] text-muted-foreground">Matches the page domain on every path, just like Header Rules and Switch Rules. Requests from its frames use the same website scope.</p>
             <div className="mt-5 grid grid-cols-[minmax(0,1fr)_auto] gap-4 mobile:grid-cols-1">
               <label className={fieldClass}>Request URL<Input className="font-sans text-[11px]" {...form.register('requestUrl')} placeholder="https://api.example.com/chats?tab=featured" required aria-describedby="network-target-help" /></label>
               <label className={fieldClass}>HTTP method<NativeSelect className="py-[11px]" {...form.register('method')}>{NETWORK_METHODS.map(method => <option key={method} value={method}>{method === 'ANY' ? 'Any' : method}</option>)}</NativeSelect></label>
