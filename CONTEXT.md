@@ -26,7 +26,7 @@ A rule export containing every saved rule across all three rule types.
 A rule export containing the rules the user chooses, potentially across multiple rule types.
 
 **Tab export**:
-A rule export containing every saved rule of the currently chosen rule type.
+A rule export containing every saved rule in the active tab. On All, this is a full backup; on a type tab, it contains only that rule type.
 
 **Single-rule export**:
 A rule export containing one complete saved rule, including all options when it is a Switch Rule.
