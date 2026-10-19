@@ -14,7 +14,7 @@ On the options page, place Select, Import, and Export to the right of the existi
 
 With selection mode off, hide selection checkboxes. Export downloads every saved rule belonging to the active rule-type tab, including enabled and disabled rules. The All tab exports every saved rule across the three types as a full backup.
 
-Clicking Select enters selection mode and reveals checkboxes in the existing rule lists. The toolbar shows Cancel and Export (n), with the count in the Export label. Export downloads the selected rules and is disabled when nothing is selected. Label the visible-rules select-all checkbox All. Checked and mixed checkboxes use the violet action color.
+Clicking Select enters selection mode and reveals checkboxes in the existing rule lists. The toolbar shows Cancel and Export (n), with the count in the Export label. Export downloads the selected rules and is disabled when nothing is selected. Label the visible-rules select-all checkbox All. Checked and mixed checkboxes use the violet action color. All shows a minus when some visible rules are selected and a checkmark when all are selected.
 
 Select, Import, and Export stay usable while a rule saves or activates. Selection only changes local UI state. Export waits for unfinished saves and reads saved rules, without waiting for activation. Import opens immediately; file review and applying an import wait for unfinished saves. Keep the import dialog's own busy and repeated-submission protection.
 
