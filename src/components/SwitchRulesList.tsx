@@ -24,7 +24,7 @@ export function SwitchRulesList({ switchRules, switchRuleHref, onToggle, onSelec
             style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
           >
             <div className="flex min-h-20 items-center gap-4 mobile:gap-2.5">
-              <RuleSelectionCheckbox id={rule.id} name={rule.name} selection={selection} disabled={pending} />
+              <RuleSelectionCheckbox id={rule.id} name={rule.name} selection={selection} />
               <ToggleSwitch
                 checked={rule.enabled}
                 label={`Enable ${rule.name}`}

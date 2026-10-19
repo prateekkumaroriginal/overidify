@@ -2,9 +2,10 @@ import { ArrowRight, Download, ListChecks, Plus, Search, Upload, X } from 'lucid
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { startTransition, useEffect, useState, type ReactNode } from 'react'
+import { startTransition, useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { Brand } from '../components/Brand'
 import { Icon } from '../components/Icon'
@@ -23,6 +24,7 @@ import type { RequestHeaderRule, HeaderRule, SwitchRule, HeaderRuleDraft, Switch
 import { cn } from '../lib/utils'
 import { ImportRulesDialog } from '../components/ImportRulesDialog'
 import { downloadRules } from '../lib/rule-download'
+import { getSavedRules } from '../lib/rule-transfer-storage'
 import type { RuleCollection } from '../lib/rule-transfer'
 
 function readRoute() {
@@ -214,7 +216,6 @@ export function OptionsApp() {
             networkRules={networkRules}
             view={route === '/all' ? 'all' : route === '/network-rules' ? 'network-rule' : route === '/switch-rules' ? 'switch-rule' : 'header-rule'}
             pending={pending}
-            onImportBusy={setPending}
             onImported={rules => { setEntries(rules.requestHeaderRules); setNetworkRules(rules.networkRules) }}
             onToggle={(entry, enabled) => { void handleToggle(entry, enabled) }}
             onSelectOption={(switchRule, optionId) => { void handleSelectOption(switchRule, optionId) }}
@@ -257,14 +258,15 @@ type WorkspaceProps = {
   onSelectOption: (switchRule: SwitchRule, optionId: string) => void
   onToggleNetworkRule: (networkRule: NetworkRule, enabled: boolean) => void
   onImported: (rules: RuleCollection) => void
-  onImportBusy: (busy: boolean) => void
 }
 
-function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOption, onToggleNetworkRule, onImported, onImportBusy }: WorkspaceProps) {
+function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOption, onToggleNetworkRule, onImported }: WorkspaceProps) {
   const [queries, setQueries] = useState({ all: '', 'header-rule': '', 'switch-rule': '', 'network-rule': '' })
   const [selecting, setSelecting] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [importOpen, setImportOpen] = useState(false)
+  const [exportError, setExportError] = useState('')
+  const exporting = useRef(false)
   const query = queries[view]
   const isAll = view === 'all'
   const isSwitchRules = view === 'switch-rule'
@@ -301,10 +303,20 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
   const selection = selecting ? { selected: selectedIds, onChange: selectRule } : undefined
   const visibleIds = (isAll ? [...visible, ...visibleNetworkRules] : isNetwork ? visibleNetworkRules : visible).map(rule => rule.id)
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every(id => selectedIds.has(id))
-  function exportCurrent() {
-    downloadRules(selecting
-      ? { requestHeaderRules: selectedEntries, networkRules: selectedNetwork }
-      : { requestHeaderRules: group, networkRules: isAll || isNetwork ? networkRules : [] }, selecting ? 'selected-rules' : isAll ? 'all-rules' : `${view}s`)
+  async function exportCurrent() {
+    if (exporting.current) return
+    exporting.current = true
+    setExportError('')
+    const ids = selecting ? new Set(selectedIds) : null
+    try {
+      const saved = await getSavedRules()
+      downloadRules({
+        requestHeaderRules: saved.requestHeaderRules.filter(rule => ids ? ids.has(rule.id) : isAll || rule.kind === view),
+        networkRules: saved.networkRules.filter(rule => ids ? ids.has(rule.id) : isAll || isNetwork),
+      }, ids ? 'selected-rules' : isAll ? 'all-rules' : `${view}s`)
+    } catch (reason) {
+      setExportError(reason instanceof Error ? reason.message : 'Could not read saved rules for export. Try again.')
+    } finally { exporting.current = false }
   }
 
   const createActions = isAll ? (
@@ -324,19 +336,20 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
           <TabsTrigger value="network-rule">Network Rules</TabsTrigger>
         </TabsList>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" disabled={pending} aria-pressed={selecting} onClick={() => { setSelecting(!selecting); setSelectedIds(new Set()) }}><Icon icon={ListChecks} data-icon="inline-start" />{selecting ? 'Cancel selection' : 'Select'}</Button>
-          <Button variant="outline" disabled={pending} onClick={() => setImportOpen(true)}><Icon icon={Upload} data-icon="inline-start" />Import</Button>
-          <Button variant="outline" disabled={pending || (selecting ? !selectedCount : !groupCount)} onClick={exportCurrent}><Icon icon={Download} data-icon="inline-start" />{selecting ? `Export selected (${selectedCount})` : 'Export'}</Button>
+          <Button variant="outline" aria-pressed={selecting} onClick={() => { setSelecting(!selecting); setSelectedIds(new Set()) }}><Icon icon={ListChecks} data-icon="inline-start" />{selecting ? 'Cancel selection' : 'Select'}</Button>
+          <Button variant="outline" onClick={() => setImportOpen(true)}><Icon icon={Upload} data-icon="inline-start" />Import</Button>
+          <Button variant="outline" disabled={selecting ? !selectedCount : !groupCount} onClick={() => { void exportCurrent() }}><Icon icon={Download} data-icon="inline-start" />{selecting ? `Export selected (${selectedCount})` : 'Export'}</Button>
         </div>
       </div>
       <TabsContent value={view}>
+        {exportError && <Alert variant="destructive" className="mb-5"><AlertDescription>Export failed: {exportError}</AlertDescription></Alert>}
         <div className={cn('mb-5 flex items-center justify-between gap-5 mobile:gap-3 [&_h1]:text-xl [&_h1]:font-semibold [&_h1]:flex [&_h1]:items-center [&_h1]:gap-2.5 mobile:[&_h1]:gap-2 mobile:[&_h1]:whitespace-nowrap', isNetwork && 'mobile:flex-wrap')}>
           <h1>{title}</h1>
           {createActions}
         </div>
         <div className="overflow-hidden rounded-lg border bg-card shadow-panel">
           {selecting && <div className="flex flex-wrap items-center gap-3 border-b px-6 py-3 mobile:px-[15px]">
-            <label className="flex items-center gap-2 text-xs"><Checkbox aria-label="Select all visible rules" disabled={pending || !visibleIds.length}
+            <label className="flex items-center gap-2 text-xs"><Checkbox aria-label="Select all visible rules" disabled={!visibleIds.length}
               checked={allVisibleSelected ? true : visibleIds.some(id => selectedIds.has(id)) ? 'indeterminate' : false}
               onCheckedChange={checked => setSelectedIds(current => { const next = new Set(current); for (const id of visibleIds) { if (checked === true) next.add(id); else next.delete(id) } return next })} />Select all visible</label>
             <span className="text-xs text-muted-foreground" role="status">{selectedCount} selected across rule types</span>
@@ -381,8 +394,8 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
           )}
         </div>
       </TabsContent>
-      {importOpen && <ImportRulesDialog open onClose={() => setImportOpen(false)} existing={{ requestHeaderRules: entries, networkRules }}
-        onBusy={onImportBusy} onSaved={rules => { onImported(rules); setSelecting(false); setSelectedIds(new Set()) }} />}
+      {importOpen && <ImportRulesDialog open onClose={() => setImportOpen(false)}
+        onSaved={rules => { onImported(rules); setSelecting(false); setSelectedIds(new Set()) }} />}
     </Tabs>
   )
 }

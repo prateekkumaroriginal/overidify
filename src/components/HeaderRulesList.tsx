@@ -28,7 +28,7 @@ export function HeaderRulesList({
           key={headerRule.id}
           style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
         >
-          <RuleSelectionCheckbox id={headerRule.id} name={headerRule.name} selection={selection} disabled={pending} />
+          <RuleSelectionCheckbox id={headerRule.id} name={headerRule.name} selection={selection} />
           <ToggleSwitch
             checked={headerRule.enabled}
             label={`Enable ${headerRule.name}`}

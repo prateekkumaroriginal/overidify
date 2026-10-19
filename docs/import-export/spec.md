@@ -16,6 +16,8 @@ With selection mode off, hide selection checkboxes. Export downloads every saved
 
 Clicking Select enters selection mode and reveals checkboxes in the existing rule lists. In selection mode, Export downloads the selected rules and is disabled when nothing is selected. Show the selection count so the scope is visible.
 
+Select, Import, and Export stay usable while a rule saves or activates. Selection only changes local UI state. Export waits for unfinished saves and reads saved rules, without waiting for activation. Import opens immediately; file review and applying an import wait for unfinished saves. Keep the import dialog's own busy and repeated-submission protection.
+
 Retain selections when switching between the rule-type tabs within this options page. This supports a file containing selected rules of different types. Selecting all saved rules across the three types produces a full backup. Ordinary Export follows the active tab, so Export on All is also a full backup.
 
 ## Export inside a rule
