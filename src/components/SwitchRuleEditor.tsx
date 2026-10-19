@@ -94,8 +94,7 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
                   <Input {...form.register('name')} placeholder="e.g. Authenticated API" autoFocus required />
                 </label>
                 <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">Domain
-                  <Input className="font-sans text-[11px]" {...form.register('url')} placeholder="e.g. localhost:4200 or api.example.com" aria-label="Domain" aria-describedby="switch-rule-domain-help" required />
-                  <span id="switch-rule-domain-help" className="font-normal text-muted-foreground">Matches the page's domain on every path. Applies to requests made from that page, including other API hosts. Include a port to match only that port.</span>
+                  <Input className="font-sans text-[11px]" {...form.register('url')} placeholder="e.g. localhost:4200 or api.example.com" aria-label="Domain" required />
                 </label>
               </div>
               <div className="flex items-center justify-between gap-5 border-t py-[17px]">

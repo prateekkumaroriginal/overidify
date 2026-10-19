@@ -336,9 +336,9 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
           <TabsTrigger value="network-rule">Network Rules</TabsTrigger>
         </TabsList>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" aria-pressed={selecting} onClick={() => { setSelecting(!selecting); setSelectedIds(new Set()) }}><Icon icon={ListChecks} data-icon="inline-start" />{selecting ? 'Cancel selection' : 'Select'}</Button>
-          <Button variant="outline" onClick={() => setImportOpen(true)}><Icon icon={Upload} data-icon="inline-start" />Import</Button>
-          <Button variant="outline" disabled={selecting ? !selectedCount : !groupCount} onClick={() => { void exportCurrent() }}><Icon icon={Download} data-icon="inline-start" />{selecting ? `Export selected (${selectedCount})` : 'Export'}</Button>
+          <Button variant="outline" aria-pressed={selecting} onClick={() => { setSelecting(!selecting); setSelectedIds(new Set()) }}><Icon icon={ListChecks} data-icon="inline-start" />{selecting ? 'Cancel' : 'Select'}</Button>
+          <Button variant="outline" onClick={() => setImportOpen(true)}><Icon icon={Download} data-icon="inline-start" />Import</Button>
+          <Button variant="outline" disabled={selecting ? !selectedCount : !groupCount} onClick={() => { void exportCurrent() }}><Icon icon={Upload} data-icon="inline-start" />{selecting ? `Export (${selectedCount})` : 'Export'}</Button>
         </div>
       </div>
       <TabsContent value={view}>
@@ -351,8 +351,7 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
           {selecting && <div className="flex flex-wrap items-center gap-3 border-b px-6 py-3 mobile:px-[15px]">
             <label className="flex items-center gap-2 text-xs"><Checkbox aria-label="Select all visible rules" disabled={!visibleIds.length}
               checked={allVisibleSelected ? true : visibleIds.some(id => selectedIds.has(id)) ? 'indeterminate' : false}
-              onCheckedChange={checked => setSelectedIds(current => { const next = new Set(current); for (const id of visibleIds) { if (checked === true) next.add(id); else next.delete(id) } return next })} />Select all visible</label>
-            <span className="text-xs text-muted-foreground" role="status">{selectedCount} selected across rule types</span>
+              onCheckedChange={checked => setSelectedIds(current => { const next = new Set(current); for (const id of visibleIds) { if (checked === true) next.add(id); else next.delete(id) } return next })} />All</label>
           </div>}
           <div className="flex min-h-[66px] items-center gap-5 border-b px-6 py-[17px] mobile:px-[15px] mobile:py-3.5 mobile:flex-col mobile:items-stretch mobile:gap-2.5">
             <label className="flex w-full min-w-0 items-center gap-2 text-muted-foreground focus-within:text-foreground focus-within:shadow-[0_1px_0_var(--ring)] [&>svg]:size-[15px]">
