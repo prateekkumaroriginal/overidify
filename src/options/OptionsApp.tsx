@@ -324,9 +324,9 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
           <TabsTrigger value="network-rule">Network Rules</TabsTrigger>
         </TabsList>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" disabled={pending} aria-pressed={selecting} onClick={() => { setSelecting(!selecting); setSelectedIds(new Set()) }}><Icon icon={ListChecks} data-icon="inline-start" />{selecting ? 'Cancel selection' : 'Select'}</Button>
-          <Button variant="outline" disabled={pending} onClick={() => setImportOpen(true)}><Icon icon={Upload} data-icon="inline-start" />Import</Button>
-          <Button variant="outline" disabled={pending || (selecting ? !selectedCount : !groupCount)} onClick={exportCurrent}><Icon icon={Download} data-icon="inline-start" />{selecting ? `Export selected (${selectedCount})` : 'Export'}</Button>
+          <Button variant="outline" pending={pending} aria-pressed={selecting} onClick={() => { setSelecting(!selecting); setSelectedIds(new Set()) }}><Icon icon={ListChecks} data-icon="inline-start" />{selecting ? 'Cancel selection' : 'Select'}</Button>
+          <Button variant="outline" pending={pending} onClick={() => setImportOpen(true)}><Icon icon={Upload} data-icon="inline-start" />Import</Button>
+          <Button variant="outline" pending={pending} disabled={selecting ? !selectedCount : !groupCount} onClick={exportCurrent}><Icon icon={Download} data-icon="inline-start" />{selecting ? `Export selected (${selectedCount})` : 'Export'}</Button>
         </div>
       </div>
       <TabsContent value={view}>

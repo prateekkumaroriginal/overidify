@@ -64,6 +64,8 @@ Styling uses Tailwind CSS v4 utilities and local shadcn components with Radix pr
 
 Shadcn's fade and zoom animations use `tw-animate-css`, imported by `src/styles.css`.
 
+Use the shared Button's `pending` prop to block interaction temporarily during saving while keeping available actions opaque. Use `disabled` for unavailable actions, such as exporting an empty selection; these stay dimmed even while pending.
+
 All UI text uses locally bundled Manrope, including buttons, domain and header fields, and response editors. The unlayered `html body` font rule overrides Chrome's injected extension-page font. Keep it outside Tailwind's layers so the packaged extension renders the same font as development previews.
 
 Icons use named component imports from `lucide-react`. The shared `Icon` wrapper sets the default size, stroke width, and decorative accessibility attributes. Pass the imported component through its `icon` prop.
