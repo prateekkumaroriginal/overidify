@@ -61,6 +61,8 @@ The popup shows the current website's domain and lists matching rules. It opens 
 
 All three rule editors place a ghost Back arrow beside the title and **Export** and **Delete rule** actions at the top right. Export requires a saved rule without unsaved changes. **Cancel** and **Save** remain below the form.
 
+**Delete rule** opens an in-app confirmation showing the saved rule's name. **Cancel** is focused by default; cancel or press Escape to keep the rule. Choose **Delete** to permanently remove it.
+
 Saved edits and toggles affect subsequent requests. An in-flight request keeps the Network Rule settings captured when it started. Changing a rule does not repeat a request or update content already on the page.
 
 The settings page and popup follow the latest saved rules. Changes from multiple open extension pages are applied in sequence, so editing one rule preserves changes to other rules made in another page.

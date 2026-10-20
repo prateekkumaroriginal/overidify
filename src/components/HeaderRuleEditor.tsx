@@ -29,7 +29,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
 
   return (
     <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="editor-title">
-      <RuleEditorHeader kind="header" editing={!!headerRule} busy={busy} onDelete={onDelete} unsaved={form.formState.isDirty}
+      <RuleEditorHeader kind="header" editing={!!headerRule} ruleName={headerRule?.name} busy={busy} onDelete={onDelete} unsaved={form.formState.isDirty}
         onExport={() => { if (headerRule) downloadRules({ requestHeaderRules: [headerRule], networkRules: [] }, 'header-rule') }} />
       <form
         ref={formRef}
