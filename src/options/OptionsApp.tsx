@@ -109,7 +109,6 @@ export function OptionsApp() {
   }
 
   async function handleDeleteNetworkRule(entry: NetworkRule) {
-    if (!window.confirm(`Delete "${entry.name}"?`)) return
     try {
       await persistNetworkRules(rules => rules.filter(item => item.id !== entry.id))
       window.location.hash = '/network-rules'
@@ -171,7 +170,6 @@ export function OptionsApp() {
   }
 
   async function handleDelete(entry: RequestHeaderRule) {
-    if (!window.confirm(`Delete "${entry.name}"?`)) return
     try {
       await persistEntries(rules => rules.filter((current) => current.id !== entry.id))
       window.location.hash = entry.kind === 'switch-rule' ? '/switch-rules' : '/header-rules'

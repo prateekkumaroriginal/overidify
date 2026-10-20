@@ -35,7 +35,7 @@ export function NetworkRuleEditor({ networkRule, pending, onSave, onDelete }: Pr
 
   return (
     <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="network-editor-title">
-      <RuleEditorHeader kind="network" editing={!!networkRule} busy={busy} titleId="network-editor-title" onDelete={onDelete} unsaved={form.formState.isDirty}
+      <RuleEditorHeader kind="network" editing={!!networkRule} ruleName={networkRule?.name} busy={busy} titleId="network-editor-title" onDelete={onDelete} unsaved={form.formState.isDirty}
         onExport={() => { if (networkRule) downloadRules({ requestHeaderRules: [], networkRules: [networkRule] }, 'network-rule') }} />
       <form ref={formRef} onSubmit={onSubmit}>
         <fieldset disabled={busy} className="m-0 min-w-0 border-0 p-0">
