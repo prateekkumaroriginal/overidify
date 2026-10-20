@@ -1,11 +1,13 @@
-import { ArrowRight, Download, ListChecks, Plus, Search, Upload, X } from 'lucide-react'
+import { ArrowRight, ListChecks, Plus, Search, Upload, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { startTransition, useEffect, useRef, useState, type ReactNode } from 'react'
+import { startTransition, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
 import { Brand } from '../components/Brand'
 import { Icon } from '../components/Icon'
@@ -262,7 +264,6 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
   const [queries, setQueries] = useState({ all: '', 'header-rule': '', 'switch-rule': '', 'network-rule': '' })
   const [selecting, setSelecting] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
-  const [importOpen, setImportOpen] = useState(false)
   const [exportError, setExportError] = useState('')
   const exporting = useRef(false)
   const query = queries[view]
@@ -317,6 +318,18 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
     } finally { exporting.current = false }
   }
 
+  function handleImportSuccess(count: number, reloadTabIds: number[]) {
+    const duration = reloadTabIds.length ? Infinity : 4000
+    toast.success(<>
+      <span>{count} {count === 1 ? 'Rule' : 'Rules'} imported</span>
+      {!reloadTabIds.length && <Progress variant="countdown" value={100} className="import-toast-progress" style={{ '--toast-duration': `${duration}ms` } as CSSProperties} aria-hidden="true" />}
+    </>, {
+      className: 'import-toast',
+      description: reloadTabIds.length ? 'Reload matching website tabs to activate the latest rules.' : undefined,
+      duration,
+    })
+  }
+
   const createActions = isAll ? (
     <NewRuleButton />
   ) : (
@@ -335,7 +348,8 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
         </TabsList>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" aria-pressed={selecting} onClick={() => { setSelecting(!selecting); setSelectedIds(new Set()) }}><Icon icon={ListChecks} data-icon="inline-start" />{selecting ? 'Cancel' : 'Select'}</Button>
-          <Button variant="outline" onClick={() => setImportOpen(true)}><Icon icon={Download} data-icon="inline-start" />Import</Button>
+          <ImportRulesDialog onSuccess={handleImportSuccess}
+            onSaved={rules => { onImported(rules); setSelecting(false); setSelectedIds(new Set()) }} />
           <Button variant="outline" disabled={selecting ? !selectedCount : !groupCount} onClick={() => { void exportCurrent() }}><Icon icon={Upload} data-icon="inline-start" />{selecting ? `Export (${selectedCount})` : 'Export'}</Button>
         </div>
       </div>
@@ -391,8 +405,6 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
           )}
         </div>
       </TabsContent>
-      {importOpen && <ImportRulesDialog open onClose={() => setImportOpen(false)}
-        onSaved={rules => { onImported(rules); setSelecting(false); setSelectedIds(new Set()) }} />}
     </Tabs>
   )
 }
