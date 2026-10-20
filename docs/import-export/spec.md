@@ -16,7 +16,7 @@ With selection mode off, hide selection checkboxes. Export downloads every saved
 
 Clicking Select enters selection mode and reveals checkboxes in the existing rule lists. The toolbar shows Cancel and Export (n), with the count in the Export label. Export downloads the selected rules and is disabled when nothing is selected. Label the visible-rules select-all checkbox All. Checked and mixed checkboxes use the violet action color. All shows a minus when some visible rules are selected and a checkmark when all are selected.
 
-Select, Import, and Export stay usable while a rule saves or activates. Selection only changes local UI state. Export waits for unfinished saves and reads saved rules, without waiting for activation. Import opens immediately; file review and applying an import wait for unfinished saves. Keep the import dialog's own busy and repeated-submission protection.
+Select, Import, and Export stay usable while a rule saves or activates. Selection only changes local UI state. Export waits for unfinished saves and reads saved rules, without waiting for activation. Import opens the native file picker directly, with no introductory dialog. Canceling the picker opens no dialog. Selecting a file opens the existing review dialog; file review and applying an import wait for unfinished saves. Keep the import dialog's own busy and repeated-submission protection, and allow choosing another file from the review dialog.
 
 Retain selections when switching between the rule-type tabs within this options page. This supports a file containing selected rules of different types. Selecting all saved rules across the three types produces a full backup. Ordinary Export follows the active tab, so Export on All is also a full backup.
 
@@ -38,7 +38,7 @@ Preserve rule and option UUIDs in normal exports, new non-overlapping imports, a
 
 Selecting a file parses and validates it before changing saved rules. Always show a review summary followed by an explicit import action, including when the entire file is valid and has no overlaps.
 
-Show the valid and invalid rule counts, the overlap count, and whether enabled rules will be applied. Identify invalid rules and their errors. Explain that later enabled rules can take priority.
+Show each nonzero valid, invalid, and overlap count on its own line. Omit zero counts and the explanatory paragraph about saved enabled states and rule priority. Identify invalid rules and their errors. Keep the dialog's footer action buttons the same height.
 
 When there are no overlaps, Import adds the valid imported rules. When overlaps exist, offer Replace or Add, with one choice applying to all overlaps. The user can cancel without changing saved rules.
 
@@ -68,6 +68,8 @@ An intentionally non-JSON mock response body remains valid under existing editor
 If no valid rules remain, show the errors and disable the import action. No partial import occurs without the user's choice.
 
 ## Saving and activation failures
+
+After successful activation, close the import dialog and show a shadcn Sonner success toast with the existing circled tick, a close button on the right, and the text "3 Rules imported" using the actual saved count. Use the card background with a one-pixel border using the app's shared border color and the ghost button's accent background and foreground text on close-button hover. Ordinary success toasts dismiss automatically after four seconds, with a shrinking violet line along the bottom and no numeric countdown. Compose the line with shadcn Progress using its countdown variant; hide this decorative indicator from assistive technology. The line pauses with the dismissal timer during hover, interaction, and page hiding. Use discrete progress steps for reduced motion. Include a website reload notice when required, keep that toast visible until dismissed, and omit its countdown line.
 
 Keep saving and activation results distinct. If saving fails, report failure and keep the previous saved setup.
 
