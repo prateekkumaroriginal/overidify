@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Download } from 'lucide-react'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
 import { Alert, AlertDescription, AlertTitle } from './ui/alert'
 import { Button } from './ui/button'
 import { Icon } from './Icon'
@@ -59,9 +59,9 @@ export function ImportRulesDialog({ onSaved, onSuccess }: {
     <input ref={fileInput} hidden type="file" accept=".json,application/json" aria-label="Import file" disabled={busy}
       onChange={event => { void chooseFile(event.target.files?.[0]); event.target.value = '' }} />
     <Dialog open={open} onOpenChange={next => { if (!next && !busy) setOpen(false) }}>
-      <DialogContent className="max-h-[85dvh] overflow-y-auto" showCloseButton={!busy && !activation}
+      <DialogContent className="max-h-[85dvh] overflow-y-auto" aria-describedby={undefined} showCloseButton={!busy && !activation}
         onCloseAutoFocus={event => { event.preventDefault(); trigger.current?.focus() }}>
-        <DialogHeader><DialogTitle>Import rules</DialogTitle><DialogDescription>Review the rules in your Overidify JSON file before importing.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>Import rules</DialogTitle></DialogHeader>
         {!activation && <div className="flex flex-wrap items-center gap-3">
           <Button variant="outline" disabled={busy} onClick={() => fileInput.current?.click()}>Choose file</Button>
           <span className="min-w-0 break-all text-sm text-muted-foreground">{fileName}</span>
@@ -73,7 +73,7 @@ export function ImportRulesDialog({ onSaved, onSuccess }: {
             {review.issues.length > 0 && <p>{review.issues.length} invalid</p>}
             {review.overlaps.length > 0 && <p>{review.overlaps.length} overlap{review.overlaps.length === 1 ? '' : 's'}</p>}
           </div>}
-          {review.overlaps.length > 0 && <div><h3 className="mb-2 font-medium">Already present</h3><ul className="list-disc pl-5 text-sm">{review.overlaps.map(rule => <li key={rule.id} className="break-words">{rule.name} · {'kind' in rule ? rule.kind === 'header-rule' ? 'Header Rule' : 'Switch Rule' : 'Network Rule'}</li>)}</ul><p className="mt-2 text-sm text-muted-foreground">Replace updates overlapping rules. Add keeps both as separate rules. Other existing rules are kept.</p></div>}
+          {review.overlaps.length > 0 && <div><h3 className="mb-2 font-medium">Already present</h3><ul className="list-disc pl-5 text-sm">{review.overlaps.map(rule => <li key={rule.id} className="break-words">{rule.name} · {'kind' in rule ? rule.kind === 'header-rule' ? 'Header Rule' : 'Switch Rule' : 'Network Rule'}</li>)}</ul></div>}
           {review.issues.length > 0 && <Alert variant="destructive"><AlertTitle>Some rules cannot be imported</AlertTitle><AlertDescription><ul className="list-disc pl-5">{review.issues.map((issue, index) => <li key={index} className="break-words">{issue.name}: {issue.message}</li>)}</ul>{count > 0 ? <p>Import only the valid rules below, or cancel.</p> : <p>No valid rules remain. Choose another file.</p>}</AlertDescription></Alert>}
         </>}
         {activation && <Alert><AlertTitle>Rules saved; activation not confirmed</AlertTitle><AlertDescription>
@@ -82,7 +82,7 @@ export function ImportRulesDialog({ onSaved, onSuccess }: {
           <p>Retry activation or reload the extension and matching websites. Your saved import will not be added again.</p>
         </AlertDescription></Alert>}
         <DialogFooter>
-          <Button variant="outline" disabled={busy} onClick={() => setOpen(false)}>{activation ? 'Close' : 'Cancel'}</Button>
+          <Button variant="ghost" size="default" disabled={busy} onClick={() => setOpen(false)}>{activation ? 'Close' : 'Cancel'}</Button>
           {activation ? <Button disabled={busy} onClick={() => { void run() }}>{busy ? 'Applying…' : 'Retry activation'}</Button>
             : review && (review.overlaps.length ? <>
               <Button disabled={busy || !count} onClick={() => { void run('replace') }}>{review.issues.length ? 'Replace with valid rules' : 'Replace'}</Button>
