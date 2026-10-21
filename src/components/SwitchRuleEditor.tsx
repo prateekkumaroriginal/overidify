@@ -131,7 +131,7 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
             </div>
             {saveState.message && <p className={`mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 ${saveState.tone === 'error' ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-input bg-secondary text-secondary-foreground'}`} role={saveState.tone === 'error' ? 'alert' : 'status'}>{saveState.message}</p>}
             <div className="mt-[25px] mb-10 flex items-center gap-[23px] mobile:gap-[17px]">
-              <a className="ml-auto text-[11px] text-muted-foreground no-underline hover:text-foreground" href="#/switch-rules">Cancel</a>
+              <Button asChild variant="ghost" size="default" className="ml-auto"><a href="#/switch-rules">Cancel</a></Button>
               <Button variant="default" className="mobile:px-3 mobile:text-xs" type="submit">Save</Button>
             </div>
           </fieldset>

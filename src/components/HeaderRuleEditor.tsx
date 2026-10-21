@@ -125,9 +125,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
             </p>
           )}
           <div className="mt-[25px] mb-10 flex items-center gap-[23px] mobile:gap-[17px]">
-            <a className="ml-auto text-[11px] text-muted-foreground no-underline hover:text-foreground" href="#/header-rules">
-              Cancel
-            </a>
+            <Button asChild variant="ghost" size="default" className="ml-auto"><a href="#/header-rules">Cancel</a></Button>
             <Button variant="default" className="mobile:px-3 mobile:text-xs" type="submit">
               Save
             </Button>

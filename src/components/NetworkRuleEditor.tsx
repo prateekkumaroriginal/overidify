@@ -29,7 +29,7 @@ export function NetworkRuleEditor({ networkRule, pending, onSave, onDelete }: Pr
     pending, returnRoute: '/network-rules', onSave,
   })
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'headers' })
-  const [body, method, status, headers, mode] = useWatch({ control: form.control, name: ['body', 'method', 'status', 'headers', 'mode'] })
+  const [body, method, status, headers] = useWatch({ control: form.control, name: ['body', 'method', 'status', 'headers'] })
   const warning = jsonBodyWarning({ body, headers })
   const noBody = method === 'HEAD' || [204, 205, 304].includes(status)
 
@@ -46,7 +46,7 @@ export function NetworkRuleEditor({ networkRule, pending, onSave, onDelete }: Pr
               <label className={fieldClass}>Website domain<Input {...form.register('url')} placeholder="e.g. localhost:4200" required /></label>
             </div>
             <div className="mt-5 grid grid-cols-[minmax(0,1fr)_auto] gap-4 mobile:grid-cols-1">
-              <label className={fieldClass}>Request URL<Input className="font-sans text-[11px]" {...form.register('requestUrl')} placeholder="https://api.example.com/chats?tab=featured" required aria-describedby="network-target-help" /></label>
+              <label className={fieldClass}>Request URL<Input className="font-sans text-[11px]" {...form.register('requestUrl')} placeholder="https://api.example.com/chats?tab=featured" required /></label>
               <div className={fieldClass}>
                 <label htmlFor="network-method">HTTP method</label>
                 <Controller control={form.control} name="method" render={({ field, fieldState }) => (
@@ -57,17 +57,15 @@ export function NetworkRuleEditor({ networkRule, pending, onSave, onDelete }: Pr
                 )} />
               </div>
             </div>
-            <p id="network-target-help" className="mt-3 text-[11px] text-muted-foreground">The full API URL must match. Query parameter order is ignored; parameter names and values must be the same.</p>
             <div className={`${fieldClass} mt-5`}>
               <label htmlFor="network-mode">Server behavior</label>
               <Controller control={form.control} name="mode" render={({ field, fieldState }) => (
                 <Select name={field.name} value={field.value} onValueChange={field.onChange} disabled={busy}>
-                  <SelectTrigger id="network-mode" size="lg" className="w-fit max-w-full" ref={field.ref} onBlur={field.onBlur} aria-invalid={fieldState.invalid} aria-describedby="network-mode-help"><SelectValue /></SelectTrigger>
-                  <SelectContent className="w-max"><SelectGroup><SelectItem value="bypass">Bypass server</SelectItem><SelectItem value="call-server">Call server, then replace response</SelectItem></SelectGroup></SelectContent>
+                  <SelectTrigger id="network-mode" size="lg" className="w-64 max-w-full" ref={field.ref} onBlur={field.onBlur} aria-invalid={fieldState.invalid}><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectGroup><SelectItem value="bypass">Bypass server</SelectItem><SelectItem value="call-server">Call server, then replace response</SelectItem></SelectGroup></SelectContent>
                 </Select>
               )} />
             </div>
-            <p id="network-mode-help" className="mt-3 text-[11px] text-muted-foreground">{mode === 'bypass' ? 'Return the mock without making the target API call.' : 'Make the real call with your Header Rules and Switch Rules headers, then return the mock once response headers arrive. Failures before headers stay failures. Synchronous XHR waits for native completion and preserves native failures.'}</p>
             <div className="mt-5 flex items-center justify-between border-t pt-4"><span className="text-[11px] font-semibold">Enabled</span><Controller control={form.control} name="enabled" render={({ field }) => <ToggleSwitch checked={field.value} label="Network rule enabled" onChange={field.onChange} />} /></div>
           </div>
           <div className={panelClass}>
@@ -81,11 +79,10 @@ export function NetworkRuleEditor({ networkRule, pending, onSave, onDelete }: Pr
               <label className={`${fieldClass} mobile:col-start-1`}><span className={index ? 'sr-only' : ''}>Value</span><Input className="font-sans text-[11px]" aria-label={`Response header ${index + 1} value`} {...form.register(`headers.${index}.value`)} placeholder="application/json" /></label>
               <Button variant="ghost" type="button" className="mb-2 size-[26px] text-muted-foreground mobile:col-start-2 mobile:row-span-2 mobile:row-start-1" aria-label={`Remove response header ${index + 1}`} onClick={() => remove(index)}><Icon icon={X} /></Button>
             </div>)}
-            <p className="mt-4 text-[11px] text-muted-foreground">These headers replace the response header set delivered to the page. Mock headers do not set browser cookies.</p>
           </div>
           <p className="mb-5 text-[11px] text-muted-foreground">The page receives your mock while DevTools stays usable. Chrome's Network panel may show the original response; bypassed calls do not reach the server.</p>
           {error && <p className="mb-5 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-xs text-destructive" role="alert">{error}</p>}
-          <div className="mt-6 mb-10 flex items-center gap-5"><a className="ml-auto text-[11px] text-muted-foreground no-underline" href="#/network-rules">Cancel</a><Button type="submit">Save</Button></div>
+          <div className="mt-6 mb-10 flex items-center gap-5"><Button asChild variant="ghost" size="default" className="ml-auto"><a href="#/network-rules">Cancel</a></Button><Button type="submit">Save</Button></div>
         </fieldset>
       </form>
     </section>
