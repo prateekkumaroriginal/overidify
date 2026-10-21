@@ -273,7 +273,6 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
   const noun = isAll ? 'rule' : isNetwork ? 'network rule' : isSwitchRules ? 'switch rule' : 'header rule'
   const plural = `${noun}s`
   const title = isAll ? 'All Rules' : isNetwork ? 'Network Rules' : isSwitchRules ? 'Switch Rules' : 'Header Rules'
-  const newTitle = isNetwork ? 'New Network Rule' : isSwitchRules ? 'New Switch Rule' : 'New Header Rule'
   const newRoute = isNetwork ? '#/network-rules/new' : isSwitchRules ? '#/switch-rules/new' : '#/header-rules/new'
   const group = entries.filter((entry) => isAll || entry.kind === view)
   const visible = group.filter((entry) => {
@@ -333,7 +332,7 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
   const createActions = isAll ? (
     <NewRuleButton />
   ) : (
-    <Button asChild className="mobile:px-3 mobile:text-xs mobile:shrink-0 mobile:whitespace-nowrap"><a href={newRoute}><Icon icon={Plus} /> {newTitle}</a></Button>
+    <Button asChild className="mobile:px-3 mobile:text-xs mobile:shrink-0 mobile:whitespace-nowrap"><a href={newRoute}><Icon icon={Plus} data-icon="inline-start" /> New</a></Button>
   )
 
 
@@ -376,7 +375,7 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
             <div className="flex flex-col items-center px-5 pt-[45px] pb-11 text-center mobile:px-4 mobile:py-[33px] [&_h3]:mt-[11px] [&_h3]:text-base [&_h3]:font-semibold [&_h3]:tracking-[-0.3px]">
               <h3>No {plural} yet</h3>
               {isAll ? <NewRuleButton className="mt-[23px]" /> : <Button asChild className="mt-[23px] mobile:px-3 mobile:text-xs mobile:shrink-0 mobile:whitespace-nowrap"><a href={newRoute}>
-                <Icon icon={Plus} /> {newTitle}
+                <Icon icon={Plus} data-icon="inline-start" /> New
               </a></Button>}
             </div>
           ) : visibleCount ? (
