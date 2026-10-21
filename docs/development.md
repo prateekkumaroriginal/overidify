@@ -62,6 +62,8 @@ The extension uses React, TypeScript, Vite, and Manifest V3 with `@crxjs/vite-pl
 
 Styling uses Tailwind CSS v4 utilities and local shadcn components with Radix primitives in `src/components/ui`. Theme tokens and shared base styles live in `src/styles.css`.
 
+Primary, secondary, and solid destructive buttons share the Clerk-style gradient highlight, shadow, rounded corners, and hover/focus treatment. The destructive variant uses `--destructive-action` for its red fill with white text; `--destructive` remains the lighter red for error text and outlined actions. Dialog and alert-dialog footer buttons share a 35px height.
+
 Shadcn's fade and zoom animations use `tw-animate-css`, imported by `src/styles.css`.
 
 Rule storage locks cover reading and saving, and release before background activation. Home-page Select, Import, and Export stay usable during rule saves. Export and import review read saved rules under those locks, so they wait for unfinished writes without waiting for activation. Keep import submission state local to its modal dialog; selection does not change saved rules. Use `disabled` for unavailable actions, such as exporting an empty selection.

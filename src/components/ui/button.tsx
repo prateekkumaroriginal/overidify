@@ -9,7 +9,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "clerk-button clerk-button-primary",
-        destructive: "border border-transparent bg-destructive text-background hover:bg-destructive/90",
+        destructive: "clerk-button clerk-button-destructive",
         outline: "border bg-card hover:border-primary/20 hover:bg-accent",
         "destructive-outline": "border border-input bg-transparent text-destructive hover:border-destructive/40 hover:bg-destructive/10 [&_svg]:size-4",
         secondary: "clerk-button clerk-button-secondary",

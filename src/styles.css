@@ -29,6 +29,7 @@
   --selection: #27272d;
   --accent-foreground: var(--foreground);
   --destructive: #f87171;
+  --destructive-action: #d32f36;
   --border: rgb(255 255 255 / 0.1);
   --input: rgb(255 255 255 / 0.1);
   --ring: var(--primary);
@@ -147,14 +148,19 @@ button, input, select, textarea, code, kbd, samp, pre {
   transition-timing-function: cubic-bezier(0.4, 0.36, 0, 1);
 }
 
-/* Align dialog actions across the outline and Clerk button variants. */
-[data-slot='dialog-footer'] > [data-slot='button'] {
+/* Align dialog actions, including buttons composed through Radix slots. */
+:is([data-slot='dialog-footer'], [data-slot='alert-dialog-footer']) > [data-variant] {
   height: 35px;
   min-height: 35px;
 }
 
 .clerk-button-primary {
   --button-background: var(--action);
+  --button-ring-width: 0.5px;
+}
+
+.clerk-button-destructive {
+  --button-background: var(--destructive-action);
   --button-ring-width: 0.5px;
 }
 
