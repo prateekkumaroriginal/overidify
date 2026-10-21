@@ -47,7 +47,7 @@ Open the extension popup on a website to toggle matching rules or choose a Switc
 On the Settings home page, **Import**, **Export**, and **Select** sit beside the rule-type tabs.
 
 - **Export** downloads all saved rules in the current tab. On **All**, it downloads a full backup across the three types.
-- **Select** reveals checkboxes. Select rules across the rule-type tabs, then export the selection. Select every rule across the three types for a full backup.
+- **Select** reveals checkboxes. Select rules across the rule-type tabs, then export or delete the selection. Delete asks for confirmation and permanently removes every selected rule, including selections on other tabs. Select every rule across the three types for a full backup.
 - Inside a saved rule, **Export** downloads that rule. Save any edits first. Switch Rules include all options and the selected option.
 - **Import** opens a JSON file picker and review. Overlapping UUIDs get one **Replace** or **Add** choice. Replace updates those rules; Add keeps both as separate copies. Invalid rules can be excluded after you accept a partial import.
 
