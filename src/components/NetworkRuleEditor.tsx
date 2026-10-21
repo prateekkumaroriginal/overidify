@@ -3,7 +3,7 @@ import { Controller, useFieldArray, useWatch } from 'react-hook-form'
 import { NetworkRuleDraftSchema } from '../lib/network-schemas'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
-import { NativeSelect } from './ui/native-select'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Icon } from './Icon'
 import { RuleEditorHeader } from './RuleEditorHeader'
 import { ToggleSwitch } from './ToggleSwitch'
@@ -47,11 +47,27 @@ export function NetworkRuleEditor({ networkRule, pending, onSave, onDelete }: Pr
             </div>
             <div className="mt-5 grid grid-cols-[minmax(0,1fr)_auto] gap-4 mobile:grid-cols-1">
               <label className={fieldClass}>Request URL<Input className="font-sans text-[11px]" {...form.register('requestUrl')} placeholder="https://api.example.com/chats?tab=featured" required aria-describedby="network-target-help" /></label>
-              <label className={fieldClass}>HTTP method<NativeSelect className="py-[11px]" {...form.register('method')}>{NETWORK_METHODS.map(method => <option key={method} value={method}>{method === 'ANY' ? 'Any' : method}</option>)}</NativeSelect></label>
+              <div className={fieldClass}>
+                <label htmlFor="network-method">HTTP method</label>
+                <Controller control={form.control} name="method" render={({ field, fieldState }) => (
+                  <Select name={field.name} value={field.value} onValueChange={field.onChange} disabled={busy}>
+                    <SelectTrigger id="network-method" size="lg" className="min-w-24" ref={field.ref} onBlur={field.onBlur} aria-invalid={fieldState.invalid}><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectGroup>{NETWORK_METHODS.map(method => <SelectItem key={method} value={method}>{method === 'ANY' ? 'Any' : method}</SelectItem>)}</SelectGroup></SelectContent>
+                  </Select>
+                )} />
+              </div>
             </div>
             <p id="network-target-help" className="mt-3 text-[11px] text-muted-foreground">The full API URL must match. Query parameter order is ignored; parameter names and values must be the same.</p>
-            <label className={`${fieldClass} mt-5`}>Server behavior<NativeSelect className="py-[11px]" {...form.register('mode')}><option value="bypass">Bypass server</option><option value="call-server">Call server, then replace response</option></NativeSelect></label>
-            <p className="mt-3 text-[11px] text-muted-foreground">{mode === 'bypass' ? 'Return the mock without making the target API call.' : 'Make the real call with your Header Rules and Switch Rules headers, then return the mock once response headers arrive. Failures before headers stay failures. Synchronous XHR waits for native completion and preserves native failures.'}</p>
+            <div className={`${fieldClass} mt-5`}>
+              <label htmlFor="network-mode">Server behavior</label>
+              <Controller control={form.control} name="mode" render={({ field, fieldState }) => (
+                <Select name={field.name} value={field.value} onValueChange={field.onChange} disabled={busy}>
+                  <SelectTrigger id="network-mode" size="lg" ref={field.ref} onBlur={field.onBlur} aria-invalid={fieldState.invalid} aria-describedby="network-mode-help"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectGroup><SelectItem value="bypass">Bypass server</SelectItem><SelectItem value="call-server">Call server, then replace response</SelectItem></SelectGroup></SelectContent>
+                </Select>
+              )} />
+            </div>
+            <p id="network-mode-help" className="mt-3 text-[11px] text-muted-foreground">{mode === 'bypass' ? 'Return the mock without making the target API call.' : 'Make the real call with your Header Rules and Switch Rules headers, then return the mock once response headers arrive. Failures before headers stay failures. Synchronous XHR waits for native completion and preserves native failures.'}</p>
             <div className="mt-5 flex items-center justify-between border-t pt-4"><span className="text-[11px] font-semibold">Enabled</span><Controller control={form.control} name="enabled" render={({ field }) => <ToggleSwitch checked={field.value} label="Network rule enabled" onChange={field.onChange} />} /></div>
           </div>
           <div className={panelClass}>
