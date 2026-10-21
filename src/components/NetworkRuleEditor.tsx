@@ -62,8 +62,8 @@ export function NetworkRuleEditor({ networkRule, pending, onSave, onDelete }: Pr
               <label htmlFor="network-mode">Server behavior</label>
               <Controller control={form.control} name="mode" render={({ field, fieldState }) => (
                 <Select name={field.name} value={field.value} onValueChange={field.onChange} disabled={busy}>
-                  <SelectTrigger id="network-mode" size="lg" ref={field.ref} onBlur={field.onBlur} aria-invalid={fieldState.invalid} aria-describedby="network-mode-help"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectGroup><SelectItem value="bypass">Bypass server</SelectItem><SelectItem value="call-server">Call server, then replace response</SelectItem></SelectGroup></SelectContent>
+                  <SelectTrigger id="network-mode" size="lg" className="w-fit max-w-full" ref={field.ref} onBlur={field.onBlur} aria-invalid={fieldState.invalid} aria-describedby="network-mode-help"><SelectValue /></SelectTrigger>
+                  <SelectContent className="w-max"><SelectGroup><SelectItem value="bypass">Bypass server</SelectItem><SelectItem value="call-server">Call server, then replace response</SelectItem></SelectGroup></SelectContent>
                 </Select>
               )} />
             </div>
