@@ -33,7 +33,7 @@ Settings opens on the **All** tab, which shows all three rule types together. Se
 
 For example, to add a token to requests from your local app:
 
-1. Under **Header Rules**, click **New Header Rule** and give it a name.
+1. Under **Header Rules**, click **+ New** and give it a name.
 2. Set **Domain** to `localhost:4200`.
 3. Add a header named `Authorization` with the value `Bearer your-test-token`.
 4. Click **Save**, then make a request from your app at `http://localhost:4200`.
