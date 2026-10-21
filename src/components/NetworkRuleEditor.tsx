@@ -82,7 +82,7 @@ export function NetworkRuleEditor({ networkRule, pending, onSave, onDelete }: Pr
           </div>
           <p className="mb-5 text-[11px] text-muted-foreground">The page receives your mock while DevTools stays usable. Chrome's Network panel may show the original response; bypassed calls do not reach the server.</p>
           {error && <p className="mb-5 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-xs text-destructive" role="alert">{error}</p>}
-          <div className="mt-6 mb-10 flex items-center gap-5"><Button asChild variant="ghost" size="default" className="ml-auto"><a href="#/network-rules">Cancel</a></Button><Button type="submit">Save</Button></div>
+          <div className="mt-6 mb-10 flex items-center gap-2"><Button asChild variant="ghost" size="default" className="ml-auto"><a href="#/network-rules">Cancel</a></Button><Button type="submit">Save</Button></div>
         </fieldset>
       </form>
     </section>

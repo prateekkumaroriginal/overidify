@@ -150,8 +150,8 @@ button, input, select, textarea, code, kbd, samp, pre {
 
 /* Align dialog actions, including buttons composed through Radix slots. */
 :is([data-slot='dialog-footer'], [data-slot='alert-dialog-footer']) > [data-variant] {
-  height: 35px;
-  min-height: 35px;
+  height: 30px;
+  min-height: 30px;
 }
 
 .clerk-button-primary {

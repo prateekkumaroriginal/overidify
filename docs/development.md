@@ -62,7 +62,9 @@ The extension uses React, TypeScript, Vite, and Manifest V3 with `@crxjs/vite-pl
 
 Styling uses Tailwind CSS v4 utilities and local shadcn components with Radix primitives in `src/components/ui`. Theme tokens and shared base styles live in `src/styles.css`.
 
-Primary, secondary, and solid destructive buttons share the Clerk-style gradient highlight, shadow, rounded corners, and hover/focus treatment. The destructive variant uses `--destructive-action` for its red fill with white text; `--destructive` remains the lighter red for error text and outlined actions. Dialog and alert-dialog footer buttons share a 35px height.
+Primary, secondary, and solid destructive buttons share the Clerk-style gradient highlight, shadow, rounded corners, and hover/focus treatment. The destructive variant uses `--destructive-action` for its red fill with white text; `--destructive` remains the lighter red for error text and outlined actions. Default and small text actions, including editor Cancel/Save, toolbar actions, editor Export/Delete rule, and dialog footer buttons, share a 30px height. Larger rule choices and empty-state actions keep their explicit sizing.
+
+Editor Cancel/Save rows use `gap-2`. Cancel actions in editors, import review, and delete confirmations use the ghost button variant.
 
 Shadcn's fade and zoom animations use `tw-animate-css`, imported by `src/styles.css`.
 
@@ -70,7 +72,7 @@ Rule storage locks cover reading and saving, and release before background activ
 
 All UI text uses locally bundled Manrope, including buttons, domain and header fields, and response editors. The unlayered `html body` font rule overrides Chrome's injected extension-page font. Keep it outside Tailwind's layers so the packaged extension renders the same font as development previews.
 
-Icons use named component imports from `lucide-react`. The shared `Icon` wrapper sets the default size, stroke width, and decorative accessibility attributes. Pass the imported component through its `icon` prop.
+Icons use named component imports from `lucide-react`. The shared `Icon` wrapper sets the default size, stroke width, and decorative accessibility attributes. Pass the imported component through its `icon` prop. The Button component sizes leading icons marked with `data-icon="inline-start"` to 16px.
 
 Add components with:
 
