@@ -35,11 +35,28 @@ export async function activateImportedRules(): Promise<TransferActivation> {
 }
 
 export async function saveImportedRules(rules: RuleCollection): Promise<TransferActivation> {
-  await withRuleStorageLocks(() => persistImportedRules(rules))
+  await withRuleStorageLocks(() => persistRules(rules))
   return activateImportedRules()
 }
 
-async function persistImportedRules(rules: RuleCollection): Promise<void> {
+export async function deleteSavedRules(selectedIds: ReadonlySet<string>) {
+  const ids = new Set(selectedIds)
+  const result = await withRuleStorageLocks(async () => {
+    const [requestHeaderRules, networkRules] = await Promise.all([getRequestHeaderRules(), getNetworkRules()])
+    const rules = {
+      requestHeaderRules: requestHeaderRules.filter(rule => !ids.has(rule.id)),
+      networkRules: networkRules.filter(rule => !ids.has(rule.id)),
+    }
+    const deletedCount = requestHeaderRules.length + networkRules.length
+      - rules.requestHeaderRules.length - rules.networkRules.length
+    if (deletedCount) await persistRules(rules)
+    return { rules, deletedCount }
+  })
+  const activation = result.deletedCount ? await activateImportedRules() : { ok: true, reloadTabIds: [] }
+  return { ...result, activation }
+}
+
+async function persistRules(rules: RuleCollection): Promise<void> {
   if (isPreview()) {
     const keys = ['requestHeaderRules', 'networkRules'] as const
     const previous = keys.map(key => localStorage.getItem(key))

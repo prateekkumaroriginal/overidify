@@ -25,6 +25,7 @@ import { getRequestHeaderRules, updateRequestHeaderRules, subscribeToRequestHead
 import type { RequestHeaderRule, HeaderRule, SwitchRule, HeaderRuleDraft, SwitchRuleDraft } from '../lib/types'
 import { cn } from '../lib/utils'
 import { ImportRulesDialog } from '../components/ImportRulesDialog'
+import { DeleteSelectedRulesDialog } from '../components/DeleteSelectedRulesDialog'
 import { downloadRules } from '../lib/rule-download'
 import { getSavedRules } from '../lib/rule-transfer-storage'
 import type { RuleCollection } from '../lib/rule-transfer'
@@ -359,10 +360,12 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
           {createActions}
         </div>
         <div className="overflow-hidden rounded-lg border bg-card shadow-panel">
-          {selecting && <div className="flex flex-wrap items-center gap-3 border-b px-6 py-3 mobile:px-[15px]">
+          {selecting && <div className="flex items-center justify-between gap-3 border-b px-6 py-3 mobile:px-[15px]">
             <label className="flex items-center gap-2 text-xs"><Checkbox aria-label="Select all visible rules" disabled={!visibleIds.length}
               checked={allVisibleSelected ? true : visibleIds.some(id => selectedIds.has(id)) ? 'indeterminate' : false}
               onCheckedChange={checked => setSelectedIds(current => { const next = new Set(current); for (const id of visibleIds) { if (checked === true) next.add(id); else next.delete(id) } return next })} />All</label>
+            <DeleteSelectedRulesDialog ids={[...selectedEntries, ...selectedNetwork].map(rule => rule.id)} disabled={pending}
+              onDeleted={() => setSelectedIds(new Set())} />
           </div>}
           <div className="flex min-h-[66px] items-center gap-5 border-b px-6 py-[17px] mobile:px-[15px] mobile:py-3.5 mobile:flex-col mobile:items-stretch mobile:gap-2.5">
             <label className="flex w-full min-w-0 items-center gap-2 text-muted-foreground focus-within:text-foreground focus-within:shadow-[0_1px_0_var(--ring)] [&>svg]:size-[15px]">
