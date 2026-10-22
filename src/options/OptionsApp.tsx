@@ -1,4 +1,4 @@
-import { ArrowRight, ListChecks, Plus, Search, Upload, X } from 'lucide-react'
+import { ArrowRight, ListChecks, Plus, Search, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { startTransition, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
@@ -23,7 +24,6 @@ import { getNetworkRules, updateNetworkRules, subscribeToNetworkRules } from '..
 import { createRuleId, getEntryHeaders, sanitizeHeaders } from '../lib/request-header-rules'
 import { getRequestHeaderRules, updateRequestHeaderRules, subscribeToRequestHeaderRules } from '../lib/request-header-storage'
 import type { RequestHeaderRule, HeaderRule, SwitchRule, HeaderRuleDraft, SwitchRuleDraft } from '../lib/types'
-import { cn } from '../lib/utils'
 import { ImportRulesDialog } from '../components/ImportRulesDialog'
 import { DeleteSelectedRulesDialog } from '../components/DeleteSelectedRulesDialog'
 import { useRuleActions } from '../components/useRuleActions'
@@ -270,6 +270,16 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
   const [exportError, setExportError] = useState('')
   const exporting = useRef(false)
   const { actions, dialog } = useRuleActions(pending, entries, networkRules)
+  useEffect(() => {
+    if (!selecting) return
+    function cancelSelection(event: KeyboardEvent) {
+      if (event.key !== 'Escape' || event.defaultPrevented) return
+      setSelecting(false)
+      setSelectedIds(new Set())
+    }
+    window.addEventListener('keydown', cancelSelection)
+    return () => window.removeEventListener('keydown', cancelSelection)
+  }, [selecting])
   const query = queries[view]
   const isAll = view === 'all'
   const isSwitchRules = view === 'switch-rule'
@@ -351,7 +361,7 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
           <TabsTrigger value="network-rule">Network Rules</TabsTrigger>
         </TabsList>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" aria-pressed={selecting} onClick={() => { setSelecting(!selecting); setSelectedIds(new Set()) }}><Icon icon={ListChecks} data-icon="inline-start" />{selecting ? 'Cancel' : 'Select'}</Button>
+          <Button variant="outline" disabled={!groupCount && !selecting} aria-pressed={selecting} onClick={() => { setSelecting(!selecting); setSelectedIds(new Set()) }}><Icon icon={ListChecks} data-icon="inline-start" />{selecting ? 'Cancel' : 'Select'}</Button>
           <ImportRulesDialog onSuccess={handleImportSuccess}
             onSaved={rules => { onImported(rules); setSelecting(false); setSelectedIds(new Set()) }} />
           <Button variant="outline" disabled={selecting ? !selectedCount : !groupCount} onClick={() => { void exportCurrent() }}><Icon icon={Upload} data-icon="inline-start" />{selecting ? `Export (${selectedCount})` : 'Export'}</Button>
@@ -359,32 +369,31 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
       </div>
       <TabsContent value={view}>
         {exportError && <Alert variant="destructive" className="mb-5"><AlertDescription>Export failed: {exportError}</AlertDescription></Alert>}
-        <div className={cn('mb-5 flex items-center justify-between gap-5 mobile:gap-3 [&_h1]:text-xl [&_h1]:font-semibold [&_h1]:flex [&_h1]:items-center [&_h1]:gap-2.5 mobile:[&_h1]:gap-2 mobile:[&_h1]:whitespace-nowrap', isNetwork && 'mobile:flex-wrap')}>
+        <div className="mb-5 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-5 mobile:grid-cols-[minmax(0,1fr)_auto] mobile:gap-3 [&_h1]:text-xl [&_h1]:font-semibold">
           <h1>{title}</h1>
+          {groupCount > 0 ? <label className="relative w-full min-w-0 mobile:col-span-2 mobile:row-start-2">
+            <Icon icon={Search} size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground" />
+            <Input className="h-[30px] py-0 pl-9" aria-label={`Search ${plural}`} placeholder={`Find a ${noun}...`}
+              value={query} onChange={(event) => setQueries({ ...queries, [view]: event.target.value })} />
+          </label> : <div className="mobile:hidden" />}
           {createActions}
         </div>
-        <div className="overflow-hidden rounded-lg border bg-card shadow-panel">
-          {selecting && <div className="flex items-center justify-between gap-3 border-b px-6 py-3 mobile:px-[15px]">
+        <div className="flex flex-col gap-5">
+          {selecting && <div className="flex items-center justify-between gap-3 rounded-lg border bg-card px-5 py-3 mobile:px-4">
             <label className="flex items-center gap-2 text-xs"><Checkbox aria-label="Select all visible rules" disabled={!visibleIds.length}
               checked={allVisibleSelected ? true : visibleIds.some(id => selectedIds.has(id)) ? 'indeterminate' : false}
               onCheckedChange={checked => setSelectedIds(current => { const next = new Set(current); for (const id of visibleIds) { if (checked === true) next.add(id); else next.delete(id) } return next })} />All</label>
             <DeleteSelectedRulesDialog ids={[...selectedEntries, ...selectedNetwork].map(rule => rule.id)} disabled={pending}
               onDeleted={() => setSelectedIds(new Set())} />
           </div>}
-          <div className="flex min-h-[66px] items-center gap-5 border-b px-6 py-[17px] mobile:px-[15px] mobile:py-3.5 mobile:flex-col mobile:items-stretch mobile:gap-2.5">
-            <label className="flex w-full min-w-0 items-center gap-2 text-muted-foreground focus-within:text-foreground focus-within:shadow-[0_1px_0_var(--ring)] [&>svg]:size-[15px]">
-              <Icon icon={Search} />
-              <Input className="h-auto flex-1 rounded-none border-0 bg-transparent px-0 py-2 text-[11px] shadow-none focus:bg-transparent focus:ring-0 placeholder:text-muted-foreground" aria-label={`Search ${plural}`} placeholder={`Find a ${noun}...`} value={query} onChange={(event) => setQueries({ ...queries, [view]: event.target.value })} />
-              {query && <Button variant="ghost-muted" size="icon-sm" type="button" aria-label="Clear search" onClick={() => setQueries({ ...queries, [view]: '' })}><Icon icon={X} /></Button>}
-            </label>
-          </div>
           {!groupCount ? (
-            <div className="flex flex-col items-center px-5 pt-[45px] pb-11 text-center mobile:px-4 mobile:py-[33px] [&_h3]:mt-[11px] [&_h3]:text-base [&_h3]:font-semibold [&_h3]:tracking-[-0.3px]">
-              <h3>No {plural} yet</h3>
-              {isAll ? <NewRuleButton className="mt-[23px]" /> : <Button asChild className="mt-[23px] mobile:shrink-0"><a href={newRoute}>
-                <Icon icon={Plus} data-icon="inline-start" /> New
-              </a></Button>}
-            </div>
+            <Empty className="min-h-[320px] border">
+              <EmptyHeader>
+                <EmptyMedia variant="icon"><Icon icon={ListChecks} /></EmptyMedia>
+                <EmptyTitle role="heading" aria-level={2}>No {plural} yet</EmptyTitle>
+              </EmptyHeader>
+              <EmptyContent>{createActions}</EmptyContent>
+            </Empty>
           ) : visibleCount ? (
             isAll ? (
               <>
@@ -401,17 +410,18 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
             ) : isNetwork ? <NetworkRulesList networkRules={visibleNetworkRules} pending={pending} onToggle={onToggleNetworkRule} selection={selection} actions={actions} /> : isSwitchRules ? (
               <SwitchRulesList switchRules={visibleSwitchRules} pending={pending} switchRuleHref={(switchRule) => `#${entryRoute(switchRule)}`} onToggle={onToggle} onSelectOption={onSelectOption} selection={selection} actions={actions} />
             ) : (
-              <>
-                <div className={cn('grid gap-4 px-6 pt-[17px] pb-2 text-[8px] tracking-[1.1px] text-muted-foreground mobile:hidden', selecting
-                  ? 'grid-cols-[26px_32px_minmax(0,1fr)_92px] tablet:grid-cols-[26px_32px_minmax(0,1fr)_68px]'
-                  : 'grid-cols-[32px_minmax(0,1fr)_92px_116px] tablet:grid-cols-[32px_minmax(0,1fr)_68px_116px]')} aria-hidden="true">
-                  {selecting && <span />}<span /><span>HEADER RULE / URL PATTERN</span><span>HEADERS</span>{!selecting && <span />}
-                </div>
-                <HeaderRulesList headerRules={visibleHeaderRules} pending={pending} headerRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} selection={selection} actions={actions} />
-              </>
+              <HeaderRulesList headerRules={visibleHeaderRules} pending={pending} headerRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} selection={selection} actions={actions} />
             )
           ) : (
-            <div className="flex flex-col items-center px-5 pt-[45px] pb-11 text-center mobile:px-4 mobile:py-[33px] [&_h3]:mt-[11px] [&_h3]:text-base [&_h3]:font-semibold [&_h3]:tracking-[-0.3px] min-h-[290px] justify-center [&>svg]:size-7 [&>svg]:text-muted-foreground [&>button]:mt-5"><Icon icon={Search} /><h3>No matching {plural}.</h3><Button variant="outline" size="lg" onClick={() => setQueries({ ...queries, [view]: '' })}>Show all {plural}</Button></div>
+            <Empty className="min-h-[320px] border">
+              <EmptyHeader>
+                <EmptyMedia variant="icon"><Icon icon={Search} /></EmptyMedia>
+                <EmptyTitle role="heading" aria-level={2}>No matching {plural}</EmptyTitle>
+              </EmptyHeader>
+              <EmptyContent>
+                <Button variant="outline" onClick={() => setQueries({ ...queries, [view]: '' })}>Show all {plural}</Button>
+              </EmptyContent>
+            </Empty>
           )}
         </div>
       </TabsContent>
@@ -454,8 +464,8 @@ function NewRuleButton({ className }: { className?: string }) {
 function RuleSection({ title, count, children }: { title: string; count: number; children: ReactNode }) {
   if (!count) return null
   return (
-    <section aria-label={title} className="border-b last:border-b-0">
-      <h2 className="px-6 pt-5 pb-2 text-xs font-semibold mobile:px-[15px]">{title}</h2>
+    <section aria-label={title} className="grid gap-3">
+      <h2 className="text-xs font-semibold">{title}</h2>
       {children}
     </section>
   )

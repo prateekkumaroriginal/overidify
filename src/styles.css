@@ -26,6 +26,7 @@
   --muted: var(--card);
   --muted-foreground: #9394a1;
   --accent: #2f3037;
+  --domain-tag: rgb(59 130 246);
   --selection: #27272d;
   --accent-foreground: var(--foreground);
   --destructive: #f87171;
@@ -52,6 +53,7 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
+  --color-domain-tag: var(--domain-tag);
   --color-selection: var(--selection);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
@@ -66,6 +68,7 @@
 
 @theme {
   --shadow-panel: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 3px 6px rgb(0 0 0 / 0.15);
+  --shadow-rule-card: 0 3px 6px rgb(0 0 0 / 0.15);
   --spacing: 4px;
   --text-xs: 12px;
   --text-xs--line-height: 1.6;

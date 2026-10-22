@@ -33,7 +33,7 @@ const buttonVariants = cva(
         "icon-sm": "inline-grid size-[26px] min-h-[26px] min-w-[26px] place-items-center p-[5px] [&_svg]:size-[15px]",
         "icon-field": "inline-grid size-[26px] min-h-[26px] min-w-[26px] place-items-center p-[5px] [&_svg]:size-5",
         "icon-lg": "inline-grid size-9 min-h-9 min-w-9 place-items-center p-[5px] [&_svg]:size-5",
-        "icon-action": "inline-grid size-9 min-h-9 min-w-9 place-items-center p-2 [&_svg]:size-4 any-pointer-coarse:size-11 any-pointer-coarse:min-h-11 any-pointer-coarse:min-w-11",
+        "icon-action": "inline-grid size-[26px] min-h-[26px] min-w-[26px] place-items-center p-[6px] [&_svg]:size-[14px]",
       },
     },
     compoundVariants: [

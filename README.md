@@ -29,9 +29,9 @@ Open Overidify from Chrome's extensions menu and click **Settings**. Choose a ru
 - **Switch Rules** let you choose between named header sets, such as different test accounts.
 - **Network Rules** match an API URL and return a response body, status, and headers you choose.
 
-Settings opens on the **All** tab, which shows all three rule types together. Search across your rules, toggle them, choose Switch Rule options, or open a rule to edit it. Click **+ New** to choose which type of rule to create.
+Settings opens on the **All** tab, which shows all three rule types together as wide cards on the page background. Each card keeps its toggle, name, and action icons in one header row, including on mobile. The website domain appears in a pill beside the name, and rule details sit below. Search fills the remaining width between the page title and New, with a search icon; on narrow screens it wraps below that row. Search across your rules, toggle them, choose Switch Rule options, or click a card to edit it. Card backgrounds lighten on hover. Click **+ New** to choose which type of rule to create.
 
-Hover a rule or focus it with the keyboard to reveal **Duplicate**, **Export**, and **Delete** icons. They stay visible on touch screens. Duplicate saves a disabled copy immediately after the original, preserving its settings and Switch Rule options. Use **Edit** in the confirmation toast to open the copy. Select mode hides these icons in favor of the bulk toolbar.
+**Duplicate**, **Export**, and **Delete** icons appear at the top right on card hover or keyboard focus. Duplicate saves a disabled copy immediately after the original, preserving its settings and Switch Rule options. Use **Edit** in the confirmation toast to open the copy. Select mode hides these icons and puts a checkbox at the far left. Clicking the card toggles its selection, while toggles and option dropdowns are inactive. Press Escape to cancel selection. Use the bulk toolbar to export or delete selected rules.
 
 For example, to add a token to requests from your local app:
 
