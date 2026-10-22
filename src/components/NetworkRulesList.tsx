@@ -12,7 +12,7 @@ export function NetworkRulesList({ networkRules, pending, onToggle, selection, a
   selection?: RuleSelection
   actions?: RuleRowActionHandlers
 }) {
-  return <ul className="m-0 list-none p-0">{networkRules.map(networkRule => <li key={networkRule.id} className="rule-row flex min-h-20 flex-wrap items-center gap-x-4 border-b px-6 last:border-b-0 hover:bg-accent focus-within:bg-accent mobile:gap-x-3 mobile:px-[15px]">
+  return <ul className="m-0 list-none p-0">{networkRules.map(networkRule => <li key={networkRule.id} className="rule-row group/rule flex min-h-20 flex-wrap items-center gap-x-4 border-b px-6 last:border-b-0 hover:bg-accent focus-within:bg-accent mobile:gap-x-3 mobile:px-[15px]">
     <RuleSelectionCheckbox id={networkRule.id} name={networkRule.name} selection={selection} />
     <ToggleSwitch checked={networkRule.enabled} label={`Enable ${networkRule.name}`} pending={pending} onChange={enabled => onToggle(networkRule, enabled)} />
     <a className="grid min-w-[120px] flex-1 gap-1.5 py-5 no-underline" href={`#/network-rules/${encodeURIComponent(networkRule.id)}`}>

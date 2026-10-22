@@ -22,7 +22,7 @@ export function SwitchRulesList({ switchRules, switchRuleHref, onToggle, onSelec
       {switchRules.map((rule, index) => {
         return (
           <li
-            className="rule-row animate-[rise-in_350ms_both] border-b border-border px-6 transition-colors hover:bg-accent focus-within:bg-accent last:border-b-0 mobile:px-[15px] mobile:min-h-[86px]"
+            className="rule-row group/rule animate-[rise-in_350ms_both] border-b border-border px-6 transition-colors hover:bg-accent focus-within:bg-accent last:border-b-0 mobile:px-[15px] mobile:min-h-[86px]"
             key={rule.id}
             style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
           >

@@ -28,7 +28,7 @@ export function HeaderRulesList({
     <ul className="m-0 list-none p-0">
       {headerRules.map((headerRule, index) => (
         <li
-          className="rule-row animate-[rise-in_350ms_both] border-b border-border px-6 transition-colors hover:bg-accent focus-within:bg-accent last:border-b-0 mobile:px-[15px] flex min-h-20 flex-wrap items-center gap-x-4 mobile:gap-x-2.5"
+          className="rule-row group/rule animate-[rise-in_350ms_both] border-b border-border px-6 transition-colors hover:bg-accent focus-within:bg-accent last:border-b-0 mobile:px-[15px] flex min-h-20 flex-wrap items-center gap-x-4 mobile:gap-x-2.5"
           key={headerRule.id}
           style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
         >
