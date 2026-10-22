@@ -8,6 +8,8 @@ Icons appear on row hover and keyboard focus. Touch screens, including devices w
 
 Select mode hides per-rule actions and uses the existing bulk Export and Delete controls. A new copy is not automatically selected. The current tab, search, scroll position, and selection remain intact.
 
+While an action is pending, keep the action icons at full opacity and preserve keyboard focus. Temporarily blocked actions indicate that they are busy with a wait cursor and prevent repeated activation without flashing or hiding the row's controls.
+
 ## Duplicate
 
 Duplicate immediately saves an independent, disabled copy directly after the source in the stored priority order. Header and Switch Rules share an order; Network Rules have their own. All continues to group rows by type. Later matching enabled rules retain higher priority.
