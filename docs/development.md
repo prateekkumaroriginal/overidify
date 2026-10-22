@@ -62,11 +62,7 @@ The extension uses React, TypeScript, Vite, and Manifest V3 with `@crxjs/vite-pl
 
 Styling uses Tailwind CSS v4 utilities and local shadcn components with Radix primitives in `src/components/ui`. Theme tokens and shared base styles live in `src/styles.css`.
 
-The Button module in `src/components/ui/button.tsx` owns button dimensions, typography, and icon sizing. Choose its `variant` and `size` props for repeated treatments; keep caller `className` values for layout and visibility. Add shared treatments there instead of overriding button geometry or appearance in callers or global CSS. The rendered `data-size` always identifies the resolved size, and appearance does not implicitly select an icon size.
-
-`default` and `sm` sizes are 30px text actions. `lg` and `choice` preserve content-sized empty-state actions and rule choices. `option` sizes the wrapping Switch Rule option labels; `inline` sizes inline links such as Undo. Icon-only controls explicitly use `icon`, `icon-sm`, `icon-field`, or `icon-lg`. The 26px `icon-sm` size uses 15px glyphs; `icon-field` preserves the 20px response-header remove glyph in a 26px control. The default `icon` control is 30px and `icon-lg` is 36px, both with 20px glyphs.
-
-Primary, secondary, and solid destructive variants share the Clerk-style gradient highlight, shadow, and hover/focus treatment. Their shared effects remain in `src/styles.css`; that CSS does not set button dimensions or typography. The destructive variant uses `--destructive-action` for its red fill with white text; `--destructive` remains the lighter red for error text and outlined actions. Ghost, muted ghost, destructive ghost, option, navigation, and link variants describe the existing quiet-action treatments. Dialog footers arrange buttons without resizing them.
+Use the shared [Button component](../src/components/ui/button.tsx) to keep buttons consistent across the app. Express reusable appearance and sizing through its variants and sizes. When a treatment appears more than once, centralize it there. Keep caller styling focused on layout and visibility.
 
 Editor Cancel/Save rows use `gap-2`. Cancel actions in editors, import review, and delete confirmations use the ghost button variant.
 
