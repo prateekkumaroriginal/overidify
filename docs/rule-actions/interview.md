@@ -1,6 +1,6 @@
 # Rule actions design interview
 
-This records the design interview. The user confirmed the complete design in round 3 and requested implementation. See the [specification](spec.md) for the implemented behavior.
+This records the original design interview. The user confirmed the complete design in round 3 and requested implementation. Later iterations replaced the rows with wide cards. Actions appear on card hover or keyboard focus, and selection makes the other card controls inactive. The toggle, title, and actions now share one header row, including on mobile. See the [specification](spec.md) for the current implemented behavior.
 
 ## Confirmed in round 1
 

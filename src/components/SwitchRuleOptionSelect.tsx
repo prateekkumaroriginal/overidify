@@ -8,9 +8,10 @@ type SwitchRuleOptionSelectProps = {
   pending?: boolean
   onChange: (optionId: string) => void
   size?: 'sm' | 'default'
+  className?: string
 }
 
-export function SwitchRuleOptionSelect({ switchRule, disabled, pending = false, onChange, size = 'default' }: SwitchRuleOptionSelectProps) {
+export function SwitchRuleOptionSelect({ switchRule, disabled, pending = false, onChange, size = 'default', className }: SwitchRuleOptionSelectProps) {
   if (switchRule.options.length < 2) return null
   return (
     <Select
@@ -20,7 +21,7 @@ export function SwitchRuleOptionSelect({ switchRule, disabled, pending = false, 
     >
       <SelectTrigger
         size={size}
-        className={cn('w-[132px] mobile:w-28', size === 'sm' && 'w-[104px] mobile:w-[104px]')}
+        className={cn('w-[132px] mobile:w-28', size === 'sm' && 'w-[104px] mobile:w-[104px]', className)}
         aria-label={`Option for ${switchRule.name}`}
         aria-disabled={disabled || pending}
         aria-busy={pending || undefined}

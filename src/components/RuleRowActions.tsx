@@ -14,7 +14,7 @@ export type RuleRowActionHandlers = {
 
 export function RuleRowActions({ rule, actions }: { rule: TransferRule; actions?: RuleRowActionHandlers }) {
   if (!actions) return null
-  return <div className="my-2 ml-auto flex shrink-0 items-center gap-1 [@media(hover:hover)]:pointer-fine:not-any-pointer-coarse:pointer-events-none [@media(hover:hover)]:pointer-fine:not-any-pointer-coarse:opacity-0 group-hover/rule:pointer-events-auto group-hover/rule:opacity-100 group-focus-within/rule:pointer-events-auto group-focus-within/rule:opacity-100" role="group" aria-label={`Actions for ${rule.name}`} aria-busy={actions.busy || undefined}>
+  return <div className="pointer-events-none flex shrink-0 items-center gap-1 opacity-0 group-hover/card:pointer-events-auto group-hover/card:opacity-100 group-focus-within/card:pointer-events-auto group-focus-within/card:opacity-100" role="group" aria-label={`Actions for ${rule.name}`} aria-busy={actions.busy || undefined}>
     {[
       { label: 'Duplicate', icon: Copy, onClick: actions.onDuplicate, disabled: actions.busy },
       { label: 'Export', icon: Upload, onClick: actions.onExport, disabled: actions.exportingId === rule.id },
