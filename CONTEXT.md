@@ -6,6 +6,7 @@ Overidify configures request headers and mock API responses for matching website
 
 **Rule**:
 A saved Header Rule, Switch Rule, or Network Rule.
+_Avoid_: Item when referring to a rule.
 
 **Header Rule**:
 A rule that supplies one set of request headers.

@@ -63,6 +63,20 @@ All three rule editors place a ghost Back arrow beside the title and **Export** 
 
 **Delete rule** opens an in-app confirmation showing the saved rule's name. **Cancel** is focused by default; cancel or press Escape to keep the rule. Choose **Delete** to permanently remove it.
 
+### Rule actions in Settings
+
+Header, Switch, and Network Rule rows offer Duplicate, Export, and Delete, including in All. The icons appear on hover or keyboard focus and stay visible on touch screens. Their space is reserved so revealing them does not move the row's content. Narrow rows wrap their controls when needed. Select mode hides individual actions and uses the bulk toolbar. Clicking a rule's name opens its editor.
+
+Duplicate immediately saves an independent, disabled copy directly after the source in its priority order. It retains the saved configuration, including every Switch option and the selected option, with fresh rule and option identities. Editing or deleting either rule leaves the other unchanged. Once enabled, the copy can override its source, while rules later in the order keep their higher priority.
+
+Names start at `Original (copy)` and increment through `Original (copy 2)` until an unused name is found. Name comparisons ignore case across the saved rule types. Copying a copy uses the same base name and next unused number. Unnamed sources use `Untitled rule` as the base.
+
+The current tab, search, scroll position, and selection are preserved. The copy is not automatically selected. A `Rule duplicated` toast offers Edit to open the saved copy. Repeated submission is blocked while creation is pending; another deliberate click after completion creates another copy.
+
+The row's Export action reads that rule's latest saved settings and uses the existing JSON export format. Row Delete uses the same named-rule confirmation and Cancel/Escape behavior described above. A save failure creates no copy or deletion. A saved change with an activation failure is reported as saved and offers Retry activation without repeating the change. Any required website reload is reported separately.
+
+See the [rule actions specification](rule-actions/spec.md) for storage and interaction details.
+
 Saved edits and toggles affect subsequent requests. An in-flight request keeps the Network Rule settings captured when it started. Changing a rule does not repeat a request or update content already on the page.
 
 The settings page and popup follow the latest saved rules. Changes from multiple open extension pages are applied in sequence, so editing one rule preserves changes to other rules made in another page.

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { activateImportedRules, deleteSavedRules } from '../src/lib/rule-transfer-storage.ts'
+import { activateImportedRules, deleteSavedRules, persistRuleDeletion } from '../src/lib/rule-transfer-storage.ts'
 import { createNetworkRuleDraft } from '../src/lib/network-rules.ts'
 import type { RuleCollection } from '../src/lib/rule-transfer.ts'
 
@@ -103,6 +103,20 @@ test('activation failure reports the saved deletion and can retry without anothe
     assert.match(result.activation.error!, /Network activation unavailable/)
     assert.deepEqual(state.stored.networkRules, [original.networkRules[1]])
     state.activationFailure = false
+    assert.equal((await activateImportedRules()).ok, true)
+    assert.equal(state.writes, 1)
+  } finally { restore() }
+})
+
+test('saving a deletion completes independently of activation', async () => {
+  const { original, state, restore } = setup()
+  try {
+    const result = await persistRuleDeletion(new Set([original.requestHeaderRules[0].id]))
+    assert.equal(result.deletedCount, 1)
+    assert.equal(state.stored.requestHeaderRules.some(rule => rule.id === original.requestHeaderRules[0].id), false)
+    assert.deepEqual(result.rules, state.stored)
+    assert.equal(state.writes, 1)
+    assert.deepEqual(state.messages, [], 'the caller can close its confirmation before starting activation')
     assert.equal((await activateImportedRules()).ok, true)
     assert.equal(state.writes, 1)
   } finally { restore() }

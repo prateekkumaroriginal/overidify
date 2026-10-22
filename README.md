@@ -31,6 +31,8 @@ Open Overidify from Chrome's extensions menu and click **Settings**. Choose a ru
 
 Settings opens on the **All** tab, which shows all three rule types together. Search across your rules, toggle them, choose Switch Rule options, or open a rule to edit it. Click **+ New** to choose which type of rule to create.
 
+Hover a rule or focus it with the keyboard to reveal **Duplicate**, **Export**, and **Delete** icons. They stay visible on touch screens. Duplicate saves a disabled copy immediately after the original, preserving its settings and Switch Rule options. Use **Edit** in the confirmation toast to open the copy. Select mode hides these icons in favor of the bulk toolbar.
+
 For example, to add a token to requests from your local app:
 
 1. Under **Header Rules**, click **+ New** and give it a name.
@@ -49,6 +51,7 @@ On the Settings home page, **Import**, **Export**, and **Select** sit beside the
 - **Export** downloads all saved rules in the current tab. On **All**, it downloads a full backup across the three types.
 - **Select** reveals checkboxes. Select rules across the rule-type tabs, then export or delete the selection. Delete asks for confirmation and permanently removes every selected rule, including selections on other tabs. Select every rule across the three types for a full backup.
 - Inside a saved rule, **Export** downloads that rule. Save any edits first. Switch Rules include all options and the selected option.
+- A rule's **Export** icon downloads its latest saved settings directly from the list.
 - **Import** opens a JSON file picker and review. Overlapping UUIDs get one **Replace** or **Add** choice. Replace updates those rules; Add keeps both as separate copies. Invalid rules can be excluded after you accept a partial import.
 
 Files contain exact saved header values and response bodies. Enabled states are preserved on import. If activation is not confirmed after saving, use **Retry activation** without importing the file again.

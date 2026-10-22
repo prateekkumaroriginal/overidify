@@ -3,6 +3,8 @@ import { SwitchRuleOptionSelect } from './SwitchRuleOptionSelect'
 import { ToggleSwitch } from './ToggleSwitch'
 import { RuleSelectionCheckbox } from './RuleSelection'
 import type { RuleSelection } from './RuleSelection'
+import { RuleRowActions } from './RuleRowActions'
+import type { RuleRowActionHandlers } from './RuleRowActions'
 
 type SwitchRulesListProps = {
   switchRules: SwitchRule[]
@@ -11,19 +13,20 @@ type SwitchRulesListProps = {
   onSelectOption: (rule: SwitchRule, optionId: string) => void
   selection?: RuleSelection
   pending?: boolean
+  actions?: RuleRowActionHandlers
 }
 
-export function SwitchRulesList({ switchRules, switchRuleHref, onToggle, onSelectOption, pending, selection }: SwitchRulesListProps) {
+export function SwitchRulesList({ switchRules, switchRuleHref, onToggle, onSelectOption, pending, selection, actions }: SwitchRulesListProps) {
   return (
     <ul className="m-0 list-none p-0">
       {switchRules.map((rule, index) => {
         return (
           <li
-            className="animate-[rise-in_350ms_both] border-b border-border px-6 transition-colors hover:bg-accent focus-within:bg-accent last:border-b-0 mobile:px-[15px] mobile:min-h-[86px]"
+            className="rule-row group/rule animate-[rise-in_350ms_both] border-b border-border px-6 transition-colors hover:bg-accent focus-within:bg-accent last:border-b-0 mobile:px-[15px] mobile:min-h-[86px]"
             key={rule.id}
             style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
           >
-            <div className="flex min-h-20 items-center gap-4 mobile:gap-2.5">
+            <div className="flex min-h-20 flex-wrap items-center gap-x-4 mobile:gap-x-2.5">
               <RuleSelectionCheckbox id={rule.id} name={rule.name} selection={selection} />
               <ToggleSwitch
                 checked={rule.enabled}
@@ -32,7 +35,7 @@ export function SwitchRulesList({ switchRules, switchRuleHref, onToggle, onSelec
                 onChange={(enabled) => onToggle(rule, enabled)}
               />
               <a
-                className="grid min-w-0 flex-1 gap-[5px] py-5 no-underline"
+                className="grid min-w-[120px] flex-1 gap-[5px] py-5 no-underline"
                 href={switchRuleHref(rule)}
               >
                 <span className="text-xs font-semibold wrap-anywhere mobile:text-[11px]">{rule.name}</span>
@@ -43,6 +46,7 @@ export function SwitchRulesList({ switchRules, switchRuleHref, onToggle, onSelec
                 pending={pending}
                 onChange={(optionId) => onSelectOption(rule, optionId)}
               />
+              <RuleRowActions rule={rule} actions={selection ? undefined : actions} />
             </div>
           </li>
         )
