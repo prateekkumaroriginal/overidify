@@ -16,7 +16,7 @@ const buttonVariants = cva(
         "destructive-outline": "border border-input bg-transparent text-destructive hover:border-destructive/40 hover:bg-destructive/10",
         secondary: "clerk-button clerk-button-secondary",
         ghost: ghostStyles,
-        "ghost-muted": [ghostStyles, "text-muted-foreground"],
+        "ghost-muted": [ghostStyles, "text-muted-foreground hover:bg-foreground/10"],
         "destructive-ghost": [ghostStyles, "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"],
         option: "gap-0 rounded-none border-0 bg-transparent text-left text-xs font-normal text-muted-foreground whitespace-normal wrap-anywhere hover:bg-transparent aria-pressed:text-primary",
         navigation: "border border-transparent bg-transparent text-xs font-bold hover:bg-transparent",

@@ -4,7 +4,7 @@
 
 All saved rule types in Settings, including the All tab, offer Duplicate, Export, and Delete icons in that order. Clicking a rule name opens its editor. The popup and editor action sets retain their existing behavior.
 
-Icons appear on row hover and keyboard focus. Touch screens, including devices with both coarse and fine pointers, keep them visible. Hover-capable layouts reserve their space so revealing them does not move other controls. Narrow rows can wrap controls. Shared Button sizes provide 36px targets for a fine pointer and 44px targets for touch. Icons have accessible names and tooltips.
+Icons appear on row hover and keyboard focus. Touch screens, including devices with both coarse and fine pointers, keep them visible. Hover-capable layouts reserve their space so revealing them does not move other controls. Narrow rows can wrap controls. Shared Button sizes provide 36px targets for a fine pointer and 44px targets for touch. Icons have accessible names and tooltips. Each action's hover fill remains distinct from the highlighted row; Delete uses the destructive treatment.
 
 Select mode hides per-rule actions and uses the existing bulk Export and Delete controls. A new copy is not automatically selected. The current tab, search, scroll position, and selection remain intact.
 
