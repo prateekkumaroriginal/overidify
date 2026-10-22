@@ -243,7 +243,7 @@ export function OptionsApp() {
             onDelete={selected ? () => { void handleDelete(selected) } : undefined}
           />
         ) : (
-          <div className="flex flex-col items-center px-5 pt-[45px] pb-11 text-center mobile:px-4 mobile:py-[33px] [&_h3]:mt-[11px] [&_h3]:text-base [&_h3]:font-semibold [&_h3]:tracking-[-0.3px]"><h1 className="text-[28px] font-semibold">Not found.</h1><Button asChild variant="ghost" size="default" className="min-h-[46px] gap-[9px] rounded-[7px] border border-transparent px-5 py-[13px] text-xs font-bold hover:bg-transparent"><a href="#/all">Back to all rules <Icon icon={ArrowRight} /></a></Button></div>
+          <div className="flex flex-col items-center px-5 pt-[45px] pb-11 text-center mobile:px-4 mobile:py-[33px] [&_h3]:mt-[11px] [&_h3]:text-base [&_h3]:font-semibold [&_h3]:tracking-[-0.3px]"><h1 className="text-[28px] font-semibold">Not found.</h1><Button asChild variant="navigation" size="lg"><a href="#/all">Back to all rules <Icon icon={ArrowRight} data-icon="inline-end" /></a></Button></div>
         )}
       </main>
     </div>
@@ -333,7 +333,7 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
   const createActions = isAll ? (
     <NewRuleButton />
   ) : (
-    <Button asChild className="mobile:px-3 mobile:text-xs mobile:shrink-0 mobile:whitespace-nowrap"><a href={newRoute}><Icon icon={Plus} data-icon="inline-start" /> New</a></Button>
+    <Button asChild className="mobile:shrink-0"><a href={newRoute}><Icon icon={Plus} data-icon="inline-start" /> New</a></Button>
   )
 
 
@@ -371,13 +371,13 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
             <label className="flex w-full min-w-0 items-center gap-2 text-muted-foreground focus-within:text-foreground focus-within:shadow-[0_1px_0_var(--ring)] [&>svg]:size-[15px]">
               <Icon icon={Search} />
               <Input className="h-auto flex-1 rounded-none border-0 bg-transparent px-0 py-2 text-[11px] shadow-none focus:bg-transparent focus:ring-0 placeholder:text-muted-foreground" aria-label={`Search ${plural}`} placeholder={`Find a ${noun}...`} value={query} onChange={(event) => setQueries({ ...queries, [view]: event.target.value })} />
-              {query && <Button variant="ghost" type="button" className="size-[26px] text-muted-foreground [&_svg]:size-[15px]" aria-label="Clear search" onClick={() => setQueries({ ...queries, [view]: '' })}><Icon icon={X} /></Button>}
+              {query && <Button variant="ghost-muted" size="icon-sm" type="button" aria-label="Clear search" onClick={() => setQueries({ ...queries, [view]: '' })}><Icon icon={X} /></Button>}
             </label>
           </div>
           {!groupCount ? (
             <div className="flex flex-col items-center px-5 pt-[45px] pb-11 text-center mobile:px-4 mobile:py-[33px] [&_h3]:mt-[11px] [&_h3]:text-base [&_h3]:font-semibold [&_h3]:tracking-[-0.3px]">
               <h3>No {plural} yet</h3>
-              {isAll ? <NewRuleButton className="mt-[23px]" /> : <Button asChild className="mt-[23px] mobile:px-3 mobile:text-xs mobile:shrink-0 mobile:whitespace-nowrap"><a href={newRoute}>
+              {isAll ? <NewRuleButton className="mt-[23px]" /> : <Button asChild className="mt-[23px] mobile:shrink-0"><a href={newRoute}>
                 <Icon icon={Plus} data-icon="inline-start" /> New
               </a></Button>}
             </div>
@@ -403,7 +403,7 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
               </>
             )
           ) : (
-            <div className="flex flex-col items-center px-5 pt-[45px] pb-11 text-center mobile:px-4 mobile:py-[33px] [&_h3]:mt-[11px] [&_h3]:text-base [&_h3]:font-semibold [&_h3]:tracking-[-0.3px] min-h-[290px] justify-center [&>svg]:size-7 [&>svg]:text-muted-foreground [&>button]:mt-5"><Icon icon={Search} /><h3>No matching {plural}.</h3><Button variant="outline" className="h-auto min-h-[46px] px-5 py-[13px] text-xs font-bold" onClick={() => setQueries({ ...queries, [view]: '' })}>Show all {plural}</Button></div>
+            <div className="flex flex-col items-center px-5 pt-[45px] pb-11 text-center mobile:px-4 mobile:py-[33px] [&_h3]:mt-[11px] [&_h3]:text-base [&_h3]:font-semibold [&_h3]:tracking-[-0.3px] min-h-[290px] justify-center [&>svg]:size-7 [&>svg]:text-muted-foreground [&>button]:mt-5"><Icon icon={Search} /><h3>No matching {plural}.</h3><Button variant="outline" size="lg" onClick={() => setQueries({ ...queries, [view]: '' })}>Show all {plural}</Button></div>
           )}
         </div>
       </TabsContent>
@@ -427,7 +427,7 @@ function NewRuleButton({ className }: { className?: string }) {
             { title: 'Network Rule', route: 'network-rules' },
           ].map(choice => (
             <DialogClose asChild key={choice.route}>
-              <Button asChild variant="outline" className="h-auto justify-between gap-4 p-4">
+              <Button asChild variant="outline" size="choice" className="justify-between">
                 <a href={`#/${choice.route}/new`}>
                   {choice.title}
                   <Icon icon={ArrowRight} data-icon="inline-end" />

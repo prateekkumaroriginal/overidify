@@ -56,8 +56,7 @@ export function DeleteSelectedRulesDialog({ ids, disabled, onDeleted }: {
   }}>
     <AlertDialogTrigger asChild>
       <Button variant="destructive" disabled={disabled || !ids.length}
-        aria-busy={disabled && ids.length > 0 ? true : undefined}
-        className="aria-busy:cursor-wait aria-busy:opacity-100">
+        aria-busy={disabled && ids.length > 0 ? true : undefined}>
         <Icon icon={Trash2} data-icon="inline-start" />Delete
       </Button>
     </AlertDialogTrigger>

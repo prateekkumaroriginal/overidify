@@ -116,29 +116,13 @@ button, input, select, textarea, code, kbd, samp, pre {
   font-family: inherit;
 }
 
-/* Clerk's Copy prompt and Ask AI controls. Pixel units keep their dimensions
-   independent of this app's 14px root font size. Source: clerk.com/docs. */
+/* Clerk-style button effects. Dimensions and typography belong to Button. */
 .clerk-button {
   position: relative;
   isolation: isolate;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   overflow: hidden;
-  height: 30px;
-  min-height: 30px;
-  padding: 0 12px;
-  gap: 6px;
-  border: 0;
-  border-radius: 6px;
   background-color: var(--button-background);
   color: var(--action-foreground);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 24px;
-  text-align: left;
-  white-space: nowrap;
   box-shadow:
     0 0 0 var(--button-ring-width) var(--button-background),
     inset 0 1px 0 rgb(255 255 255 / 0.07),
@@ -146,12 +130,6 @@ button, input, select, textarea, code, kbd, samp, pre {
   transition: color 300ms, background-color 300ms, border-color 300ms,
     outline-color 300ms, box-shadow 300ms, opacity 300ms;
   transition-timing-function: cubic-bezier(0.4, 0.36, 0, 1);
-}
-
-/* Align dialog actions, including buttons composed through Radix slots. */
-:is([data-slot='dialog-footer'], [data-slot='alert-dialog-footer']) > [data-variant] {
-  height: 30px;
-  min-height: 30px;
 }
 
 .clerk-button-primary {
@@ -167,7 +145,6 @@ button, input, select, textarea, code, kbd, samp, pre {
 .clerk-button-secondary {
   --button-background: var(--secondary-action);
   --button-ring-width: 1px;
-  padding-block: 3px;
   box-shadow:
     0 0 0 1px rgb(255 255 255 / 0.08),
     inset 0 1px 0 rgb(255 255 255 / 0.07),
@@ -202,13 +179,6 @@ button, input, select, textarea, code, kbd, samp, pre {
 
 .clerk-button:not(:disabled):not([aria-disabled='true']):hover::before {
   opacity: 1;
-}
-
-.clerk-button > svg {
-  width: 16px;
-  height: 16px;
-  padding: 1px;
-  stroke-width: 2;
 }
 
 @media (prefers-reduced-motion: reduce) {

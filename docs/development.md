@@ -62,7 +62,11 @@ The extension uses React, TypeScript, Vite, and Manifest V3 with `@crxjs/vite-pl
 
 Styling uses Tailwind CSS v4 utilities and local shadcn components with Radix primitives in `src/components/ui`. Theme tokens and shared base styles live in `src/styles.css`.
 
-Primary, secondary, and solid destructive buttons share the Clerk-style gradient highlight, shadow, rounded corners, and hover/focus treatment. The destructive variant uses `--destructive-action` for its red fill with white text; `--destructive` remains the lighter red for error text and outlined actions. Default and small text actions, including editor Cancel/Save, toolbar actions, editor Export/Delete rule, and dialog footer buttons, share a 30px height. Larger rule choices and empty-state actions keep their explicit sizing.
+The Button module in `src/components/ui/button.tsx` owns button dimensions, typography, and icon sizing. Choose its `variant` and `size` props for repeated treatments; keep caller `className` values for layout and visibility. Add shared treatments there instead of overriding button geometry or appearance in callers or global CSS. The rendered `data-size` always identifies the resolved size, and appearance does not implicitly select an icon size.
+
+`default` and `sm` sizes are 30px text actions. `lg` and `choice` preserve content-sized empty-state actions and rule choices. `option` sizes the wrapping Switch Rule option labels; `inline` sizes inline links such as Undo. Icon-only controls explicitly use `icon`, `icon-sm`, `icon-field`, or `icon-lg`. The 26px `icon-sm` size uses 15px glyphs; `icon-field` preserves the 20px response-header remove glyph in a 26px control. The default `icon` control is 30px and `icon-lg` is 36px, both with 20px glyphs.
+
+Primary, secondary, and solid destructive variants share the Clerk-style gradient highlight, shadow, and hover/focus treatment. Their shared effects remain in `src/styles.css`; that CSS does not set button dimensions or typography. The destructive variant uses `--destructive-action` for its red fill with white text; `--destructive` remains the lighter red for error text and outlined actions. Ghost, muted ghost, destructive ghost, option, navigation, and link variants describe the existing quiet-action treatments. Dialog footers arrange buttons without resizing them.
 
 Editor Cancel/Save rows use `gap-2`. Cancel actions in editors, import review, and delete confirmations use the ghost button variant.
 
@@ -72,7 +76,7 @@ Rule storage locks cover reading and saving, and release before background activ
 
 All UI text uses locally bundled Manrope, including buttons, domain and header fields, and response editors. The unlayered `html body` font rule overrides Chrome's injected extension-page font. Keep it outside Tailwind's layers so the packaged extension renders the same font as development previews.
 
-Icons use named component imports from `lucide-react`. The shared `Icon` wrapper sets the default size, stroke width, and decorative accessibility attributes. Pass the imported component through its `icon` prop. The Button component sizes leading icons marked with `data-icon="inline-start"` to 16px.
+Icons use named component imports from `lucide-react`. The shared `Icon` wrapper sets the default size, stroke width, and decorative accessibility attributes. Pass the imported component through its `icon` prop. Button sizes own their SVG dimensions; standard text sizes use 16px icons. Mark leading or trailing text-button icons with `data-icon="inline-start"` or `data-icon="inline-end"` to identify their placement.
 
 Add components with:
 
