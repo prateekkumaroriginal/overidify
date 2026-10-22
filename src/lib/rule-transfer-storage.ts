@@ -74,9 +74,9 @@ export async function saveImportedRules(rules: RuleCollection): Promise<Transfer
   return activateImportedRules()
 }
 
-export async function deleteSavedRules(selectedIds: ReadonlySet<string>) {
+export async function persistRuleDeletion(selectedIds: ReadonlySet<string>) {
   const ids = new Set(selectedIds)
-  const result = await withRuleStorageLocks(async () => {
+  return withRuleStorageLocks(async () => {
     const [requestHeaderRules, networkRules] = await Promise.all([getRequestHeaderRules(), getNetworkRules()])
     const rules = {
       requestHeaderRules: requestHeaderRules.filter(rule => !ids.has(rule.id)),
@@ -87,6 +87,10 @@ export async function deleteSavedRules(selectedIds: ReadonlySet<string>) {
     if (deletedCount) await persistRules(rules)
     return { rules, deletedCount }
   })
+}
+
+export async function deleteSavedRules(selectedIds: ReadonlySet<string>) {
+  const result = await persistRuleDeletion(selectedIds)
   const activation = result.deletedCount ? await activateImportedRules() : { ok: true, reloadTabIds: [] }
   return { ...result, activation }
 }

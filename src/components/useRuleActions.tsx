@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { downloadRules } from '../lib/rule-download'
 import { ruleType } from '../lib/rule-transfer'
 import type { RuleCollection, TransferRule } from '../lib/rule-transfer'
-import { activateImportedRules, deleteSavedRules, duplicateSavedRule, getSavedRules } from '../lib/rule-transfer-storage'
+import { activateImportedRules, persistRuleDeletion, duplicateSavedRule, getSavedRules } from '../lib/rule-transfer-storage'
 import type { TransferActivation } from '../lib/rule-transfer-storage'
 import type { RuleRowActionHandlers } from './RuleRowActions'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog'
@@ -34,15 +34,16 @@ export function useRuleActions(pending: boolean, requestHeaderRules: RuleCollect
     const edit = copy ? { label: 'Edit', onClick: () => openRule(copy) } : undefined
     const description = result.reloadTabIds.length ? 'Reload matching website tabs to apply the latest rules.' : undefined
     if (result.ok) {
-      toast.success(message, { id, description, duration: description ? Infinity : 4000, action: edit })
+      toast.success(message, { id, description, duration: description ? Infinity : 4000, action: edit, cancel: undefined })
     } else {
       toast.warning(`${message}; activation not confirmed`, {
         id, duration: Infinity, description: [result.error, description, 'The change is saved. Retrying activation will not repeat it.'].filter(Boolean).join(' '),
         cancel: edit,
-        action: { label: 'Retry activation', onClick: () => {
+        action: { label: 'Retry activation', onClick: event => {
+          event.preventDefault()
           if (retries.current.has(id)) return
           retries.current.add(id)
-          toast.loading('Retrying activation...', { id })
+          toast.loading('Retrying activation...', { id, description: undefined, action: undefined, cancel: undefined })
           void activateImportedRules().then(next => showSavedResult(id, message, next, copy)).finally(() => retries.current.delete(id))
         } },
       })
@@ -94,9 +95,10 @@ export function useRuleActions(pending: boolean, requestHeaderRules: RuleCollect
     submitting.current = true
     setBusy(true)
     try {
-      const result = await deleteSavedRules(new Set([deleting.id]))
+      const result = await persistRuleDeletion(new Set([deleting.id]))
       setDeleting(null)
-      showSavedResult(`delete-${deleting.id}`, result.deletedCount ? 'Rule deleted' : 'Rule already deleted', result.activation)
+      const activation = result.deletedCount ? await activateImportedRules() : { ok: true, reloadTabIds: [] }
+      showSavedResult(`delete-${deleting.id}`, result.deletedCount ? 'Rule deleted' : 'Rule already deleted', activation)
     } catch (reason) {
       toast.error('Could not delete rule', { description: reason instanceof Error ? reason.message : 'Try again.' })
     } finally { submitting.current = false; setBusy(false) }

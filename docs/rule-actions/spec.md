@@ -34,4 +34,4 @@ A saved change with failed activation remains saved. Show a persistent notificat
 
 ## Verification
 
-Regression tests in `tests/rule-duplication.test.ts` exercise the public saved-rule interface for copied values, independent identities, selection remapping, placement, naming, missing sources, save/activation failures, concurrent creation, and pending source edits. Existing saved-rule export and deletion tests cover their storage boundaries. Routine row wiring, tooltip/focus behavior, navigation, rendering, and layout use one-time verification under the repository testing policy.
+Regression tests in `tests/rule-duplication.test.ts` exercise the public saved-rule interface for copied values, independent identities, selection remapping, placement, naming, missing sources, save/activation failures, concurrent creation, and pending source edits. Saved-rule export and deletion tests cover their storage boundaries, including deletion persistence completing before activation starts. Routine row wiring, tooltip/focus behavior, navigation, rendering, and layout use one-time verification under the repository testing policy.

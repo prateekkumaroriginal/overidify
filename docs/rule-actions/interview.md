@@ -31,4 +31,3 @@ The user answered: "Yes, this is the complete design. Implement it." The confirm
 - Read the latest saved rules inside the appropriate storage locks before creating, exporting, or deleting a rule. Preserve unrelated concurrent edits.
 - A failed save reports that no copy was created. A successful save followed by activation failure reports that the copy exists and offers Retry activation without creating another copy. Surface website reload requirements.
 - Preserve the current tab, search, scroll position, and existing selection when completing a copy. The toast's Edit shortcut opens that saved copy only when clicked.
-
