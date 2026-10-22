@@ -26,6 +26,8 @@ import type { RequestHeaderRule, HeaderRule, SwitchRule, HeaderRuleDraft, Switch
 import { cn } from '../lib/utils'
 import { ImportRulesDialog } from '../components/ImportRulesDialog'
 import { DeleteSelectedRulesDialog } from '../components/DeleteSelectedRulesDialog'
+import { useRuleActions } from '../components/useRuleActions'
+import { TooltipProvider } from '../components/ui/tooltip'
 import { downloadRules } from '../lib/rule-download'
 import { getSavedRules } from '../lib/rule-transfer-storage'
 import type { RuleCollection } from '../lib/rule-transfer'
@@ -267,6 +269,7 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [exportError, setExportError] = useState('')
   const exporting = useRef(false)
+  const { actions, dialog } = useRuleActions(pending, entries, networkRules)
   const query = queries[view]
   const isAll = view === 'all'
   const isSwitchRules = view === 'switch-rule'
@@ -338,6 +341,7 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
 
 
   return (
+    <TooltipProvider delayDuration={350}>
     <Tabs value={view} onValueChange={(value) => { window.location.hash = value === 'all' ? '/all' : value === 'network-rule' ? '/network-rules' : value === 'switch-rule' ? '/switch-rules' : '/header-rules' }} className="animate-[rise-in_550ms_80ms_both] gap-0">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <TabsList aria-label="Rule settings" className="max-w-full [&_button]:mobile:px-2">
@@ -385,21 +389,25 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
             isAll ? (
               <>
                 <RuleSection title="Header Rules" count={visibleHeaderRules.length}>
-                  <HeaderRulesList headerRules={visibleHeaderRules} pending={pending} headerRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} selection={selection} />
+                  <HeaderRulesList headerRules={visibleHeaderRules} pending={pending} headerRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} selection={selection} actions={actions} />
                 </RuleSection>
                 <RuleSection title="Switch Rules" count={visibleSwitchRules.length}>
-                  <SwitchRulesList switchRules={visibleSwitchRules} pending={pending} switchRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} onSelectOption={onSelectOption} selection={selection} />
+                  <SwitchRulesList switchRules={visibleSwitchRules} pending={pending} switchRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} onSelectOption={onSelectOption} selection={selection} actions={actions} />
                 </RuleSection>
                 <RuleSection title="Network Rules" count={visibleNetworkRules.length}>
-                  <NetworkRulesList networkRules={visibleNetworkRules} pending={pending} onToggle={onToggleNetworkRule} selection={selection} />
+                  <NetworkRulesList networkRules={visibleNetworkRules} pending={pending} onToggle={onToggleNetworkRule} selection={selection} actions={actions} />
                 </RuleSection>
               </>
-            ) : isNetwork ? <NetworkRulesList networkRules={visibleNetworkRules} pending={pending} onToggle={onToggleNetworkRule} selection={selection} /> : isSwitchRules ? (
-              <SwitchRulesList switchRules={visibleSwitchRules} pending={pending} switchRuleHref={(switchRule) => `#${entryRoute(switchRule)}`} onToggle={onToggle} onSelectOption={onSelectOption} selection={selection} />
+            ) : isNetwork ? <NetworkRulesList networkRules={visibleNetworkRules} pending={pending} onToggle={onToggleNetworkRule} selection={selection} actions={actions} /> : isSwitchRules ? (
+              <SwitchRulesList switchRules={visibleSwitchRules} pending={pending} switchRuleHref={(switchRule) => `#${entryRoute(switchRule)}`} onToggle={onToggle} onSelectOption={onSelectOption} selection={selection} actions={actions} />
             ) : (
               <>
-                <div className="grid grid-cols-[32px_minmax(0,1fr)_92px] gap-4 px-6 pt-[17px] pb-2 text-[8px] tracking-[1.1px] text-muted-foreground tablet:grid-cols-[32px_minmax(0,1fr)_68px] mobile:hidden" aria-hidden="true"><span /><span>HEADER RULE / URL PATTERN</span><span>HEADERS</span></div>
-                <HeaderRulesList headerRules={visibleHeaderRules} pending={pending} headerRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} selection={selection} />
+                <div className={cn('grid gap-4 px-6 pt-[17px] pb-2 text-[8px] tracking-[1.1px] text-muted-foreground mobile:hidden', selecting
+                  ? 'grid-cols-[26px_32px_minmax(0,1fr)_92px] tablet:grid-cols-[26px_32px_minmax(0,1fr)_68px]'
+                  : 'grid-cols-[32px_minmax(0,1fr)_92px_116px] tablet:grid-cols-[32px_minmax(0,1fr)_68px_116px]')} aria-hidden="true">
+                  {selecting && <span />}<span /><span>HEADER RULE / URL PATTERN</span><span>HEADERS</span>{!selecting && <span />}
+                </div>
+                <HeaderRulesList headerRules={visibleHeaderRules} pending={pending} headerRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} selection={selection} actions={actions} />
               </>
             )
           ) : (
@@ -408,6 +416,8 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
         </div>
       </TabsContent>
     </Tabs>
+    {dialog}
+    </TooltipProvider>
   )
 }
 

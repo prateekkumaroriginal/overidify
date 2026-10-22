@@ -1,5 +1,5 @@
 import { ActivationResultSchema } from './settings-messages.ts'
-import type { RuleCollection } from './rule-transfer.ts'
+import type { RuleCollection, TransferRule } from './rule-transfer.ts'
 import { getRequestHeaderRules, REQUEST_HEADER_STORAGE_KEY } from './request-header-storage.ts'
 import { getNetworkRules, NETWORK_STORAGE_KEY } from './network-storage.ts'
 
@@ -16,6 +16,41 @@ export async function getSavedRules(): Promise<RuleCollection> {
     const [requestHeaderRules, networkRules] = await Promise.all([getRequestHeaderRules(), getNetworkRules()])
     return { requestHeaderRules, networkRules }
   })
+}
+
+export async function duplicateSavedRule(id: string) {
+  const saved = await withRuleStorageLocks(async () => {
+    const [requestHeaderRules, networkRules] = await Promise.all([getRequestHeaderRules(), getNetworkRules()])
+    const all = [...requestHeaderRules, ...networkRules]
+    const source = all.find(rule => rule.id === id)
+    if (!source) throw new Error('This rule no longer exists. Refresh the list and try again.')
+
+    const base = source.name.trim().replace(/(?:\s+\(copy(?: \d+)?\))+$/i, '').trim() || 'Untitled rule'
+    const names = new Set(all.map(rule => rule.name.trim().toLowerCase()))
+    let number = 1
+    let name = `${base} (copy)`
+    while (names.has(name.toLowerCase())) name = `${base} (copy ${++number})`
+    const copy: TransferRule = { ...structuredClone(source), id: crypto.randomUUID(), name, enabled: false }
+    if ('kind' in copy && copy.kind === 'switch-rule') {
+      const selected = copy.selectedOptionId
+      copy.options = copy.options.map(option => {
+        const id = crypto.randomUUID()
+        if (option.id === selected) copy.selectedOptionId = id
+        return { ...option, id }
+      })
+    }
+    const rules: RuleCollection = 'kind' in copy ? {
+      requestHeaderRules: requestHeaderRules.flatMap(rule => rule.id === id ? [rule, copy] : [rule]).map((rule, order) => ({ ...rule, order })),
+      networkRules,
+    } : {
+      requestHeaderRules,
+      networkRules: networkRules.flatMap(rule => rule.id === id ? [rule, copy] : [rule]).map((rule, order) => ({ ...rule, order })),
+    }
+    copy.order = source.order + 1
+    await persistRules(rules)
+    return { rules, copy }
+  })
+  return { ...saved, activation: await activateImportedRules() }
 }
 
 export async function activateImportedRules(): Promise<TransferActivation> {

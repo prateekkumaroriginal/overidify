@@ -26,6 +26,8 @@ Retain selections when switching between the rule-type tabs within this options 
 
 Each saved rule editor has an Export action that downloads that one complete rule.
 
+Settings rule rows also offer a single-rule Export icon outside Select mode. It reads that rule's latest saved settings under the storage locks and stays usable during saves and activation. See the [rule actions specification](../rule-actions/spec.md) for the row controls.
+
 Require saving first. A new rule or an editor with unsaved changes cannot export. Keep Export disabled without displaying helper text. Exporting does not save or activate changes.
 
 ## Identity

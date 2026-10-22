@@ -2,6 +2,8 @@ import type { HeaderRule } from '../lib/types'
 import { ToggleSwitch } from './ToggleSwitch'
 import { RuleSelectionCheckbox } from './RuleSelection'
 import type { RuleSelection } from './RuleSelection'
+import { RuleRowActions } from './RuleRowActions'
+import type { RuleRowActionHandlers } from './RuleRowActions'
 
 type HeaderRulesListProps = {
   headerRules: HeaderRule[]
@@ -10,6 +12,7 @@ type HeaderRulesListProps = {
   pending?: boolean
   openInTab?: boolean
   selection?: RuleSelection
+  actions?: RuleRowActionHandlers
 }
 
 export function HeaderRulesList({
@@ -19,12 +22,13 @@ export function HeaderRulesList({
   pending,
   openInTab,
   selection,
+  actions,
 }: HeaderRulesListProps) {
   return (
     <ul className="m-0 list-none p-0">
       {headerRules.map((headerRule, index) => (
         <li
-          className="animate-[rise-in_350ms_both] border-b border-border px-6 transition-colors hover:bg-accent focus-within:bg-accent last:border-b-0 mobile:px-[15px] flex min-h-20 items-center gap-4 mobile:gap-2.5"
+          className="rule-row animate-[rise-in_350ms_both] border-b border-border px-6 transition-colors hover:bg-accent focus-within:bg-accent last:border-b-0 mobile:px-[15px] flex min-h-20 flex-wrap items-center gap-x-4 mobile:gap-x-2.5"
           key={headerRule.id}
           style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
         >
@@ -36,7 +40,7 @@ export function HeaderRulesList({
             onChange={(enabled) => onToggle(headerRule, enabled)}
           />
           <a
-            className="flex min-w-0 flex-1 items-center gap-4 py-5 no-underline"
+            className="flex min-w-[120px] flex-1 items-center gap-4 py-5 no-underline"
             href={headerRuleHref(headerRule)}
             target={openInTab ? '_blank' : undefined}
             rel={openInTab ? 'noreferrer' : undefined}
@@ -50,6 +54,7 @@ export function HeaderRulesList({
               <span>header{headerRule.headers.length === 1 ? '' : 's'}</span>
             </span>
           </a>
+          <RuleRowActions rule={headerRule} actions={selection ? undefined : actions} />
         </li>
       ))}
     </ul>
