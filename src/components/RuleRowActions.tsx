@@ -22,7 +22,8 @@ export function RuleRowActions({ rule, actions }: { rule: TransferRule; actions?
     ].map(action => <Tooltip key={action.label}>
       <TooltipTrigger asChild>
         <Button variant={action.label === 'Delete' ? 'destructive-ghost' : 'ghost-muted'} size="icon-action" type="button"
-          aria-label={`${action.label} ${rule.name}`} disabled={action.disabled} onClick={() => action.onClick(rule)}>
+          aria-label={`${action.label} ${rule.name}`} aria-disabled={action.disabled || undefined} aria-busy={action.disabled || undefined}
+          onClick={() => { if (!action.disabled) action.onClick(rule) }}>
           <Icon icon={action.icon} />
         </Button>
       </TooltipTrigger>
