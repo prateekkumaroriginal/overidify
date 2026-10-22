@@ -19,7 +19,7 @@ export function RuleEditorHeader({ kind, editing, ruleName, busy, titleId = 'edi
 
   return (
     <div className="mb-7 flex flex-wrap items-center gap-3">
-      <Button variant="ghost" size="icon" className="size-9 shrink-0" asChild>
+      <Button variant="ghost" size="icon-lg" className="shrink-0" asChild>
         <a href={`#/${kind}-rules`} aria-label={backLabel} title={backLabel}>
           <Icon icon={ArrowLeft} />
         </a>

@@ -105,17 +105,17 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
             <div className="mb-5 rounded-lg border bg-card shadow-panel px-7 pt-[25px] mobile:px-[17px] mobile:pt-5 pb-6 mobile:pb-5">
               <div className="mb-6 flex items-center justify-between gap-[13px] mobile:flex-wrap mobile:gap-[9px] [&_h2]:text-[13px] [&_h2]:font-bold [&_h2]:tracking-[-0.2px]">
                 <h2>Options</h2>
-                <Button variant="secondary" type="button" onClick={addOption}><Icon icon={Plus} />Add option</Button>
+                <Button variant="secondary" type="button" onClick={addOption}><Icon icon={Plus} data-icon="inline-start" />Add option</Button>
               </div>
               <div className="grid grid-cols-[164px_minmax(0,1fr)] gap-6 mobile:grid-cols-1 mobile:gap-5">
                 <div className="flex min-w-0 flex-col gap-1.5 self-start border-r pr-4 mobile:flex-row mobile:flex-wrap mobile:border-r-0 mobile:border-b mobile:pr-0 mobile:pb-4" aria-label="Options to edit">
                   {options.map((option) => (
                     <div data-selected={option.id === editingOption.id} className="group flex min-w-0 items-center rounded-md border border-transparent hover:bg-accent data-[selected=true]:border-input data-[selected=true]:bg-selection" key={option.id}>
-                      <Button variant="ghost" className="h-auto min-w-0 flex-1 shrink justify-start p-2.5 text-left rounded-none text-xs text-muted-foreground whitespace-normal wrap-anywhere group-data-[selected=true]:text-primary hover:bg-transparent" type="button" aria-pressed={option.id === editingOption.id} onClick={() => setEditingId(option.id)}>
+                      <Button variant="option" size="option" className="flex-1 shrink justify-start" type="button" aria-pressed={option.id === editingOption.id} onClick={() => setEditingId(option.id)}>
                         {option.name || 'Untitled'}
                       </Button>
                       {options.length > 1 && (
-                        <Button variant="ghost" className="invisible mr-[3px] size-[26px] text-muted-foreground group-hover:visible group-focus-within:visible group-data-[selected=true]:visible hover:bg-destructive/10 hover:text-destructive [&_svg]:size-[15px]"
+                        <Button variant="destructive-ghost" size="icon-sm" className="invisible mr-[3px] group-hover:visible group-focus-within:visible group-data-[selected=true]:visible"
                           type="button"
                           aria-label={`Delete option ${option.name || 'Untitled'}`}
                           title="Delete option"
@@ -127,12 +127,12 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
                 </div>
                 <SwitchRuleOptionEditor key={`${editingOption.id}-${editingIndex}`} index={editingIndex} nameRef={optionNameInput} onEdit={clearStatus} />
               </div>
-              {deletedOption && <div className="mt-[18px] flex items-center gap-3 border-t pt-4 text-xs text-muted-foreground" role="status"><span>{deletedOption.option.name} deleted</span><Button variant="link" className="min-h-0 min-w-0 rounded-none px-1.5 py-[1px] text-xs underline" type="button" onClick={undoDelete}>Undo</Button></div>}
+              {deletedOption && <div className="mt-[18px] flex items-center gap-3 border-t pt-4 text-xs text-muted-foreground" role="status"><span>{deletedOption.option.name} deleted</span><Button variant="link" size="inline" type="button" onClick={undoDelete}>Undo</Button></div>}
             </div>
             {saveState.message && <p className={`mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 ${saveState.tone === 'error' ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-input bg-secondary text-secondary-foreground'}`} role={saveState.tone === 'error' ? 'alert' : 'status'}>{saveState.message}</p>}
             <div className="mt-[25px] mb-10 flex items-center gap-2">
               <Button asChild variant="ghost" size="default" className="ml-auto"><a href="#/switch-rules">Cancel</a></Button>
-              <Button variant="default" className="mobile:px-3 mobile:text-xs" type="submit">Save</Button>
+              <Button variant="default" type="submit">Save</Button>
             </div>
           </fieldset>
         </form>
@@ -161,11 +161,11 @@ function SwitchRuleOptionEditor({ index: optionIndex, nameRef, onEdit }: {
             <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">{index === 0 && 'Value'}
               <Input className="font-sans text-[11px]" {...register(`options.${optionIndex}.headers.${index}.value`, { onChange: onEdit })} placeholder="e.g. Bearer token" aria-label={`Header ${index + 1} value`} />
             </label>
-            <Button variant="ghost" className="mb-[7px] size-[26px] text-muted-foreground [&_svg]:size-[15px] mobile:col-start-2 mobile:row-span-2 mobile:row-start-1 mobile:mb-0" type="button" aria-label={`Remove header ${index + 1}`} onClick={() => { remove(index); onEdit() }}><Icon icon={X} /></Button>
+            <Button variant="ghost-muted" size="icon-sm" className="mb-[7px] mobile:col-start-2 mobile:row-span-2 mobile:row-start-1 mobile:mb-0" type="button" aria-label={`Remove header ${index + 1}`} onClick={() => { remove(index); onEdit() }}><Icon icon={X} /></Button>
           </div>
         ))}
       </div>
-      <Button variant="secondary" type="button" onClick={() => { append(createHeaderPair()); onEdit() }}><Icon icon={Plus} />Add header</Button>
+      <Button variant="secondary" type="button" onClick={() => { append(createHeaderPair()); onEdit() }}><Icon icon={Plus} data-icon="inline-start" />Add header</Button>
     </div>
   )
 }

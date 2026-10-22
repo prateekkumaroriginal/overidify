@@ -77,7 +77,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
                 type="button"
                 onClick={() => append(createHeaderPair())}
               >
-                <Icon icon={Plus} /> Add header
+                <Icon icon={Plus} data-icon="inline-start" /> Add header
               </Button>
             </div>
             <div className="min-w-0">
@@ -104,7 +104,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
                       aria-label={`Header ${index + 1} value`}
                     />
                   </label>
-                  <Button variant="ghost" className="mb-[7px] size-[26px] text-muted-foreground [&_svg]:size-[15px] mobile:col-start-2 mobile:row-span-2 mobile:row-start-1 mobile:mb-0"
+                  <Button variant="ghost-muted" size="icon-sm" className="mb-[7px] mobile:col-start-2 mobile:row-span-2 mobile:row-start-1 mobile:mb-0"
                     type="button"
                     aria-label={`Remove header ${index + 1}`}
                     onClick={() => fields.length === 1 ? replace([createHeaderPair()]) : remove(index)}
@@ -126,7 +126,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
           )}
           <div className="mt-[25px] mb-10 flex items-center gap-2">
             <Button asChild variant="ghost" size="default" className="ml-auto"><a href="#/header-rules">Cancel</a></Button>
-            <Button variant="default" className="mobile:px-3 mobile:text-xs" type="submit">
+            <Button variant="default" type="submit">
               Save
             </Button>
           </div>
