@@ -10,7 +10,7 @@ const icons = {
 export default defineManifest({
   manifest_version: 3,
   name: 'Overidify',
-  version: '0.4.0',
+  version: '0.5.0',
   minimum_chrome_version: '119',
   description: 'Override request headers and mock API responses with website-scoped rules.',
   icons,
