@@ -18,6 +18,7 @@ import { ToggleSwitch } from './ToggleSwitch'
 import { useEditorForm } from './useEditorForm'
 import { downloadRules } from '../lib/rule-download'
 import { cn } from '../lib/utils'
+import { headerRowLayout } from './headerRowLayout'
 
 type SwitchRuleEditorProps = {
   switchRule?: SwitchRule
@@ -155,14 +156,14 @@ function SwitchRuleOptionEditor({ index: optionIndex, nameRef, onEdit }: {
       </label>
       <div className="min-w-0">
         {fields.map((header, index) => (
-          <div className={cn("mb-4 grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_26px] items-center gap-x-3 gap-y-2 mobile:grid-cols-[1fr_26px] mobile:gap-y-3 mobile:border-b mobile:pb-5 mobile:last:border-b-0 mobile:last:pb-0", index === 0 && "grid-rows-[auto_auto]")} key={header.id}>
-            <label className={cn("col-start-1 grid min-w-0 content-start gap-2 text-[11px] font-semibold", index === 0 && "row-span-2 grid-rows-subgrid mobile:row-span-1 mobile:grid-rows-none")}>{index === 0 && 'Header'}
+          <div className={cn("mb-4 grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_26px] items-center gap-x-3 gap-y-2 mobile:grid-cols-[1fr_26px] mobile:gap-y-3 mobile:border-b mobile:pb-5 mobile:last:border-b-0 mobile:last:pb-0", index === 0 && headerRowLayout.labelledRow)} key={header.id}>
+            <label className={cn("col-start-1 grid min-w-0 content-start gap-2 text-[11px] font-semibold", index === 0 && headerRowLayout.labelledField)}>{index === 0 && 'Header'}
               <Input className="font-sans text-[11px]" {...register(`options.${optionIndex}.headers.${index}.key`, { onChange: onEdit })} placeholder="e.g. Authorization" aria-label={`Header ${index + 1} name`} />
             </label>
-            <label className={cn("col-start-2 grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1", index === 0 && "row-span-2 grid-rows-subgrid mobile:row-span-1 mobile:grid-rows-none")}>{index === 0 && 'Value'}
+            <label className={cn("col-start-2 grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1", index === 0 && headerRowLayout.labelledField)}>{index === 0 && 'Value'}
               <Input className="font-sans text-[11px]" {...register(`options.${optionIndex}.headers.${index}.value`, { onChange: onEdit })} placeholder="e.g. Bearer token" aria-label={`Header ${index + 1} value`} />
             </label>
-            <Button variant="ghost-muted" size="icon-sm" className={cn("col-start-3 mobile:col-start-2 mobile:row-span-2 mobile:row-start-1", index === 0 && "row-start-2")} type="button" aria-label={`Remove header ${index + 1}`} onClick={() => { remove(index); onEdit() }}><Icon icon={X} /></Button>
+            <Button variant="ghost-muted" size="icon-sm" className={cn("col-start-3", headerRowLayout.action, index === 0 && headerRowLayout.labelledControl)} type="button" aria-label={`Remove header ${index + 1}`} onClick={() => { remove(index); onEdit() }}><Icon icon={X} /></Button>
           </div>
         ))}
       </div>
