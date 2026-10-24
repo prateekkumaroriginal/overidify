@@ -74,6 +74,8 @@ All UI text uses locally bundled Manrope, including buttons, domain and header f
 
 Icons use named component imports from `lucide-react`. The shared `Icon` wrapper sets the default size, stroke width, and decorative accessibility attributes. Pass the imported component through its `icon` prop. Button sizes own their SVG dimensions; standard text sizes use 16px icons. Mark leading or trailing text-button icons with `data-icon="inline-start"` or `data-icon="inline-end"` to identify their placement.
 
+Icon-only Button sizes use flex centering with zero padding and do not shrink. Keep the SVG inside the button's fixed box; padding must not reduce the available space below the SVG size. On mobile, header remove buttons span and center across the stacked name/value fields.
+
 Add components with:
 
 ```bash
