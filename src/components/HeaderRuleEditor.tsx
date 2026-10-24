@@ -106,7 +106,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
                       aria-label={`Header ${index + 1} value`}
                     />
                   </label>
-                  <Button variant="ghost-muted" size="icon-sm" className={cn("col-start-4", headerRowLayout.action, index === 0 && headerRowLayout.labelledControl)}
+                  <Button variant="ghost-muted" size="icon-field" className={cn("col-start-4", headerRowLayout.action, index === 0 && headerRowLayout.labelledControl)}
                     type="button"
                     aria-label={`Remove header ${index + 1}`}
                     onClick={() => fields.length === 1 ? replace([createHeaderPair()]) : remove(index)}

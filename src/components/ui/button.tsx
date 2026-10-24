@@ -31,7 +31,7 @@ const buttonVariants = cva(
         inline: "h-auto min-h-0 min-w-0 px-1.5 py-[1px]",
         icon: "size-[30px] min-h-[30px] min-w-[30px] shrink-0 gap-0 p-0 [&_svg]:size-5",
         "icon-sm": "size-[26px] min-h-[26px] min-w-[26px] shrink-0 gap-0 p-0 [&_svg]:size-[15px]",
-        "icon-field": "size-[26px] min-h-[26px] min-w-[26px] shrink-0 gap-0 p-0 [&_svg]:size-5",
+        "icon-field": "size-[26px] min-h-[26px] min-w-[26px] shrink-0 gap-0 p-0 [&_svg]:size-4",
         "icon-lg": "size-9 min-h-9 min-w-9 shrink-0 gap-0 p-0 [&_svg]:size-5",
         "icon-action": "size-[26px] min-h-[26px] min-w-[26px] shrink-0 gap-0 p-0 [&_svg]:size-[14px]",
       },

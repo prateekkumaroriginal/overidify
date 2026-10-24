@@ -78,6 +78,8 @@ Icon-only Button sizes use flex centering with zero padding and do not shrink. K
 
 Desktop header rows center the remove button and row number in the input track. The first row uses CSS subgrid to separate column labels from that track. Use grid alignment rather than bottom margins or translations to align these controls with the inputs.
 
+Header, Switch, and Network editors use the same Button configuration for header removal: `variant="ghost-muted"` and `size="icon-field"`. The shared size defines a 26px square hit area with a 16px X. Keep sizing in Button's variants and caller classes focused on grid placement.
+
 Add components with:
 
 ```bash
