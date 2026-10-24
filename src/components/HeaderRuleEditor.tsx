@@ -10,6 +10,7 @@ import { RuleEditorHeader } from './RuleEditorHeader'
 import { ToggleSwitch } from './ToggleSwitch'
 import { useEditorForm } from './useEditorForm'
 import { downloadRules } from '../lib/rule-download'
+import { cn } from '../lib/utils'
 
 type HeaderRuleEditorProps = {
   headerRule?: HeaderRule
@@ -82,11 +83,11 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
             </div>
             <div className="min-w-0">
               {fields.map((header, index) => (
-                <div className="mb-6 grid grid-cols-[20px_minmax(0,1fr)_minmax(0,1.4fr)_26px] items-end gap-[13px] mobile:gap-3 mobile:grid-cols-[1fr_26px] mobile:items-center mobile:border-b mobile:pb-5 mobile:last:border-b-0 mobile:last:pb-0" key={header.id}>
-                  <span className="pb-3 font-sans text-[10px] text-muted-foreground mobile:hidden">
+                <div className={cn("mb-6 grid grid-cols-[20px_minmax(0,1fr)_minmax(0,1.4fr)_26px] items-center gap-x-[13px] gap-y-2 mobile:gap-3 mobile:grid-cols-[1fr_26px] mobile:border-b mobile:pb-5 mobile:last:border-b-0 mobile:last:pb-0", index === 0 && "grid-rows-[auto_auto]")} key={header.id}>
+                  <span className={cn("col-start-1 font-sans text-[10px] text-muted-foreground mobile:hidden", index === 0 && "row-start-2")}>
                     {String(index + 1).padStart(2, '0')}
                   </span>
-                  <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">
+                  <label className={cn("col-start-2 grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1", index === 0 && "row-span-2 grid-rows-subgrid mobile:row-span-1 mobile:grid-rows-none")}>
                     {index === 0 && 'Name'}
                     <Input
                       className="font-sans text-[11px]"
@@ -95,7 +96,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
                       aria-label={`Header ${index + 1} name`}
                     />
                   </label>
-                  <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">
+                  <label className={cn("col-start-3 grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1", index === 0 && "row-span-2 grid-rows-subgrid mobile:row-span-1 mobile:grid-rows-none")}>
                     {index === 0 && 'Value'}
                     <Input
                       className="font-sans text-[11px]"
@@ -104,7 +105,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
                       aria-label={`Header ${index + 1} value`}
                     />
                   </label>
-                  <Button variant="ghost-muted" size="icon-sm" className="mb-[7px] mobile:col-start-2 mobile:row-span-2 mobile:row-start-1 mobile:mb-0"
+                  <Button variant="ghost-muted" size="icon-sm" className={cn("col-start-4 mobile:col-start-2 mobile:row-span-2 mobile:row-start-1", index === 0 && "row-start-2")}
                     type="button"
                     aria-label={`Remove header ${index + 1}`}
                     onClick={() => fields.length === 1 ? replace([createHeaderPair()]) : remove(index)}
