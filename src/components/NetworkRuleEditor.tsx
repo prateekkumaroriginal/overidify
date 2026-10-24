@@ -11,6 +11,8 @@ import { useEditorForm } from './useEditorForm'
 import { downloadRules } from '../lib/rule-download'
 import { createNetworkRuleDraft, jsonBodyWarning, NETWORK_METHODS } from '../lib/network-rules'
 import type { NetworkRule, NetworkRuleDraft } from '../lib/network-rules'
+import { cn } from '../lib/utils'
+import { headerRowLayout } from './headerRowLayout'
 
 type Props = {
   networkRule?: NetworkRule
@@ -74,10 +76,10 @@ export function NetworkRuleEditor({ networkRule, pending, onSave, onDelete }: Pr
             {warning && <p className="mt-3 text-xs text-muted-foreground" role="status">{warning}</p>}
             {noBody && <p className="mt-3 text-xs text-muted-foreground" role="status">HEAD and status 204, 205, or 304 return no body. Your entered text is still saved.</p>}
             <div className="mt-6 mb-4 flex items-center justify-between gap-4"><h3 className="text-[13px] font-bold">Response headers</h3><Button variant="secondary" type="button" onClick={() => append({ key: '', value: '' })}><Icon icon={Plus} data-icon="inline-start" /> Add header</Button></div>
-            {fields.map((header, index) => <div key={header.id} className="mb-3 grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_26px] items-end gap-3 mobile:grid-cols-[minmax(0,1fr)_26px] mobile:items-center">
-              <label className={fieldClass}><span className={index ? 'sr-only' : ''}>Name</span><Input className="font-sans text-[11px]" aria-label={`Response header ${index + 1} name`} {...form.register(`headers.${index}.key`)} placeholder="Content-Type" /></label>
-              <label className={`${fieldClass} mobile:col-start-1`}><span className={index ? 'sr-only' : ''}>Value</span><Input className="font-sans text-[11px]" aria-label={`Response header ${index + 1} value`} {...form.register(`headers.${index}.value`)} placeholder="application/json" /></label>
-              <Button variant="ghost-muted" size="icon-field" type="button" className="mb-2 mobile:col-start-2 mobile:row-span-2 mobile:row-start-1 mobile:mb-0" aria-label={`Remove response header ${index + 1}`} onClick={() => remove(index)}><Icon icon={X} /></Button>
+            {fields.map((header, index) => <div key={header.id} className={cn("mb-3 grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_26px] items-center gap-x-3 gap-y-2 mobile:grid-cols-[minmax(0,1fr)_26px] mobile:gap-y-3", index === 0 && headerRowLayout.labelledRow)}>
+              <label className={cn(fieldClass, "col-start-1", index === 0 && headerRowLayout.labelledField)}><span className={index ? 'sr-only' : ''}>Name</span><Input className="font-sans text-[11px]" aria-label={`Response header ${index + 1} name`} {...form.register(`headers.${index}.key`)} placeholder="Content-Type" /></label>
+              <label className={cn(fieldClass, "col-start-2 mobile:col-start-1", index === 0 && headerRowLayout.labelledField)}><span className={index ? 'sr-only' : ''}>Value</span><Input className="font-sans text-[11px]" aria-label={`Response header ${index + 1} value`} {...form.register(`headers.${index}.value`)} placeholder="application/json" /></label>
+              <Button variant="ghost-muted" size="icon-field" type="button" className={cn("col-start-3", headerRowLayout.action, index === 0 && headerRowLayout.labelledControl)} aria-label={`Remove response header ${index + 1}`} onClick={() => remove(index)}><Icon icon={X} /></Button>
             </div>)}
           </div>
           <p className="mb-5 text-[11px] text-muted-foreground">The page receives your mock while DevTools stays usable. Chrome's Network panel may show the original response; bypassed calls do not reach the server.</p>

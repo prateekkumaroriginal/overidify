@@ -76,6 +76,8 @@ Icons use named component imports from `lucide-react`. The shared `Icon` wrapper
 
 Icon-only Button sizes use flex centering with zero padding and do not shrink. Keep the SVG inside the button's fixed box; padding must not reduce the available space below the SVG size. On mobile, header remove buttons span and center across the stacked name/value fields.
 
+Desktop header rows center the remove button and row number in the input track. The first row uses CSS subgrid to separate column labels from that track. Use grid alignment rather than bottom margins or translations to align these controls with the inputs.
+
 Add components with:
 
 ```bash
