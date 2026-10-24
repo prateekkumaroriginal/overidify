@@ -163,7 +163,7 @@ function SwitchRuleOptionEditor({ index: optionIndex, nameRef, onEdit }: {
             <label className={cn("col-start-2 grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1", index === 0 && headerRowLayout.labelledField)}>{index === 0 && 'Value'}
               <Input className="font-sans text-[11px]" {...register(`options.${optionIndex}.headers.${index}.value`, { onChange: onEdit })} placeholder="e.g. Bearer token" aria-label={`Header ${index + 1} value`} />
             </label>
-            <Button variant="ghost-muted" size="icon-sm" className={cn("col-start-3", headerRowLayout.action, index === 0 && headerRowLayout.labelledControl)} type="button" aria-label={`Remove header ${index + 1}`} onClick={() => { remove(index); onEdit() }}><Icon icon={X} /></Button>
+            <Button variant="ghost-muted" size="icon-field" className={cn("col-start-3", headerRowLayout.action, index === 0 && headerRowLayout.labelledControl)} type="button" aria-label={`Remove header ${index + 1}`} onClick={() => { remove(index); onEdit() }}><Icon icon={X} /></Button>
           </div>
         ))}
       </div>
