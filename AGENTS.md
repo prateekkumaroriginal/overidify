@@ -2,10 +2,6 @@
 
 - Header Rules, Switch Rules, Network Rules website eligibility, and the popup must use the same matching logic.
 
-# Documentation
-
-- Documentation and source code must stay in sync at all times. If you find a mismatch, ask the developer which behavior is intended before resolving it.
-
 # Testing
 
 - Keep automated regression tests for meaningful application decisions, transformations, state changes, side effects, and failure handling. Test through public application interfaces below the UI.
