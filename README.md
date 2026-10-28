@@ -44,6 +44,17 @@ The domain identifies the website in your address bar. Requests from that websit
 
 Open the extension popup on a website to toggle matching rules or choose a Switch Rule option. Your rules are saved locally in your browser.
 
+To override an API response directly from DevTools:
+
+1. Open DevTools on your website and select the **Overidify** panel. It may be under the overflow menu. After updating the extension, reopen DevTools to see it.
+2. Use your app or reload the page, then select a captured API request. The list refreshes when you return to **Overidify**. Click **Refresh** to load requests already visible in **Network**.
+3. Edit the captured response body or status and click **Save override**. The URL, method, response headers, rule name, and website scope are filled in automatically.
+4. Trigger the request again in your app. Reload the page first if the panel asks you to.
+
+The panel saves a Network Rule that bypasses the server. Capturing and saving do not replay requests. It supports text responses, including JSON and XML, and keeps the latest 200 API requests in memory. Cookies and transport headers are omitted from copied responses. Use **Edit all settings** after saving to change the rule's matching, headers, or server behavior.
+
+Keep one copy of Overidify enabled. If native Network shows Fetch/XHR calls but the Overidify panel stays empty, disable older copies, close and reopen DevTools, then reload the website. Chrome 154 can hide calls from the panel when another extension copy's interceptor appears in their initiator stack.
+
 ## Import and export
 
 On the Settings home page, **Import**, **Export**, and **Select** sit beside the rule-type tabs.
