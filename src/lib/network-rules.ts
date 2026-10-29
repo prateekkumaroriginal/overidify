@@ -41,9 +41,13 @@ export function validateNetworkRule(draft: NetworkRuleDraft): string | null {
   return result.success ? null : result.error.issues[0]?.message ?? 'Invalid Network Rule.'
 }
 
+export function isJsonResponse(headers: HeaderPair[]): boolean {
+  const contentType = headers.find(header => header.key.trim().toLowerCase() === 'content-type')?.value ?? ''
+  return /\bjson\b/i.test(contentType)
+}
+
 export function jsonBodyWarning(draft: Pick<NetworkRuleDraft, 'body' | 'headers'>): string | null {
-  const contentType = draft.headers.find(header => header.key.trim().toLowerCase() === 'content-type')?.value ?? ''
-  if (!/\bjson\b/i.test(contentType)) return null
+  if (!isJsonResponse(draft.headers)) return null
   try { JSON.parse(draft.body); return null } catch { return 'The body is not valid JSON. You can still save and return this text.' }
 }
 

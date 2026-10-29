@@ -59,6 +59,7 @@ Files contain exact saved header values and response bodies. Enabled states are 
 ## Things to know
 
 - Network Rules use **Bypass server** by default, which returns your mock without calling the API. **Call server, then replace response** makes the real request first.
+- The Network Rule response editor offers Code and Tree modes, search/replace, shared undo/redo, explicit formatting, and an expanded view. Switching modes preserves the exact response text. Invalid or unsupported JSON stays editable and saveable in Code; Tree and Format explain any restrictions.
 - API mocking covers page and iframe `fetch` and `XMLHttpRequest` calls. Workers, page navigations, and asset requests are outside its scope.
 - DevTools can stay open. Its Network panel shows real network traffic, so it can show the server's response while your app receives the mock.
 - Saved changes affect subsequent requests. After updating or reloading the extension, reload website tabs. Also reload when Overidify asks you to.

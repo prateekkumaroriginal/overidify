@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Plus, X } from 'lucide-react'
 import { Controller, useFieldArray, useWatch } from 'react-hook-form'
 import { NetworkRuleDraftSchema } from '../lib/network-schemas'
@@ -9,7 +10,7 @@ import { RuleEditorHeader } from './RuleEditorHeader'
 import { ToggleSwitch } from './ToggleSwitch'
 import { useEditorForm } from './useEditorForm'
 import { downloadRules } from '../lib/rule-download'
-import { createNetworkRuleDraft, jsonBodyWarning, NETWORK_METHODS } from '../lib/network-rules'
+import { createNetworkRuleDraft, isJsonResponse, NETWORK_METHODS } from '../lib/network-rules'
 import type { NetworkRule, NetworkRuleDraft } from '../lib/network-rules'
 import { cn } from '../lib/utils'
 import { headerRowLayout } from './headerRowLayout'
@@ -20,6 +21,8 @@ type Props = {
   onSave: (draft: NetworkRuleDraft) => Promise<void>
   onDelete?: () => void
 }
+const ResponseBodyEditor = lazy(() => import('./ResponseBodyEditor'))
+
 const fieldClass = 'grid min-w-0 content-start gap-2 text-[11px] font-semibold'
 const panelClass = 'mb-5 rounded-lg border bg-card shadow-panel px-7 py-6 mobile:px-[17px]'
 
@@ -31,8 +34,7 @@ export function NetworkRuleEditor({ networkRule, pending, onSave, onDelete }: Pr
     pending, returnRoute: '/network-rules', onSave,
   })
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'headers' })
-  const [body, method, status, headers] = useWatch({ control: form.control, name: ['body', 'method', 'status', 'headers'] })
-  const warning = jsonBodyWarning({ body, headers })
+  const [method, status, headers] = useWatch({ control: form.control, name: ['method', 'status', 'headers'] })
   const noBody = method === 'HEAD' || [204, 205, 304].includes(status)
 
   return (
@@ -72,8 +74,11 @@ export function NetworkRuleEditor({ networkRule, pending, onSave, onDelete }: Pr
           </div>
           <div className={panelClass}>
             <div className="mb-5 flex flex-wrap items-center justify-between gap-4"><h2 className="text-[13px] font-bold">Mock response</h2><label className="flex items-center gap-3 text-[11px] font-semibold">Status code<Input className="w-24 font-sans" type="number" min={200} max={599} step={1} required {...form.register('status', { valueAsNumber: true })} /></label></div>
-            <div className={fieldClass}><label htmlFor="network-response-body">Response body</label><textarea id="network-response-body" className="w-full min-w-0 rounded-md border border-input bg-field p-3 font-sans text-xs font-normal text-foreground focus:border-ring focus:outline-none focus:ring-3 focus:ring-ring/15" rows={12} spellCheck={false} {...form.register('body')} placeholder={'{\n  "chats": []\n}'} /></div>
-            {warning && <p className="mt-3 text-xs text-muted-foreground" role="status">{warning}</p>}
+            <div className={fieldClass} data-response-body><span id="response-body-label">Response body</span>
+              <Controller control={form.control} name="body" render={({ field }) => <Suspense fallback={<textarea aria-label="Response body" rows={12} className="rounded-md border bg-field p-3" {...field} disabled={busy} />}>
+                <ResponseBodyEditor value={field.value} onChange={field.onChange} onBlur={field.onBlur} disabled={busy} isJson={isJsonResponse(headers)} />
+              </Suspense>} />
+            </div>
             {noBody && <p className="mt-3 text-xs text-muted-foreground" role="status">HEAD and status 204, 205, or 304 return no body. Your entered text is still saved.</p>}
             <div className="mt-6 mb-4 flex items-center justify-between gap-4"><h3 className="text-[13px] font-bold">Response headers</h3><Button variant="secondary" type="button" onClick={() => append({ key: '', value: '' })}><Icon icon={Plus} data-icon="inline-start" /> Add header</Button></div>
             {fields.map((header, index) => <div key={header.id} className={cn("mb-3 grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_26px] items-center gap-x-3 gap-y-2 mobile:grid-cols-[minmax(0,1fr)_26px] mobile:gap-y-3", index === 0 && headerRowLayout.labelledRow)}>

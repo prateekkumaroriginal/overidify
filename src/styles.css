@@ -28,6 +28,10 @@
   --accent: #2f3037;
   --domain-tag: rgb(59 130 246);
   --selection: #27272d;
+  --syntax-string: #a3d9a5;
+  --syntax-key: #b3c7f9;
+  --syntax-number: #e7b57a;
+  --syntax-keyword: #c4a7e7;
   --accent-foreground: var(--foreground);
   --destructive: #f87171;
   --destructive-action: #d32f36;
@@ -258,4 +262,26 @@ button, input, select, textarea, code, kbd, samp, pre {
 [data-sonner-toast][data-expanded='true'] .import-toast-progress [data-slot='progress-indicator'],
 [data-sonner-toaster]:has([data-swiping='true']) .import-toast-progress [data-slot='progress-indicator'] {
   animation-play-state: paused !important;
+}
+
+.response-body-editor {
+  font-weight: 400;
+}
+.response-body-editor .cm-editor {
+  height: 340px;
+  resize: vertical;
+  min-height: 220px;
+  overflow: hidden;
+}
+.response-body-editor[data-expanded='true'] .cm-editor,
+.response-body-editor[data-expanded='true'] .response-tree {
+  height: min(65dvh, 720px);
+}
+.response-body-editor .response-tree {
+  height: 340px;
+}
+.response-body-editor .cm-content,
+.response-body-editor .cm-gutters,
+.response-body-editor .cm-search input {
+  font-family: ui-monospace, monospace;
 }
