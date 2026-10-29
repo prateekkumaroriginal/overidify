@@ -1,147 +1,154 @@
 import { useEffect, useRef, useState } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { NetworkRuleDraftSchema } from '../lib/network-schemas'
-import { jsonBodyWarning } from '../lib/network-rules'
-import type { NetworkRuleDraft } from '../lib/network-rules'
-import { draftFromDevtoolsRequest, observeDevtoolsRequests, saveDevtoolsOverride } from '../lib/devtools-requests'
+import { RefreshCw, Search, Settings, SquareArrowOutUpRight, Trash2 } from 'lucide-react'
+import { devtoolsRequestLabel, observeDevtoolsRequests } from '../lib/devtools-requests'
 import type { CapturedRequest } from '../lib/devtools-requests'
+import { openCapturedNetworkRule } from '../lib/network-rule-drafts'
 import { Alert, AlertDescription } from '../components/ui/alert'
-import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
+import { Checkbox } from '../components/ui/checkbox'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '../components/ui/empty'
-import { Field, FieldError, FieldGroup, FieldLabel } from '../components/ui/field'
 import { Input } from '../components/ui/input'
-import { Textarea } from '../components/ui/textarea'
+import { Label } from '../components/ui/label'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
+import { Spinner } from '../components/ui/spinner'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip'
+import { Icon } from '../components/Icon'
+import { Brand } from '../components/Brand'
 import { cn } from '../lib/utils'
+
+type DisplayPreferences = { rows: 'one' | 'two'; fullPath: boolean }
+const preferenceKey = 'overidify:devtools-display:v1'
+
+function readDisplayPreferences(): DisplayPreferences {
+  try {
+    const value = JSON.parse(localStorage.getItem(preferenceKey) ?? '{}') as Partial<DisplayPreferences> | null
+    return { rows: value?.rows === 'one' ? 'one' : 'two', fullPath: value?.fullPath === true }
+  } catch { return { rows: 'two', fullPath: false } }
+}
 
 export function DevtoolsApp() {
   const [requests, setRequests] = useState<CapturedRequest[]>([])
-  const [selected, setSelected] = useState<CapturedRequest | null>(null)
   const [search, setSearch] = useState('')
+  const [display, setDisplay] = useState(readDisplayPreferences)
+  const [openingId, setOpeningId] = useState<string | null>(null)
+  const [error, setError] = useState('')
+  const opening = useRef(false)
   const capture = useRef<ReturnType<typeof observeDevtoolsRequests> | null>(null)
+
   useEffect(() => {
-    const observer = observeDevtoolsRequests(chrome.devtools.network, setRequests, () => setSelected(null))
+    const observer = observeDevtoolsRequests(chrome.devtools.network, setRequests, () => {})
     capture.current = observer
     const refresh = () => observer.refresh()
     window.addEventListener('overidify-devtools-shown', refresh)
     return () => { window.removeEventListener('overidify-devtools-shown', refresh); observer.dispose(); capture.current = null }
   }, [])
+
+  useEffect(() => {
+    try { localStorage.setItem(preferenceKey, JSON.stringify(display)) }
+    catch { /* Display controls still work when preferences cannot be stored. */ }
+  }, [display])
+
+  async function createRule(item: CapturedRequest) {
+    if (opening.current) return
+    opening.current = true
+    setOpeningId(item.id)
+    setError('')
+    try {
+      const tab = await chrome.tabs.get(chrome.devtools.inspectedWindow.tabId)
+      await openCapturedNetworkRule(item.request, tab.url ?? '')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not open this response in options. Try again.')
+    } finally { opening.current = false; setOpeningId(null) }
+  }
+
   const query = search.trim().toLowerCase()
   const visible = requests.filter(({ request }) => `${request.request.method} ${request.request.url}`.toLowerCase().includes(query))
 
   return (
-    <main className="mx-auto flex max-w-[1400px] flex-col gap-5 p-5 mobile:p-3">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div><h1 className="text-xl font-semibold">Override a response</h1><p className="text-xs text-muted-foreground">Pick a request, edit the response, and save.</p></div>
-        <Button variant="secondary" onClick={() => { void chrome.runtime.openOptionsPage() }}>Manage rules</Button>
-      </header>
-      <div className="grid min-w-0 grid-cols-[minmax(240px,0.85fr)_minmax(0,1.4fr)] items-start gap-5 mobile:grid-cols-1">
-        <section className="flex min-w-0 flex-col gap-3" aria-label="Captured requests">
-          <div className="flex items-center gap-3">
-            <Input aria-label="Filter requests" placeholder="Filter by URL or method" value={search} onChange={event => setSearch(event.target.value)} />
-            <Button variant="ghost" onClick={() => capture.current?.refresh()}>Refresh</Button>
-            <Button variant="ghost" onClick={() => capture.current?.clear()}>Clear</Button>
+    <TooltipProvider delayDuration={350}>
+      <main className="mx-auto flex h-dvh min-w-0 max-w-[1240px] flex-col gap-5 p-5 mobile:p-4">
+        <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b pb-4">
+          <Brand href="options.html" openInTab />
+          <Button variant="outline" onClick={() => { void chrome.runtime.openOptionsPage() }}><Icon icon={Settings} data-icon="inline-start" />Manage rules</Button>
+        </header>
+        <div className="flex shrink-0 flex-wrap items-center gap-3">
+          <h1 className="text-xl font-semibold">Captured requests</h1>
+          <div className="relative min-w-0 flex-1 basis-40 mobile:basis-full">
+            <Icon icon={Search} size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground" />
+            <Input className="h-[30px] py-0 pl-9" aria-label="Filter requests" placeholder="Filter by URL or method" value={search} onChange={event => setSearch(event.target.value)} />
           </div>
-          <p className="text-xs text-muted-foreground">Latest {requests.length} fetch and XHR requests</p>
-          {visible.length ? (
-            <ul className="grid max-h-[70vh] list-none gap-1 overflow-auto p-0 mobile:max-h-52">
-              {visible.map(item => (
-                <li key={item.id}>
-                  <button type="button" aria-pressed={selected?.id === item.id} onClick={() => setSelected(item)}
-                    className={cn('flex w-full flex-col items-start gap-1 rounded-md border border-transparent p-3 text-left hover:bg-accent', selected?.id === item.id && 'border-input bg-selection')}>
-                    <span className="flex items-center gap-2"><Badge variant="secondary">{item.request.request.method}</Badge><span className="text-xs text-muted-foreground">{item.request.response.status || 'Failed'}</span></span>
-                    <span className="w-full truncate text-xs" title={item.request.request.url}>{item.request.request.url}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <Empty><EmptyHeader><EmptyTitle>{query ? 'No matching requests' : 'Waiting for API requests'}</EmptyTitle>
-              <EmptyDescription>{query ? 'Try another URL or method.' : <>
-                Use your app or reload the website to capture Fetch/XHR requests. Click Refresh to load requests already visible in Network.
-                <p className="mt-3">If Network shows Fetch/XHR calls but this list stays empty, disable other copies of Overidify, reopen DevTools, and reload the website.</p>
-              </>}</EmptyDescription>
-            </EmptyHeader></Empty>
-          )}
+          <div className="flex shrink-0 items-center gap-2">
+            <Button variant="outline" onClick={() => capture.current?.refresh()}><Icon icon={RefreshCw} data-icon="inline-start" />Refresh</Button>
+            <Button variant="outline" onClick={() => { capture.current?.clear(); setError('') }}><Icon icon={Trash2} data-icon="inline-start" />Clear</Button>
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-5">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="request-rows" size="sm">Rows</Label>
+            <Select value={display.rows} onValueChange={value => setDisplay(current => ({ ...current, rows: value === 'one' ? 'one' : 'two' }))}>
+              <SelectTrigger id="request-rows" size="toolbar" className="w-28"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectGroup>
+                <SelectItem value="one">One line</SelectItem>
+                <SelectItem value="two">Two lines</SelectItem>
+              </SelectGroup></SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox id="request-full-path" checked={display.fullPath} onCheckedChange={checked => setDisplay(current => ({ ...current, fullPath: checked === true }))} />
+            <Label htmlFor="request-full-path" size="sm">Full path</Label>
+          </div>
+        </div>
+        {error && <Alert variant="destructive" className="shrink-0"><AlertDescription>{error}</AlertDescription></Alert>}
+        <section className={cn('flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden', visible.length && 'rounded-lg border bg-card shadow-rule-card')} aria-label="Captured requests">
+          {visible.length ? <Table className="table-fixed" containerClassName="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+            <colgroup><col className="w-[88px] mobile:w-[80px]" /><col /><col className="w-[76px] mobile:w-[64px]" /><col className="w-[66px] mobile:w-[58px]" /></colgroup>
+            <TableHeader className="sticky top-0 z-10 bg-card">
+              <TableRow interactive={false}>
+                <TableHead className="px-5 text-center mobile:px-4">Method</TableHead>
+                <TableHead className="px-5 mobile:px-4">Request</TableHead>
+                <TableHead className="px-5 text-center mobile:px-4">Status</TableHead>
+                <TableHead className="px-5 mobile:px-4"><span className="sr-only">Create rule</span></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {visible.map(item => {
+                const request = item.request
+                const label = devtoolsRequestLabel(request.request.url, display.fullPath)
+                return <TableRow key={item.id} className={cn('group/request cursor-default', display.rows === 'one' && '[&_td]:py-1')}>
+                  <TableCell className="px-5 text-center mobile:px-4"><span className="text-[11px] text-muted-foreground">{request.request.method}</span></TableCell>
+                  <TableCell className={cn('px-5 mobile:px-4', display.rows === 'two' ? 'py-3' : 'py-1')}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span tabIndex={0} className="flex w-full min-w-0 flex-col gap-0.5 text-left focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-4">
+                          <span className="w-full truncate font-semibold">{label.name}</span>
+                          {display.rows === 'two' && <span className="w-full truncate text-[11px] text-muted-foreground">{label.host}</span>}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[min(560px,calc(100vw-24px))] wrap-anywhere">{request.request.url}</TooltipContent>
+                    </Tooltip>
+                  </TableCell>
+                  <TableCell className="px-5 text-center mobile:px-4"><span className={cn('text-[11px] tabular-nums text-muted-foreground', (!request.response.status || request.response.status >= 400) && 'text-destructive')}>{request.response.status || 'Failed'}</span></TableCell>
+                  <TableCell className="px-5 mobile:px-4">
+                    <div className="pointer-events-none flex items-center opacity-0 group-hover/request:pointer-events-auto group-hover/request:opacity-100 group-focus-within/request:pointer-events-auto group-focus-within/request:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost-muted" size="icon-action" disabled={openingId !== null} aria-busy={openingId === item.id} aria-label={`Create rule in options for ${request.request.method} ${label.name}`} onClick={() => { void createRule(item) }}>
+                            {openingId === item.id ? <Spinner /> : <Icon icon={SquareArrowOutUpRight} />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Create rule in options</TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              })}
+            </TableBody>
+          </Table> : <Empty className="border"><EmptyHeader><EmptyTitle>{query ? 'No matching requests' : 'Waiting for API requests'}</EmptyTitle>
+            {query && <EmptyDescription>Try another URL or method.</EmptyDescription>}
+          </EmptyHeader></Empty>}
         </section>
-        {selected ? <CapturedResponseEditor key={selected.id} capture={selected} /> : (
-          <Empty className="min-h-64 border"><EmptyHeader><EmptyTitle>Select a request</EmptyTitle>
-            <EmptyDescription>Its response will appear here. The URL, method, headers, and website scope are filled in for you.</EmptyDescription>
-          </EmptyHeader></Empty>
-        )}
-      </div>
-    </main>
-  )
-}
-
-function CapturedResponseEditor({ capture }: { capture: CapturedRequest }) {
-  const [draft, setDraft] = useState<NetworkRuleDraft | null>(null)
-  const [error, setError] = useState('')
-  useEffect(() => {
-    let active = true
-    void chrome.tabs.get(chrome.devtools.inspectedWindow.tabId)
-      .then(tab => draftFromDevtoolsRequest(capture.request, tab.url ?? ''))
-      .then(draft => { if (active) setDraft(draft) })
-      .catch(reason => { if (active) setError(reason instanceof Error ? reason.message : 'Could not read this response.') })
-    return () => { active = false }
-  }, [capture])
-  if (error) return <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>
-  if (!draft) return <p className="p-5 text-xs text-muted-foreground" role="status">Reading response...</p>
-  return <ResponseForm draft={draft} />
-}
-
-function ResponseForm({ draft }: { draft: NetworkRuleDraft }) {
-  const [id] = useState(() => crypto.randomUUID())
-  const [error, setError] = useState('')
-  const [saved, setSaved] = useState(false)
-  const [needsReload, setNeedsReload] = useState(false)
-  const form = useForm<NetworkRuleDraft>({ defaultValues: draft, resolver: zodResolver(NetworkRuleDraftSchema, undefined, { mode: 'sync' }) })
-  const busy = form.formState.isSubmitting
-  const [body, status] = useWatch({ control: form.control, name: ['body', 'status'] })
-  const warning = body ? jsonBodyWarning({ body, headers: draft.headers }) : null
-  const noBody = draft.method === 'HEAD' || [204, 205, 304].includes(status)
-  const submit = form.handleSubmit(async values => {
-    setError('')
-    try {
-      const result = await saveDevtoolsOverride(id, values)
-      form.reset(values)
-      setSaved(true)
-      setNeedsReload(result.reloadTabIds.includes(chrome.devtools.inspectedWindow.tabId))
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not save this override. Try again.') }
-  })
-
-  return (
-    <form className="flex min-w-0 flex-col gap-4" onSubmit={event => { void submit(event) }}
-      onKeyDown={event => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !event.nativeEvent.isComposing) { event.preventDefault(); if (!busy && !event.repeat) event.currentTarget.requestSubmit() } }}>
-      <div className="flex min-w-0 flex-col gap-2">
-        <h2 className="break-all text-sm font-semibold">{draft.method} {draft.requestUrl}</h2>
-        <p className="text-xs text-muted-foreground">Website: {draft.url}. Matches this exact URL and method.</p>
-        <p className="text-xs text-muted-foreground">Bypasses the server. Response headers are copied, except cookies and transport headers.</p>
-      </div>
-      <fieldset disabled={busy} className="min-w-0">
-        <FieldGroup>
-          <Field data-invalid={!!form.formState.errors.status}>
-            <FieldLabel htmlFor="response-status">Status code</FieldLabel>
-            <Input id="response-status" className="max-w-28" type="number" min={200} max={599} step={1} required aria-invalid={!!form.formState.errors.status} {...form.register('status', { valueAsNumber: true })} />
-            <FieldError errors={[form.formState.errors.status]} />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="response-body">Response body</FieldLabel>
-            <Textarea id="response-body" rows={18} spellCheck={false} {...form.register('body')} />
-          </Field>
-        </FieldGroup>
-      </fieldset>
-      {warning && <p className="text-xs text-muted-foreground" role="status">{warning}</p>}
-      {noBody && <p className="text-xs text-muted-foreground">This method or status returns no body. Your text is still saved.</p>}
-      {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
-      {saved && !form.formState.isDirty && <p className="text-xs text-muted-foreground" role="status">{needsReload ? 'Override saved. Reload this page to activate it.' : 'Override saved. Trigger the request again to use it.'}</p>}
-      <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={busy}>{busy ? 'Saving...' : saved ? 'Update override' : 'Save override'}</Button>
-        {saved && needsReload && <Button type="button" variant="secondary" onClick={() => chrome.devtools.inspectedWindow.reload()}>Reload page</Button>}
-        {saved && <Button type="button" variant="ghost" onClick={() => { void chrome.tabs.create({ url: chrome.runtime.getURL(`options.html#/network-rules/${id}`) }) }}>Edit all settings</Button>}
-      </div>
-      <p className="text-xs text-muted-foreground">Ctrl+Enter or ⌘+Enter to save. Saved overrides also appear under Network Rules. Chrome's Network tab may still show the original response.</p>
-    </form>
+      </main>
+    </TooltipProvider>
   )
 }

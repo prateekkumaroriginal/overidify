@@ -47,11 +47,14 @@ Open the extension popup on a website to toggle matching rules or choose a Switc
 To override an API response directly from DevTools:
 
 1. Open DevTools on your website and select the **Overidify** panel. It may be under the overflow menu. After updating the extension, reopen DevTools to see it.
-2. Use your app or reload the page, then select a captured API request. The list refreshes when you return to **Overidify**. Click **Refresh** to load requests already visible in **Network**.
-3. Edit the captured response body or status and click **Save override**. The URL, method, response headers, rule name, and website scope are filled in automatically.
-4. Trigger the request again in your app. Reload the page first if the panel asks you to.
+2. Use your app or reload the page to capture API requests. The list refreshes when you return to **Overidify**. Click **Refresh** to load requests already visible in **Network**.
+3. Click the request's **Create rule in options** icon to open a new options tab. The URL, method, response headers, body, status, rule name, and website scope are filled in automatically.
+4. Review or edit the prefilled form and click **Save**. Opening the form does not save or activate a rule.
+5. Trigger the request again in your app. Reload the website first if options asks you to.
 
-The panel saves a Network Rule that bypasses the server. Capturing and saving do not replay requests. It supports text responses, including JSON and XML, and keeps the latest 200 API requests in memory. Cookies and transport headers are omitted from copied responses. Use **Edit all settings** after saving to change the rule's matching, headers, or server behavior.
+Choose one or two lines per request with **Rows**. Check **Full path** to show `/b/c/x?y=z` instead of `x?y=z`. Both choices are remembered. Hover or focus a request name to see its complete URL. Search always includes the full URL and method.
+
+The prefilled Network Rule bypasses the server by default; you can change matching, headers, or server behavior before saving. Capturing and saving do not replay requests. The panel supports text responses, including JSON and XML, and keeps the latest 200 API requests in memory. Cookies and transport headers are omitted from copied responses. Unsaved captured responses stay in temporary extension session storage, so the prefilled form can be reloaded during the same browser session.
 
 Keep one copy of Overidify enabled. If native Network shows Fetch/XHR calls but the Overidify panel stays empty, disable older copies, close and reopen DevTools, then reload the website. Chrome 154 can hide calls from the panel when another extension copy's interceptor appears in their initiator stack.
 

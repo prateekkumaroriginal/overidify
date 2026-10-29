@@ -1,9 +1,22 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { draftFromDevtoolsRequest, observeDevtoolsRequests, saveDevtoolsOverride } from '../src/lib/devtools-requests.ts'
+import { devtoolsRequestLabel, draftFromDevtoolsRequest, observeDevtoolsRequests, saveDevtoolsOverride } from '../src/lib/devtools-requests.ts'
 import type { CapturedRequest, DevtoolsRequest } from '../src/lib/devtools-requests.ts'
 import { matchesNetworkRequest } from '../src/lib/network-rules.ts'
 import { matchesPageDomain } from '../src/lib/pattern.ts'
+
+test('request labels switch between file name and full path without changing queries or encoded URL text', () => {
+  for (const [path, name] of [
+    ['/b/c/x?y=z&next=/other', 'x?y=z&next=/other'],
+    ['/?q=1', '/?q=1'],
+    ['/b/c/', 'c/'],
+    ['/b/a%20file.json?q=%2F', 'a%20file.json?q=%2F'],
+  ]) {
+    const url = `https://example.com:8080${path}`
+    assert.deepEqual(devtoolsRequestLabel(url, false), { name, host: 'example.com:8080' })
+    assert.deepEqual(devtoolsRequestLabel(url, true), { name: path, host: 'example.com:8080' })
+  }
+})
 
 function request(patch: Partial<DevtoolsRequest> = {}): DevtoolsRequest {
   return {

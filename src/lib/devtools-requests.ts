@@ -11,6 +11,14 @@ export type DevtoolsRequest = {
 }
 export type CapturedRequest = { id: string; request: DevtoolsRequest }
 
+export function devtoolsRequestLabel(input: string, fullPath: boolean): { name: string; host: string } {
+  const url = new URL(input)
+  const path = url.pathname
+  const lastSlash = path.lastIndexOf('/', path.endsWith('/') ? path.length - 2 : path.length - 1)
+  const name = fullPath ? path : path.slice(lastSlash + 1) || '/'
+  return { name: name + url.search, host: url.host }
+}
+
 function canOverride(request: DevtoolsRequest): boolean {
   const resourceType = request._resourceType?.toLowerCase()
   return ['fetch', 'xhr'].includes(resourceType ?? '') &&
@@ -18,7 +26,7 @@ function canOverride(request: DevtoolsRequest): boolean {
     NETWORK_METHODS.some(method => method !== 'ANY' && method === request.request.method)
 }
 
-// Keep response handles in memory. Bodies are read only after a request is selected.
+// Keep response handles in memory. Bodies are read only when creating a draft.
 export function observeDevtoolsRequests(
   network: Pick<typeof chrome.devtools.network, 'getHAR' | 'onRequestFinished' | 'onNavigated'>,
   onChange: (requests: CapturedRequest[]) => void,

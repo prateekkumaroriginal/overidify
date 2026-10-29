@@ -18,6 +18,8 @@ import { SwitchRuleEditor } from '../components/SwitchRuleEditor'
 import { SwitchRulesList } from '../components/SwitchRulesList'
 import { NetworkRuleEditor } from '../components/NetworkRuleEditor'
 import { NetworkRulesList } from '../components/NetworkRulesList'
+import { CapturedNetworkRuleEditor } from './CapturedNetworkRuleEditor'
+import { saveCapturedNetworkRuleDraft } from '../lib/network-rule-drafts'
 import { cleanResponseHeaders } from '../lib/network-rules'
 import type { NetworkRule, NetworkRuleDraft } from '../lib/network-rules'
 import { getNetworkRules, updateNetworkRules, subscribeToNetworkRules } from '../lib/network-storage'
@@ -106,6 +108,21 @@ export function OptionsApp() {
       ? rules.map(item => item.id === id ? { ...entry, order: item.order } : item)
       : [...rules, { ...entry, order: rules.length }])
     window.location.hash = '/network-rules'
+  }
+
+  async function handleSaveCapturedNetworkRule(draftId: string, draft: NetworkRuleDraft) {
+    setPending(true)
+    setError('')
+    try {
+      const result = await saveCapturedNetworkRuleDraft(draftId, {
+        ...draft, name: draft.name.trim(), url: draft.url.trim(), requestUrl: draft.requestUrl.trim(),
+        headers: cleanResponseHeaders(draft.headers),
+      })
+      setNetworkNotice(result.reloadTabIds.length
+        ? 'Settings saved. Reload matching website tabs to activate the latest network rules.'
+        : '')
+      window.location.hash = '/network-rules'
+    } finally { setPending(false) }
   }
 
   async function handleToggleNetworkRule(entry: NetworkRule, enabled: boolean) {
@@ -203,6 +220,9 @@ export function OptionsApp() {
 
   const selected = entries.find((entry) => route === entryRoute(entry))
   const selectedNetworkRule = networkRules.find(entry => route === `/network-rules/${encodeURIComponent(entry.id)}`)
+  const capturedDraftId = route.startsWith('/network-rules/new?')
+    ? new URLSearchParams(route.slice(route.indexOf('?') + 1)).get('draft')
+    : null
   const isHome = route === '/all' || route === '/header-rules' || route === '/switch-rules' || route === '/network-rules'
 
   return (
@@ -224,6 +244,9 @@ export function OptionsApp() {
             onSelectOption={(switchRule, optionId) => { void handleSelectOption(switchRule, optionId) }}
             onToggleNetworkRule={(entry, enabled) => { void handleToggleNetworkRule(entry, enabled) }}
           />
+        ) : capturedDraftId !== null ? (
+          <CapturedNetworkRuleEditor key={route} draftId={capturedDraftId} pending={pending}
+            onSave={draft => handleSaveCapturedNetworkRule(capturedDraftId, draft)} />
         ) : route === '/network-rules/new' || selectedNetworkRule ? (
           <NetworkRuleEditor key={route} networkRule={selectedNetworkRule} pending={pending}
             onSave={draft => handleSaveNetworkRule(draft, selectedNetworkRule?.id)}
