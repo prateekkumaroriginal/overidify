@@ -130,18 +130,92 @@ function event<T>() {
     get size() { return listeners.size } }
 }
 
-function captureHarness() {
+function captureHarness(pageUrl = Promise.resolve('https://app.example.com')) {
   const onRequestFinished = event<chrome.devtools.network.Request>()
   const onNavigated = event<string>()
   const snapshots: ((log: HARFormatLog) => void)[] = []
   let latest: CapturedRequest[] = []
   const observer = observeDevtoolsRequests({ onRequestFinished, onNavigated, getHAR: callback => { snapshots.push(callback) } },
-    requests => { latest = requests })
+    requests => { latest = requests }, pageUrl)
   return { observer, onRequestFinished, onNavigated,
     finish: (capture: DevtoolsRequest) => onRequestFinished.emit(capture as chrome.devtools.network.Request),
-    hydrate: (entries: DevtoolsRequest[], index = 0) => snapshots.at(index)!({ entries } as HARFormatLog),
+    hydrate: (entries: DevtoolsRequest[], index = 0, pages: { id: string; title: string }[] = []) => snapshots.at(index)!({ entries, pages } as HARFormatLog),
     get latest() { return latest } }
 }
+
+test('retained response bodies and website scopes survive navigation invalidating browser handles', async () => {
+  const app = captureHarness()
+  let readable = true
+  let reads = 0
+  const first = request({ getContent: callback => {
+    reads++
+    callback(readable ? 'original response' : undefined as unknown as string, '')
+  } })
+  app.finish(first)
+  readable = false
+  app.onNavigated.emit('https://other.example.com')
+  app.hydrate([], -1)
+  const retained = app.latest[0]
+  const draft = await draftFromDevtoolsRequest(retained.request, await retained.pageUrl)
+  assert.equal(draft.body, 'original response')
+  assert.equal(draft.url, 'app.example.com')
+  assert.equal(reads, 1, 'creating the draft must not call an invalidated browser handle')
+  app.finish(request({ startedDateTime: '2026-10-28T12:01:00.000Z' }))
+  assert.equal(await app.latest[1].pageUrl, 'https://other.example.com')
+  app.observer.dispose()
+})
+
+test('hydrated captures retain each HAR page scope and body before navigation', async () => {
+  const app = captureHarness()
+  let readable = true
+  const first = { ...request({ getContent: callback => callback(readable ? 'hydrated response' : undefined as unknown as string, '') }), pageref: 'old-page' }
+  app.hydrate([first], 0, [{ id: 'old-page', title: 'https://original.example.com/path' }])
+  readable = false
+  app.onNavigated.emit('https://other.example.com')
+  app.hydrate([], -1)
+  app.finish(first)
+  const item = app.latest[0]
+  const draft = await draftFromDevtoolsRequest(item.request, await item.pageUrl)
+  assert.equal(draft.url, 'original.example.com')
+  assert.equal(draft.body, 'hydrated response')
+  assert.equal(app.latest.length, 1, 'a delayed completion must not discard a readable snapshot or duplicate the row')
+  app.observer.dispose()
+})
+
+test('initial scope resolution cannot change retained captures to the next website', async () => {
+  let resolvePage!: (url: string) => void
+  const app = captureHarness(new Promise(resolve => { resolvePage = resolve }))
+  app.finish(request())
+  app.onNavigated.emit('https://other.example.com')
+  resolvePage('https://original.example.com')
+  assert.equal(await app.latest[0].pageUrl, 'https://original.example.com')
+  app.observer.dispose()
+})
+
+test('unknown HAR page scopes are rejected instead of assigning the current website', async () => {
+  const app = captureHarness()
+  app.hydrate([{ ...request(), pageref: 'missing-page' }])
+  const item = app.latest[0]
+  await assert.rejects(draftFromDevtoolsRequest(item.request, await item.pageUrl), /website for this capture is unknown/)
+  app.observer.dispose()
+})
+
+test('body snapshots preserve encoding and empty text, and an initially unavailable body can be retried', async () => {
+  for (const [body, encoding, expected] of [['', '', ''], ['aGVsbG8=', 'base64', 'hello']]) {
+    const app = captureHarness()
+    app.finish(request({ getContent: callback => callback(body, encoding) }))
+    const item = app.latest[0]
+    assert.equal((await draftFromDevtoolsRequest(item.request, await item.pageUrl)).body, expected)
+    app.observer.dispose()
+  }
+  const app = captureHarness()
+  let reads = 0
+  app.finish(request({ getContent: callback => callback(++reads === 1 ? undefined as unknown as string : 'ready', '') }))
+  const item = app.latest[0]
+  assert.equal((await draftFromDevtoolsRequest(item.request, await item.pageUrl)).body, 'ready')
+  assert.equal(reads, 2)
+  app.observer.dispose()
+})
 
 test('unavailable state belongs to one capture and survives refresh, while a fresh call stays eligible', () => {
   const app = captureHarness()
@@ -191,20 +265,68 @@ test('unsupported Fetch/XHR captures remain available for the display filter acr
   app.observer.dispose()
 })
 
-test('initial and live captures merge without duplicates, filter unsupported resources and defer reading bodies', () => {
+test('initial and live captures merge without duplicates and retain supported bodies only once per handle', () => {
   const app = captureHarness()
-  const first = request({ getContent: () => assert.fail('must not read bodies until selected') })
+  let reads = 0
+  const first = request({ getContent: callback => { reads++; callback('body', '') } })
   app.finish(first)
   const unknownDocument = request({ _resourceType: null })
   unknownDocument.response.content.mimeType = 'text/html'
   app.hydrate([first, request({ _resourceType: 'image' }), unknownDocument])
   assert.equal(app.latest.length, 1)
+  assert.equal(reads, 1, 'hydration must not read the same live occurrence again')
   const next = request({ startedDateTime: '2026-10-28T12:01:00.000Z' })
   app.finish(next)
-  assert.equal(app.latest.at(-1)!.request, next)
+  assert.equal(app.latest.at(-1)!.request.request, next.request)
   app.observer.dispose()
   assert.equal(app.onRequestFinished.size, 0)
   assert.equal(app.onNavigated.size, 0)
+})
+
+test('HAR-first completion updates existing occurrences without duplicating same-millisecond calls', () => {
+  const app = captureHarness()
+  const hydrated = [request(), request()]
+  hydrated.forEach(capture => { capture.response.status = 0 })
+  app.hydrate(hydrated)
+  const ids = app.latest.map(item => item.id)
+  app.observer.markUnavailable(ids[0], 'The unfinished body was unavailable')
+  const first = request()
+  const second = request()
+  second.response.status = 202
+  app.finish(first)
+  assert.deepEqual(app.latest.map(item => item.id), ids)
+  assert.equal(app.latest[0].request.response, first.response, 'the completed response replaces the unfinished HAR response')
+  assert.equal(app.latest[0].unavailableReason, undefined, 'the new completion handle can be tried again')
+  app.finish(second)
+  assert.deepEqual(app.latest.map(item => item.id), ids)
+  assert.deepEqual(app.latest.map(item => item.request.response.status), [201, 202])
+  app.finish(request())
+  assert.equal(app.latest.length, 3, 'a third occurrence remains a separate call')
+  app.observer.dispose()
+})
+
+test('Clear excludes cleared occurrences from later HAR refreshes and late completion events', () => {
+  const app = captureHarness()
+  const first = request()
+  app.hydrate([first])
+  app.observer.clear()
+  app.observer.refresh()
+  app.hydrate([first], -1)
+  assert.equal(app.latest.length, 0, 'returning to the panel must not restore a cleared capture')
+  app.finish(first)
+  assert.equal(app.latest.length, 0, 'a cleared hydrated occurrence must not return when it completes')
+  const next = request()
+  app.finish(next)
+  assert.equal(app.latest.length, 1, 'a new same-millisecond call must still appear')
+  const id = app.latest[0].id
+  app.observer.refresh()
+  app.hydrate([first, next], -1)
+  assert.deepEqual(app.latest.map(item => item.id), [id])
+  app.observer.clear()
+  app.observer.refresh()
+  app.hydrate([first, next], -1)
+  assert.equal(app.latest.length, 0, 'repeated clears retain the full clear boundary')
+  app.observer.dispose()
 })
 
 test('refresh orders captures oldest to newest, including calls missed by live notifications', () => {
@@ -217,10 +339,10 @@ test('refresh orders captures oldest to newest, including calls missed by live n
   app.observer.refresh()
   const next = request({ startedDateTime: '2026-10-28T12:01:00.000Z' })
   app.hydrate([next, first], -1)
-  assert.deepEqual(app.latest.map(item => item.request), [first, next])
+  assert.deepEqual(app.latest.map(item => item.request.startedDateTime), [first, next].map(item => item.startedDateTime))
   const earlier = request({ startedDateTime: '2026-10-28T11:59:00.000Z' })
   app.finish(earlier)
-  assert.deepEqual(app.latest.map(item => item.request), [earlier, first, next], 'a slow older request keeps its chronological position')
+  assert.deepEqual(app.latest.map(item => item.request.startedDateTime), [earlier, first, next].map(item => item.startedDateTime), 'a slow older request keeps its chronological position')
   app.observer.dispose()
 })
 
@@ -256,7 +378,7 @@ test('a newer refresh and navigation prevent older HAR snapshots from restoring 
   app.hydrate([next], -1)
   app.hydrate([request()], 0)
   assert.equal(app.latest.length, 1)
-  assert.equal(app.latest[0].request, next)
+  assert.equal(app.latest[0].request.request, next.request)
   app.observer.dispose()
 })
 
@@ -290,6 +412,8 @@ test('parallel calls to the same URL in one millisecond stay independently selec
   assert.equal(app.latest.length, 2)
   assert.notEqual(app.latest[0].id, app.latest[1].id)
   const previousIds = app.latest.map(capture => capture.id)
+  app.finish(second)
+  assert.deepEqual(app.latest.map(capture => capture.id), previousIds)
   app.finish(request())
   assert.equal(app.latest.length, 3)
   assert.deepEqual(app.latest.slice(0, -1).map(capture => capture.id), previousIds)

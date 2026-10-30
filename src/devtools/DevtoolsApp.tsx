@@ -37,7 +37,8 @@ export function DevtoolsApp() {
   const capture = useRef<ReturnType<typeof observeDevtoolsRequests> | null>(null)
 
   useEffect(() => {
-    const observer = observeDevtoolsRequests(chrome.devtools.network, setRequests)
+    const pageUrl = chrome.tabs.get(chrome.devtools.inspectedWindow.tabId).then(tab => tab.url ?? '').catch(() => '')
+    const observer = observeDevtoolsRequests(chrome.devtools.network, setRequests, pageUrl)
     capture.current = observer
     const refresh = () => observer.refresh()
     window.addEventListener('overidify-devtools-shown', refresh)
@@ -55,8 +56,7 @@ export function DevtoolsApp() {
     setOpeningId(item.id)
     setError('')
     try {
-      const tab = await chrome.tabs.get(chrome.devtools.inspectedWindow.tabId)
-      await openCapturedNetworkRule(item.request, tab.url ?? '')
+      await openCapturedNetworkRule(item.request, await item.pageUrl)
     } catch (reason) {
       if (reason instanceof DevtoolsResponseUnavailableError) capture.current?.markUnavailable(item.id, reason.message)
       else setError(reason instanceof Error ? reason.message : 'Could not open this response in options. Try again.')
