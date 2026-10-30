@@ -10,7 +10,8 @@ export type DevtoolsRequest = {
   response: { status: number; headers: { name: string; value: string }[]; content: { mimeType: string } }
   getContent: (callback: (content: string, encoding: string) => void) => void
 }
-export type CapturedRequest = { id: string; request: DevtoolsRequest; pageUrl: Promise<string>; unavailableReason?: string }
+export type CapturedRequest = { id: string; request: DevtoolsRequest; pageUrl: Promise<string>; unavailableReason?: string; bodyReleasedReason?: string }
+export const DEVTOOLS_BODY_BUDGET_BYTES = 250 * 1024 * 1024
 
 export class DevtoolsResponseUnavailableError extends Error {
   constructor(message = 'Chrome could not read this captured response. Trigger the request again and use the new capture.') {
@@ -47,45 +48,89 @@ export function devtoolsRequestUnsupportedReason(request: DevtoolsRequest): stri
   return null
 }
 
-// DevTools invalidates response handles on navigation. Read supported bodies
-// while the handle is valid, and retain the result only in this panel's memory.
-function retainResponse(request: DevtoolsRequest, fallback = request): DevtoolsRequest {
-  if (devtoolsRequestUnsupportedReason(request) || !request.response.status) return request
-  const content = new Promise<[string, string] | null>(resolve => {
-    try {
-      request.getContent((body, encoding) => resolve(typeof body === 'string' ? [body, encoding] : null))
-    } catch { resolve(null) }
-  })
-  return { ...request, getContent(callback) {
-    void content.then(result => {
-      if (result) callback(...result)
-      else {
-        // An unfinished HAR body may become available before its completion.
-        try { fallback.getContent(callback) }
-        catch { callback(undefined as unknown as string, '') }
-      }
-    })
-  } }
-}
-
 export function observeDevtoolsRequests(
   network: Pick<typeof chrome.devtools.network, 'getHAR' | 'onRequestFinished' | 'onNavigated'>,
-  onChange: (requests: CapturedRequest[]) => void,
+  onChange: (requests: CapturedRequest[], retainedBodyBytes: number) => void,
   initialPageUrl: Promise<string> = Promise.resolve(''),
+  bodyBudgetBytes = DEVTOOLS_BODY_BUDGET_BYTES,
 ) {
   const requests = new Map<string, CapturedRequest>()
+  const bodies = new Map<string, { body: string; encoding: string; bytes: number }>()
   const hydratedIds = new Map<string, string[]>()
   const clearedCounts = new Map<string, number>()
   let sequence = 0
   let generation = 0
   let refreshVersion = 0
   let disposed = false
+  let retainedBodyBytes = 0
   let pageUrl = initialPageUrl
   const signature = (request: DevtoolsRequest) => JSON.stringify([request.startedDateTime, request.request.method, request.request.url])
+  const budgetLabel = `${bodyBudgetBytes / 1024 / 1024} MiB`
+  function releaseBody(id: string, reason: string) {
+    const previous = bodies.get(id)
+    if (previous) { retainedBodyBytes -= previous.bytes; bodies.delete(id) }
+    const item = requests.get(id)
+    if (item) requests.set(id, { ...item, bodyReleasedReason: reason, unavailableReason: undefined })
+  }
+  function storeBody(id: string, body: string, encoding: string) {
+    // Conservatively account for UTF-16 code units, including base64 text.
+    const bytes = body.length * 2
+    if (bytes > bodyBudgetBytes) {
+      releaseBody(id, `This response body is larger than the ${budgetLabel} capture budget and was not retained. Create a rule manually in Manage rules.`)
+      return
+    }
+    const previous = bodies.get(id)
+    if (previous) { retainedBodyBytes -= previous.bytes; bodies.delete(id) }
+    for (const [oldId, oldest] of bodies) {
+      if (retainedBodyBytes + bytes <= bodyBudgetBytes) break
+      if (oldest.bytes) releaseBody(oldId, `This response body was released to stay within the ${budgetLabel} capture budget. Trigger the request again to capture a new response.`)
+    }
+    bodies.set(id, { body, encoding, bytes })
+    retainedBodyBytes += bytes
+  }
+  function setRequest(id: string, source: DevtoolsRequest, scope: Promise<string>) {
+    let pending: Promise<void> | undefined
+    const retained: DevtoolsRequest = { ...source, getContent(callback) {
+      const item = requests.get(id)
+      const unavailableReason = item?.bodyReleasedReason ?? item?.unavailableReason
+      if (unavailableReason) throw new DevtoolsResponseUnavailableError(unavailableReason)
+      const content = bodies.get(id)
+      if (content) { callback(content.body, content.encoding); return }
+      void readBody().then(() => {
+        const content = bodies.get(id)
+        callback(content?.body as string, content?.encoding ?? '')
+      })
+    } }
+    function readBody(): Promise<void> {
+      if (pending) return pending
+      const item = requests.get(id)
+      if (disposed || item?.request !== retained || item.bodyReleasedReason || item.unavailableReason) return Promise.resolve()
+      // Resolve with no body value: resolved promises must not retain evicted text.
+      const done = new Promise<void>(resolve => {
+        try {
+          source.getContent((body, encoding) => {
+            const item = requests.get(id)
+            if (!disposed && item?.request === retained && !item.bodyReleasedReason && !item.unavailableReason && typeof body === 'string') {
+              storeBody(id, body, encoding)
+              publish()
+            }
+            resolve()
+          })
+        } catch { resolve() }
+      })
+      pending = done
+      void done.then(() => { if (pending === done) pending = undefined })
+      return done
+    }
+    const bodyReleasedReason = requests.get(id)?.bodyReleasedReason
+    requests.set(id, { id, request: retained, pageUrl: scope, bodyReleasedReason })
+    // Read while DevTools' handle is valid; a failed early read can retry on click.
+    if (!bodyReleasedReason && !devtoolsRequestUnsupportedReason(source) && source.response.status) void readBody()
+  }
   function add(request: DevtoolsRequest, hydrated = false, scope = pageUrl) {
     if (!isApiRequest(request)) return
     const id = String(++sequence)
-    requests.set(id, { id, request: retainResponse(request), pageUrl: scope })
+    setRequest(id, request, scope)
     if (hydrated) {
       const key = signature(request)
       const ids = hydratedIds.get(key) ?? []
@@ -96,7 +141,7 @@ export function observeDevtoolsRequests(
   function publish() {
     const latest = [...requests.values()].sort((a, b) =>
       a.request.startedDateTime.localeCompare(b.request.startedDateTime) || Number(a.id) - Number(b.id))
-    onChange(latest)
+    onChange(latest, retainedBodyBytes)
   }
   function finished(request: chrome.devtools.network.Request) {
     if (!isApiRequest(request)) return
@@ -107,14 +152,25 @@ export function observeDevtoolsRequests(
     if (id) {
       // A cleared hydrated occurrence stays hidden when its completion arrives.
       const previous = requests.get(id)
-      if (previous) requests.set(id, { id, request: retainResponse(request, previous.request), pageUrl: previous.pageUrl })
+      if (previous) setRequest(id, request, previous.pageUrl)
     } else add(request)
     publish()
   }
   function markUnavailable(id: string, reason: string) {
     const item = requests.get(id)
-    if (disposed || !item) return
+    if (disposed || !item || item.bodyReleasedReason) return
+    const body = bodies.get(id)
+    if (body) { retainedBodyBytes -= body.bytes; bodies.delete(id) }
     requests.set(id, { ...item, unavailableReason: reason })
+    publish()
+  }
+  function releaseBodies() {
+    if (disposed) return
+    for (const item of requests.values()) {
+      if (!item.bodyReleasedReason && !item.unavailableReason && !devtoolsRequestUnsupportedReason(item.request)) {
+        releaseBody(item.id, 'This response body was released. Trigger the request again to capture a new response.')
+      }
+    }
     publish()
   }
   function clear() {
@@ -124,6 +180,8 @@ export function observeDevtoolsRequests(
       clearedCounts.set(key, (clearedCounts.get(key) ?? 0) + 1)
     }
     requests.clear()
+    bodies.clear()
+    retainedBodyBytes = 0
     publish()
   }
   function navigated(url: string) { pageUrl = Promise.resolve(url); generation++; refresh() }
@@ -159,9 +217,12 @@ export function observeDevtoolsRequests(
   }
   refresh()
   return {
-    clear, refresh, markUnavailable,
+    clear, refresh, markUnavailable, releaseBodies,
     dispose() {
       disposed = true
+      bodies.clear()
+      requests.clear()
+      retainedBodyBytes = 0
       network.onRequestFinished.removeListener(finished)
       network.onNavigated.removeListener(navigated)
     },
@@ -190,7 +251,7 @@ export async function draftFromDevtoolsRequest(request: DevtoolsRequest, pageUrl
           else reject(new DevtoolsResponseUnavailableError('This response uses an unsupported encoding.'))
         } catch { reject(new DevtoolsResponseUnavailableError('This response could not be decoded as text.')) }
       })
-    } catch { reject(new DevtoolsResponseUnavailableError()) }
+    } catch (error) { reject(error instanceof DevtoolsResponseUnavailableError ? error : new DevtoolsResponseUnavailableError()) }
   })
   const headers = request.response.headers
     .filter(header => !excludedHeader.test(header.name.trim()) && !header.name.startsWith(':'))
