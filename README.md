@@ -44,6 +44,22 @@ The domain identifies the website in your address bar. Requests from that websit
 
 Open the extension popup on a website to toggle matching rules or choose a Switch Rule option. Your rules are saved locally in your browser.
 
+To override an API response directly from DevTools:
+
+1. Open DevTools on your website and select the **Overidify** panel. It may be under the overflow menu. After updating the extension, reopen DevTools to see it.
+2. Use your app or reload the page to capture API requests. The list refreshes when you return to **Overidify**. Click **Refresh** to load requests already visible in **Network**.
+3. Click the request's **Create rule in options** icon to open a new options tab. The URL, method, response headers, body, status, rule name, and website scope are filled in automatically.
+4. Review or edit the prefilled form and click **Save**. Opening the form does not save or activate a rule.
+5. Trigger the request again in your app. Reload the website first if options asks you to.
+
+Choose one or two lines per request with **Rows**. Check **Full path** to show `/b/c/x?y=z` instead of `x?y=z`. Enable **Show unsupported** to include Fetch/XHR calls that cannot become rules, such as binary responses. These calls have a disabled create-rule icon; hover or focus the icon for the reason. All three display choices are remembered. Hover or focus a request name to see its complete URL. Search always includes the full URL and method.
+
+If Chrome cannot read a captured response body, that capture is also treated as unsupported. Trigger the request again to try a new capture of the same URL.
+
+The prefilled Network Rule bypasses the server by default; you can change matching, headers, or server behavior before saving. Capturing and saving do not replay requests. The panel supports text responses, including JSON and XML, and keeps captured API requests in memory, ordered oldest to newest, without a fixed request-count cap. Supported response bodies are read when captured and retained with their original website scope, so navigation keeps them usable; **Clear** releases the retained history. Bodies Chrome has already discarded cannot be recovered. Cookies and transport headers are omitted from copied responses. Unsaved captured responses stay in temporary extension session storage, so the prefilled form can be reloaded during the same browser session.
+
+Keep one copy of Overidify enabled. If native Network shows Fetch/XHR calls but the Overidify panel stays empty, disable older copies, close and reopen DevTools, then reload the website. Chrome 154 can hide calls from the panel when another extension copy's interceptor appears in their initiator stack.
+
 ## Import and export
 
 On the Settings home page, **Import**, **Export**, and **Select** sit beside the rule-type tabs.

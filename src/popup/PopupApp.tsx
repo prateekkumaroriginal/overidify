@@ -4,6 +4,7 @@ import { startTransition, useEffect, useState } from 'react'
 import { BrandIcon } from '../components/Brand'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Button } from '../components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip'
 import { Icon } from '../components/Icon'
 import { SwitchRuleOptionSelect } from '../components/SwitchRuleOptionSelect'
 import { ToggleSwitch } from '../components/ToggleSwitch'
@@ -27,6 +28,15 @@ async function getCurrentPageUrl(): Promise<string> {
   }
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
   return tab?.url ?? ''
+}
+
+function PopupRuleName({ name }: { name: string }) {
+  return <Tooltip>
+    <TooltipTrigger asChild>
+      <span tabIndex={0} className="min-w-0 flex-1 truncate text-xs">{name}</span>
+    </TooltipTrigger>
+    <TooltipContent className="max-w-[min(380px,calc(100vw-24px))] wrap-anywhere">{name}</TooltipContent>
+  </Tooltip>
 }
 
 export function PopupApp() {
@@ -115,7 +125,7 @@ export function PopupApp() {
     <main className="w-full p-4">
       <header className="mb-2.5 flex items-center justify-between gap-3">
         <BrandIcon size={24} />
-        <span className="min-w-0 flex-1 truncate text-xs" title={pageUrl}>
+        <span className="min-w-0 flex-1 truncate text-xs">
           {getDomainPattern(pageUrl) || pageUrl}
         </span>
         <Button variant="ghost" size="icon" asChild>
@@ -161,7 +171,7 @@ export function PopupApp() {
                             void handleUpdate(rule, { enabled })
                           }}
                         />
-                        <span className="min-w-0 flex-1 text-xs wrap-anywhere">{rule.name}</span>
+                        <PopupRuleName name={rule.name} />
                         {rule.kind === 'switch-rule' && <SwitchRuleOptionSelect
                           size="sm"
                           switchRule={rule}
@@ -179,7 +189,7 @@ export function PopupApp() {
                           pending={pending}
                           onChange={enabled => { void toggleNetworkRule(networkRule, enabled) }}
                         />
-                        <span className="min-w-0 flex-1 text-xs wrap-anywhere">{networkRule.name}</span>
+                        <PopupRuleName name={networkRule.name} />
                       </li>
                     ))}
                   </ul>

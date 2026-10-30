@@ -16,6 +16,7 @@ import { headerRowLayout } from './headerRowLayout'
 
 type Props = {
   networkRule?: NetworkRule
+  initialDraft?: NetworkRuleDraft
   pending: boolean
   onSave: (draft: NetworkRuleDraft) => Promise<void>
   onDelete?: () => void
@@ -23,11 +24,11 @@ type Props = {
 const fieldClass = 'grid min-w-0 content-start gap-2 text-[11px] font-semibold'
 const panelClass = 'mb-5 rounded-lg border bg-card shadow-panel px-7 py-6 mobile:px-[17px]'
 
-export function NetworkRuleEditor({ networkRule, pending, onSave, onDelete }: Props) {
+export function NetworkRuleEditor({ networkRule, initialDraft, pending, onSave, onDelete }: Props) {
   const { form, formRef, onSubmit, busy, error } = useEditorForm({
     schema: NetworkRuleDraftSchema, initial: () => networkRule
       ? { ...networkRule, headers: networkRule.headers.map(header => ({ ...header })) }
-      : createNetworkRuleDraft(),
+      : initialDraft ?? createNetworkRuleDraft(),
     pending, returnRoute: '/network-rules', onSave,
   })
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'headers' })

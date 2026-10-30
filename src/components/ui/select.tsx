@@ -28,7 +28,7 @@ function SelectTrigger({
   children,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Trigger> & {
-  size?: "sm" | "default" | "lg"
+  size?: "sm" | "default" | "lg" | "toolbar"
 }) {
   return (
     <SelectPrimitive.Trigger
@@ -36,6 +36,7 @@ function SelectTrigger({
       data-size={size}
       className={cn(
         "flex w-full min-w-0 shrink-0 items-center justify-between gap-2 rounded-md border border-input bg-field px-3 text-xs font-normal text-foreground outline-none hover:border-primary/20 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/15 data-[state=open]:border-primary/25 disabled:cursor-not-allowed disabled:opacity-50 aria-busy:cursor-wait aria-busy:opacity-100 aria-invalid:border-destructive aria-invalid:ring-destructive/20 data-[placeholder]:text-muted-foreground data-[size=default]:h-9 data-[size=sm]:h-7 data-[size=sm]:px-2 data-[size=sm]:text-[11px] data-[size=lg]:py-[11px] [&>span:first-child]:truncate [&_svg]:pointer-events-none [&_svg]:size-3.5 [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
+        size === "toolbar" && "h-[30px]",
         className
       )}
       {...props}
