@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Ban, Radio, RefreshCw, Search, Settings, SquareArrowOutUpRight, Trash2 } from 'lucide-react'
-import { DevtoolsResponseUnavailableError, devtoolsRequestLabel, devtoolsRequestUnsupportedReason, observeDevtoolsRequests } from '../lib/devtools-requests'
+import { Ban, Eraser, FileX2, Radio, RefreshCw, Search, Settings, SquareArrowOutUpRight, Trash2 } from 'lucide-react'
+import { DEVTOOLS_BODY_BUDGET_BYTES, DevtoolsResponseUnavailableError, devtoolsRequestLabel, devtoolsRequestUnsupportedReason, observeDevtoolsRequests } from '../lib/devtools-requests'
 import type { CapturedRequest } from '../lib/devtools-requests'
 import { openCapturedNetworkRule } from '../lib/network-rule-drafts'
 import { Alert, AlertDescription } from '../components/ui/alert'
@@ -9,6 +9,8 @@ import { Checkbox } from '../components/ui/checkbox'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '../components/ui/empty'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
+import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from '../components/ui/popover'
+import { Progress } from '../components/ui/progress'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { Spinner } from '../components/ui/spinner'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table'
@@ -19,6 +21,7 @@ import { cn } from '../lib/utils'
 
 type DisplayPreferences = { rows: 'one' | 'two'; fullPath: boolean; showUnsupported: boolean }
 const preferenceKey = 'overidify:devtools-display:v1'
+const tooltipDelayDuration = 350
 
 function readDisplayPreferences(): DisplayPreferences {
   try {
@@ -29,16 +32,62 @@ function readDisplayPreferences(): DisplayPreferences {
 
 export function DevtoolsApp() {
   const [requests, setRequests] = useState<CapturedRequest[]>([])
+  const [retainedBodyBytes, setRetainedBodyBytes] = useState(0)
   const [search, setSearch] = useState('')
   const [display, setDisplay] = useState(readDisplayPreferences)
   const [openingId, setOpeningId] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [memoryPopover, setMemoryPopover] = useState<'closed' | 'hover' | 'pinned'>('closed')
+  const memoryOpenTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const memoryCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const restoreMemoryFocus = useRef(false)
   const opening = useRef(false)
   const capture = useRef<ReturnType<typeof observeDevtoolsRequests> | null>(null)
 
+  useEffect(() => () => {
+    if (memoryOpenTimer.current !== null) clearTimeout(memoryOpenTimer.current)
+    if (memoryCloseTimer.current !== null) clearTimeout(memoryCloseTimer.current)
+  }, [])
+
+  function cancelMemoryTimers() {
+    if (memoryOpenTimer.current !== null) clearTimeout(memoryOpenTimer.current)
+    if (memoryCloseTimer.current !== null) clearTimeout(memoryCloseTimer.current)
+    memoryOpenTimer.current = null
+    memoryCloseTimer.current = null
+  }
+
+  function showMemoryOnHover() {
+    cancelMemoryTimers()
+    if (memoryPopover === 'closed') {
+      restoreMemoryFocus.current = false
+      memoryOpenTimer.current = setTimeout(() => {
+        memoryOpenTimer.current = null
+        setMemoryPopover(current => current === 'closed' ? 'hover' : current)
+      }, tooltipDelayDuration)
+    }
+  }
+
+  function scheduleMemoryClose() {
+    cancelMemoryTimers()
+    if (memoryPopover !== 'hover') return
+    memoryCloseTimer.current = setTimeout(() => {
+      memoryCloseTimer.current = null
+      setMemoryPopover(current => current === 'hover' ? 'closed' : current)
+    }, 150)
+  }
+
+  function pinMemoryPopover() {
+    cancelMemoryTimers()
+    restoreMemoryFocus.current = true
+    setMemoryPopover('pinned')
+  }
+
   useEffect(() => {
     const pageUrl = chrome.tabs.get(chrome.devtools.inspectedWindow.tabId).then(tab => tab.url ?? '').catch(() => '')
-    const observer = observeDevtoolsRequests(chrome.devtools.network, setRequests, pageUrl)
+    const observer = observeDevtoolsRequests(chrome.devtools.network, (requests, bytes) => {
+      setRequests(requests)
+      setRetainedBodyBytes(bytes)
+    }, pageUrl)
     capture.current = observer
     const refresh = () => observer.refresh()
     window.addEventListener('overidify-devtools-shown', refresh)
@@ -68,9 +117,10 @@ export function DevtoolsApp() {
     .map(item => ({ ...item, unsupportedReason: item.unavailableReason ?? devtoolsRequestUnsupportedReason(item.request) }))
   const visible = display.showUnsupported ? matching : matching.filter(item => !item.unsupportedReason)
   const hiddenUnsupported = matching.length - visible.length
+  const memoryPercent = retainedBodyBytes / DEVTOOLS_BODY_BUDGET_BYTES * 100
 
   return (
-    <TooltipProvider delayDuration={350}>
+    <TooltipProvider delayDuration={tooltipDelayDuration}>
       <main className="mx-auto flex h-dvh min-w-0 max-w-[1240px] flex-col gap-5 p-5 mobile:p-4">
         <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b pb-4">
           <Brand href="options.html" openInTab />
@@ -84,6 +134,35 @@ export function DevtoolsApp() {
           <div className="flex shrink-0 items-center gap-2">
             <Button variant="outline" onClick={() => capture.current?.refresh()}><Icon icon={RefreshCw} data-icon="inline-start" />Refresh</Button>
             <Button variant="outline" onClick={() => { capture.current?.clear(); setError('') }}><Icon icon={Trash2} data-icon="inline-start" />Clear</Button>
+            <Popover open={memoryPopover !== 'closed'} onOpenChange={open => {
+              if (open) pinMemoryPopover()
+              else { cancelMemoryTimers(); setMemoryPopover('closed') }
+            }}>
+              <PopoverTrigger asChild>
+                <Button variant="ghost-muted" size="icon" aria-label={`Response memory: ${Math.round(memoryPercent)}% used`}
+                  onPointerEnter={event => { if (event.pointerType !== 'touch') showMemoryOnHover() }} onPointerLeave={scheduleMemoryClose}
+                  onClick={event => { event.preventDefault(); pinMemoryPopover() }}>
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="-rotate-90">
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.2" />
+                    {retainedBodyBytes > 0 && <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" pathLength="100" strokeDasharray="100" strokeDashoffset={100 - memoryPercent} />}
+                  </svg>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" sideOffset={8} collisionPadding={8} className="flex w-80 max-w-[calc(100vw-32px)] flex-col gap-3" aria-labelledby="response-memory-title"
+                onPointerEnter={event => { if (event.pointerType !== 'touch') showMemoryOnHover() }} onPointerLeave={scheduleMemoryClose}
+                onClick={pinMemoryPopover}
+                onOpenAutoFocus={event => { if (!restoreMemoryFocus.current) event.preventDefault() }}
+                onCloseAutoFocus={event => { if (!restoreMemoryFocus.current) event.preventDefault() }}>
+                <PopoverHeader>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <PopoverTitle id="response-memory-title">Response memory</PopoverTitle>
+                    <span className="text-[11px] tabular-nums text-muted-foreground">{Math.round(memoryPercent)}% · {(retainedBodyBytes / 1024 / 1024).toFixed(1)} / {DEVTOOLS_BODY_BUDGET_BYTES / 1024 / 1024} MiB</span>
+                  </div>
+                </PopoverHeader>
+                <Progress className="h-1.5" aria-label="Retained response body memory" value={memoryPercent} />
+                <Button variant="outline" disabled={retainedBodyBytes === 0} onClick={() => { capture.current?.releaseBodies(); setError('') }}><Icon icon={Eraser} data-icon="inline-start" />Release response bodies</Button>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-5">
@@ -137,16 +216,18 @@ export function DevtoolsApp() {
                   </TableCell>
                   <TableCell className="px-5 text-center mobile:px-4"><span className={cn('text-[11px] tabular-nums text-muted-foreground', (!request.response.status || request.response.status >= 400) && 'text-destructive')}>{request.response.status || 'Failed'}</span></TableCell>
                   <TableCell className="px-5 mobile:px-4">
-                    <div className="pointer-events-none flex items-center opacity-0 group-hover/request:pointer-events-auto group-hover/request:opacity-100 group-has-[:focus-visible]/request:pointer-events-auto group-has-[:focus-visible]/request:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100">
+                    <div className={cn('flex items-center', !item.bodyReleasedReason && 'pointer-events-none opacity-0 group-hover/request:pointer-events-auto group-hover/request:opacity-100 group-has-[:focus-visible]/request:pointer-events-auto group-has-[:focus-visible]/request:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100')}>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          {item.unsupportedReason ? <span tabIndex={0} role="button" aria-disabled="true" aria-label={`Cannot create rule for ${request.request.method} ${label.name}`} className="inline-flex rounded-[5px] focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-4">
+                          {item.bodyReleasedReason ? <Button asChild variant="ghost-muted" size="icon-action">
+                            <span tabIndex={0} role="img" aria-label={`Response body released for ${request.request.method} ${label.name}`} className="focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-4"><Icon icon={FileX2} /></span>
+                          </Button> : item.unsupportedReason ? <span tabIndex={0} role="button" aria-disabled="true" aria-label={`Cannot create rule for ${request.request.method} ${label.name}`} className="inline-flex rounded-[5px] focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-4">
                             <Button variant="ghost-muted" size="icon-action" disabled aria-hidden="true" className="pointer-events-none"><Icon icon={SquareArrowOutUpRight} /></Button>
                           </span> : <Button variant="ghost-muted" size="icon-action" disabled={openingId !== null} aria-busy={openingId === item.id} aria-label={`Create rule in options for ${request.request.method} ${label.name}`} onClick={() => { void createRule(item) }}>
                               {openingId === item.id ? <Spinner /> : <Icon icon={SquareArrowOutUpRight} />}
                             </Button>}
                         </TooltipTrigger>
-                        <TooltipContent className="max-w-[min(360px,calc(100vw-24px))] wrap-anywhere">{item.unsupportedReason ?? 'Create rule in options'}</TooltipContent>
+                        <TooltipContent className="max-w-[min(360px,calc(100vw-24px))] wrap-anywhere">{item.bodyReleasedReason ?? item.unsupportedReason ?? 'Create rule in options'}</TooltipContent>
                       </Tooltip>
                     </div>
                   </TableCell>

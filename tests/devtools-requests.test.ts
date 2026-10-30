@@ -130,18 +130,120 @@ function event<T>() {
     get size() { return listeners.size } }
 }
 
-function captureHarness(pageUrl = Promise.resolve('https://app.example.com')) {
+function captureHarness(pageUrl = Promise.resolve('https://app.example.com'), bodyBudgetBytes?: number) {
   const onRequestFinished = event<chrome.devtools.network.Request>()
   const onNavigated = event<string>()
   const snapshots: ((log: HARFormatLog) => void)[] = []
   let latest: CapturedRequest[] = []
+  let usedBytes = 0
   const observer = observeDevtoolsRequests({ onRequestFinished, onNavigated, getHAR: callback => { snapshots.push(callback) } },
-    requests => { latest = requests }, pageUrl)
+    (requests, bytes) => { latest = requests; usedBytes = bytes }, pageUrl, bodyBudgetBytes)
   return { observer, onRequestFinished, onNavigated,
     finish: (capture: DevtoolsRequest) => onRequestFinished.emit(capture as chrome.devtools.network.Request),
     hydrate: (entries: DevtoolsRequest[], index = 0, pages: { id: string; title: string }[] = []) => snapshots.at(index)!({ entries, pages } as HARFormatLog),
-    get latest() { return latest } }
+    get latest() { return latest }, get usedBytes() { return usedBytes } }
 }
+
+test('response byte budget evicts oldest bodies while keeping rows, scopes and newer bodies usable', async () => {
+  const app = captureHarness(undefined, 12)
+  let reads = 0
+  const captures = ['aaaa', 'bb', 'ccc'].map((body, index) => request({
+    startedDateTime: new Date(index).toISOString(),
+    getContent: callback => { reads++; callback(body, '') },
+  }))
+  app.hydrate([captures[0]])
+  app.finish(captures[1])
+  assert.equal(app.usedBytes, 12, 'retained text is accounted as two bytes per UTF-16 code unit')
+  const oldHandle = app.latest[0].request
+  app.finish(captures[2])
+  assert.equal(app.latest.length, 3)
+  assert.equal(app.usedBytes, 10)
+  assert.ok(app.latest[0].bodyReleasedReason?.includes('released'))
+  assert.equal(app.latest[0].unavailableReason, undefined, 'released is separate from unsupported/unreadable')
+  assert.equal(devtoolsRequestUnsupportedReason(app.latest[0].request), null)
+  await assert.rejects(draftFromDevtoolsRequest(oldHandle, await app.latest[0].pageUrl), /released/)
+  app.finish(captures[0])
+  assert.equal(app.latest.length, 3, 'a late live completion must not refill a released HAR occurrence')
+  assert.equal(reads, 3, 'released bodies cannot be re-read through a retained wrapper')
+  const current = app.latest[2]
+  assert.equal((await draftFromDevtoolsRequest(current.request, await current.pageUrl)).body, 'ccc')
+  app.observer.refresh()
+  app.hydrate(captures, -1)
+  assert.equal(app.usedBytes, 10)
+  assert.equal(reads, 3, 'HAR refresh must not refill evicted bodies')
+  app.observer.markUnavailable(app.latest[0].id, 'A late create action failed')
+  assert.equal(app.latest[0].unavailableReason, undefined)
+  app.observer.clear()
+  assert.equal(app.usedBytes, 0)
+  assert.equal(app.latest.length, 0)
+  app.observer.dispose()
+})
+
+test('releasing bodies preserves request rows and scopes, blocks late refills, and admits fresh captures', async () => {
+  const app = captureHarness()
+  let completeRead!: (body: string, encoding: string) => void
+  const cached = request({ startedDateTime: new Date(0).toISOString() })
+  const pending = request({ startedDateTime: new Date(1).toISOString(), getContent: callback => { completeRead = callback } })
+  const unsupported = request({ startedDateTime: new Date(2).toISOString() })
+  unsupported.response.content.mimeType = 'image/png'
+  app.hydrate([cached, pending, unsupported])
+  const ids = app.latest.map(item => item.id)
+  app.observer.releaseBodies()
+  assert.equal(app.usedBytes, 0)
+  assert.deepEqual(app.latest.map(item => item.id), ids)
+  assert.ok(app.latest[0].bodyReleasedReason?.includes('released'))
+  assert.ok(app.latest[1].bodyReleasedReason?.includes('released'))
+  assert.equal(app.latest[2].bodyReleasedReason, undefined, 'unsupported metadata must keep its original state')
+  completeRead('late body', '')
+  app.finish(pending)
+  app.observer.refresh()
+  app.hydrate([cached, pending, unsupported], -1)
+  assert.equal(app.usedBytes, 0)
+  assert.deepEqual(app.latest.map(item => item.id), ids)
+  await assert.rejects(draftFromDevtoolsRequest(app.latest[0].request, await app.latest[0].pageUrl), /released/)
+  app.finish(request({ startedDateTime: new Date(3).toISOString() }))
+  const fresh = app.latest.at(-1)!
+  assert.equal(fresh.bodyReleasedReason, undefined)
+  assert.equal((await draftFromDevtoolsRequest(fresh.request, await fresh.pageUrl)).url, 'app.example.com')
+  assert.ok(app.usedBytes > 0, 'new captures can retain bodies after manual release')
+  app.observer.dispose()
+})
+
+test('oversized bodies are skipped without evicting fitting bodies, and empty bodies use no budget', async () => {
+  const app = captureHarness(undefined, 8)
+  for (const [index, body] of ['🙂', '', 'large'].entries()) {
+    app.finish(request({ startedDateTime: new Date(index).toISOString(), getContent: callback => callback(body, '') }))
+  }
+  assert.equal(app.usedBytes, 4)
+  assert.ok(app.latest[2].bodyReleasedReason?.includes('larger'))
+  for (const [index, body] of ['🙂', ''].entries()) {
+    assert.equal((await draftFromDevtoolsRequest(app.latest[index].request, await app.latest[index].pageUrl)).body, body)
+  }
+  await assert.rejects(draftFromDevtoolsRequest(app.latest[2].request, await app.latest[2].pageUrl), /larger/)
+  app.observer.dispose()
+})
+
+test('late body callbacks cannot refill cleared history or overwrite a newer completion snapshot', async () => {
+  const app = captureHarness(undefined, 8)
+  let finishRead!: (body: string, encoding: string) => void
+  const pending = request({ getContent: callback => { finishRead = callback } })
+  app.hydrate([pending])
+  app.finish(request({ getContent: callback => callback('ok', '') }))
+  finishRead('stale oversized body', '')
+  assert.equal(app.usedBytes, 4)
+  assert.equal(app.latest[0].bodyReleasedReason, undefined)
+  assert.equal((await draftFromDevtoolsRequest(app.latest[0].request, await app.latest[0].pageUrl)).body, 'ok')
+  app.finish(request({ startedDateTime: new Date(1).toISOString(), getContent: callback => { finishRead = callback } }))
+  app.observer.clear()
+  finishRead('late', '')
+  assert.equal(app.usedBytes, 0)
+  assert.equal(app.latest.length, 0)
+  app.finish(request({ startedDateTime: new Date(2).toISOString(), getContent: callback => { finishRead = callback } }))
+  app.observer.markUnavailable(app.latest[0].id, 'Unreadable response')
+  finishRead('late', '')
+  assert.equal(app.usedBytes, 0, 'a late callback must not refill a capture already marked unavailable')
+  app.observer.dispose()
+})
 
 test('retained response bodies and website scopes survive navigation invalidating browser handles', async () => {
   const app = captureHarness()
@@ -224,6 +326,8 @@ test('unavailable state belongs to one capture and survives refresh, while a fre
   const id = app.latest[0].id
   app.observer.markUnavailable(id, 'Chrome could not read this captured response.')
   assert.equal(app.latest[0].unavailableReason, 'Chrome could not read this captured response.')
+  assert.equal(app.usedBytes, 0, 'a capture marked unavailable must release any cached text')
+  assert.throws(() => app.latest[0].request.getContent(() => assert.fail('unavailable bodies cannot be retrieved')), /Chrome could not read/)
   app.observer.refresh()
   app.hydrate([first], -1)
   assert.equal(app.latest[0].id, id)
@@ -251,10 +355,12 @@ test('only explicitly classified Fetch/XHR calls appear, even when other request
 
 test('unsupported Fetch/XHR captures remain available for the display filter across refreshes', () => {
   const app = captureHarness()
-  const image = request({ getContent: () => assert.fail('listing must not read response bodies') })
+  let bodyReads = 0
+  const getContent: DevtoolsRequest['getContent'] = callback => { bodyReads++; callback('unsupported body', '') }
+  const image = request({ getContent })
   image.response.content.mimeType = 'image/png'
-  const trace = request({ request: { method: 'TRACE', url: 'https://api.example.com' } })
-  const data = request({ request: { method: 'GET', url: 'data:text/plain,hello' } })
+  const trace = request({ request: { method: 'TRACE', url: 'https://api.example.com' }, getContent })
+  const data = request({ request: { method: 'GET', url: 'data:text/plain,hello' }, getContent })
   app.finish(image)
   app.hydrate([image, trace, data])
   assert.equal(app.latest.length, 3)
@@ -262,6 +368,8 @@ test('unsupported Fetch/XHR captures remain available for the display filter acr
   app.observer.refresh()
   app.hydrate([image, trace, data], -1)
   assert.equal(app.latest.length, 3, 'refresh must not duplicate unsupported captures')
+  assert.equal(bodyReads, 0, 'unsupported captures must never read response bodies')
+  assert.equal(app.usedBytes, 0, 'unsupported captures retain metadata only')
   app.observer.dispose()
 })
 
