@@ -52,9 +52,11 @@ To override an API response directly from DevTools:
 4. Review or edit the prefilled form and click **Save**. Opening the form does not save or activate a rule.
 5. Trigger the request again in your app. Reload the website first if options asks you to.
 
-Choose one or two lines per request with **Rows**. Check **Full path** to show `/b/c/x?y=z` instead of `x?y=z`. Both choices are remembered. Hover or focus a request name to see its complete URL. Search always includes the full URL and method.
+Choose one or two lines per request with **Rows**. Check **Full path** to show `/b/c/x?y=z` instead of `x?y=z`. Enable **Show unsupported** to include Fetch/XHR calls that cannot become rules, such as binary responses. These calls have a disabled create-rule icon; hover or focus the icon for the reason. All three display choices are remembered. Hover or focus a request name to see its complete URL. Search always includes the full URL and method.
 
-The prefilled Network Rule bypasses the server by default; you can change matching, headers, or server behavior before saving. Capturing and saving do not replay requests. The panel supports text responses, including JSON and XML, and keeps the latest 200 API requests in memory. Cookies and transport headers are omitted from copied responses. Unsaved captured responses stay in temporary extension session storage, so the prefilled form can be reloaded during the same browser session.
+If Chrome cannot read a captured response body, that capture is also treated as unsupported. Trigger the request again to try a new capture of the same URL.
+
+The prefilled Network Rule bypasses the server by default; you can change matching, headers, or server behavior before saving. Capturing and saving do not replay requests. The panel supports text responses, including JSON and XML, and keeps captured API requests in memory, ordered oldest to newest, without a fixed request-count cap. Navigation keeps the history; **Clear** resets it. Chrome controls how long captured response bodies remain available. Cookies and transport headers are omitted from copied responses. Unsaved captured responses stay in temporary extension session storage, so the prefilled form can be reloaded during the same browser session.
 
 Keep one copy of Overidify enabled. If native Network shows Fetch/XHR calls but the Overidify panel stays empty, disable older copies, close and reopen DevTools, then reload the website. Chrome 154 can hide calls from the panel when another extension copy's interceptor appears in their initiator stack.
 

@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { RefreshCw, Search, Settings, SquareArrowOutUpRight, Trash2 } from 'lucide-react'
-import { devtoolsRequestLabel, observeDevtoolsRequests } from '../lib/devtools-requests'
+import { Ban, Radio, RefreshCw, Search, Settings, SquareArrowOutUpRight, Trash2 } from 'lucide-react'
+import { DevtoolsResponseUnavailableError, devtoolsRequestLabel, devtoolsRequestUnsupportedReason, observeDevtoolsRequests } from '../lib/devtools-requests'
 import type { CapturedRequest } from '../lib/devtools-requests'
 import { openCapturedNetworkRule } from '../lib/network-rule-drafts'
 import { Alert, AlertDescription } from '../components/ui/alert'
 import { Button } from '../components/ui/button'
 import { Checkbox } from '../components/ui/checkbox'
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '../components/ui/empty'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '../components/ui/empty'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
@@ -17,14 +17,14 @@ import { Icon } from '../components/Icon'
 import { Brand } from '../components/Brand'
 import { cn } from '../lib/utils'
 
-type DisplayPreferences = { rows: 'one' | 'two'; fullPath: boolean }
+type DisplayPreferences = { rows: 'one' | 'two'; fullPath: boolean; showUnsupported: boolean }
 const preferenceKey = 'overidify:devtools-display:v1'
 
 function readDisplayPreferences(): DisplayPreferences {
   try {
     const value = JSON.parse(localStorage.getItem(preferenceKey) ?? '{}') as Partial<DisplayPreferences> | null
-    return { rows: value?.rows === 'one' ? 'one' : 'two', fullPath: value?.fullPath === true }
-  } catch { return { rows: 'two', fullPath: false } }
+    return { rows: value?.rows === 'one' ? 'one' : 'two', fullPath: value?.fullPath === true, showUnsupported: value?.showUnsupported === true }
+  } catch { return { rows: 'two', fullPath: false, showUnsupported: false } }
 }
 
 export function DevtoolsApp() {
@@ -37,7 +37,7 @@ export function DevtoolsApp() {
   const capture = useRef<ReturnType<typeof observeDevtoolsRequests> | null>(null)
 
   useEffect(() => {
-    const observer = observeDevtoolsRequests(chrome.devtools.network, setRequests, () => {})
+    const observer = observeDevtoolsRequests(chrome.devtools.network, setRequests)
     capture.current = observer
     const refresh = () => observer.refresh()
     window.addEventListener('overidify-devtools-shown', refresh)
@@ -58,12 +58,16 @@ export function DevtoolsApp() {
       const tab = await chrome.tabs.get(chrome.devtools.inspectedWindow.tabId)
       await openCapturedNetworkRule(item.request, tab.url ?? '')
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not open this response in options. Try again.')
+      if (reason instanceof DevtoolsResponseUnavailableError) capture.current?.markUnavailable(item.id, reason.message)
+      else setError(reason instanceof Error ? reason.message : 'Could not open this response in options. Try again.')
     } finally { opening.current = false; setOpeningId(null) }
   }
 
   const query = search.trim().toLowerCase()
-  const visible = requests.filter(({ request }) => `${request.request.method} ${request.request.url}`.toLowerCase().includes(query))
+  const matching = requests.filter(({ request }) => `${request.request.method} ${request.request.url}`.toLowerCase().includes(query))
+    .map(item => ({ ...item, unsupportedReason: item.unavailableReason ?? devtoolsRequestUnsupportedReason(item.request) }))
+  const visible = display.showUnsupported ? matching : matching.filter(item => !item.unsupportedReason)
+  const hiddenUnsupported = matching.length - visible.length
 
   return (
     <TooltipProvider delayDuration={350}>
@@ -73,7 +77,6 @@ export function DevtoolsApp() {
           <Button variant="outline" onClick={() => { void chrome.runtime.openOptionsPage() }}><Icon icon={Settings} data-icon="inline-start" />Manage rules</Button>
         </header>
         <div className="flex shrink-0 flex-wrap items-center gap-3">
-          <h1 className="text-xl font-semibold">Captured requests</h1>
           <div className="relative min-w-0 flex-1 basis-40 mobile:basis-full">
             <Icon icon={Search} size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground" />
             <Input className="h-[30px] py-0 pl-9" aria-label="Filter requests" placeholder="Filter by URL or method" value={search} onChange={event => setSearch(event.target.value)} />
@@ -97,6 +100,10 @@ export function DevtoolsApp() {
           <div className="flex items-center gap-2">
             <Checkbox id="request-full-path" checked={display.fullPath} onCheckedChange={checked => setDisplay(current => ({ ...current, fullPath: checked === true }))} />
             <Label htmlFor="request-full-path" size="sm">Full path</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox id="request-show-unsupported" checked={display.showUnsupported} onCheckedChange={checked => setDisplay(current => ({ ...current, showUnsupported: checked === true }))} />
+            <Label htmlFor="request-show-unsupported" size="sm">Show unsupported</Label>
           </div>
         </div>
         {error && <Alert variant="destructive" className="shrink-0"><AlertDescription>{error}</AlertDescription></Alert>}
@@ -130,22 +137,26 @@ export function DevtoolsApp() {
                   </TableCell>
                   <TableCell className="px-5 text-center mobile:px-4"><span className={cn('text-[11px] tabular-nums text-muted-foreground', (!request.response.status || request.response.status >= 400) && 'text-destructive')}>{request.response.status || 'Failed'}</span></TableCell>
                   <TableCell className="px-5 mobile:px-4">
-                    <div className="pointer-events-none flex items-center opacity-0 group-hover/request:pointer-events-auto group-hover/request:opacity-100 group-focus-within/request:pointer-events-auto group-focus-within/request:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100">
+                    <div className="pointer-events-none flex items-center opacity-0 group-hover/request:pointer-events-auto group-hover/request:opacity-100 group-has-[:focus-visible]/request:pointer-events-auto group-has-[:focus-visible]/request:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100">
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button variant="ghost-muted" size="icon-action" disabled={openingId !== null} aria-busy={openingId === item.id} aria-label={`Create rule in options for ${request.request.method} ${label.name}`} onClick={() => { void createRule(item) }}>
-                            {openingId === item.id ? <Spinner /> : <Icon icon={SquareArrowOutUpRight} />}
-                          </Button>
+                          {item.unsupportedReason ? <span tabIndex={0} role="button" aria-disabled="true" aria-label={`Cannot create rule for ${request.request.method} ${label.name}`} className="inline-flex rounded-[5px] focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-4">
+                            <Button variant="ghost-muted" size="icon-action" disabled aria-hidden="true" className="pointer-events-none"><Icon icon={SquareArrowOutUpRight} /></Button>
+                          </span> : <Button variant="ghost-muted" size="icon-action" disabled={openingId !== null} aria-busy={openingId === item.id} aria-label={`Create rule in options for ${request.request.method} ${label.name}`} onClick={() => { void createRule(item) }}>
+                              {openingId === item.id ? <Spinner /> : <Icon icon={SquareArrowOutUpRight} />}
+                            </Button>}
                         </TooltipTrigger>
-                        <TooltipContent>Create rule in options</TooltipContent>
+                        <TooltipContent className="max-w-[min(360px,calc(100vw-24px))] wrap-anywhere">{item.unsupportedReason ?? 'Create rule in options'}</TooltipContent>
                       </Tooltip>
                     </div>
                   </TableCell>
                 </TableRow>
               })}
             </TableBody>
-          </Table> : <Empty className="border"><EmptyHeader><EmptyTitle>{query ? 'No matching requests' : 'Waiting for API requests'}</EmptyTitle>
-            {query && <EmptyDescription>Try another URL or method.</EmptyDescription>}
+          </Table> : <Empty className="border"><EmptyHeader>
+            <EmptyMedia variant="icon"><Icon icon={query ? Search : hiddenUnsupported ? Ban : Radio} /></EmptyMedia>
+            <EmptyTitle>{query ? 'No matching requests' : hiddenUnsupported ? 'No supported requests' : 'Waiting for API requests'}</EmptyTitle>
+            {hiddenUnsupported > 0 && <EmptyDescription>{hiddenUnsupported} unsupported {hiddenUnsupported === 1 ? 'request is' : 'requests are'} hidden.</EmptyDescription>}
           </EmptyHeader></Empty>}
         </section>
       </main>
