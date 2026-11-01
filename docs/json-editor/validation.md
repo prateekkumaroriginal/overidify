@@ -4,17 +4,21 @@
 
 CodeMirror provides text editing and the document history shared by edits and Format. The JSON parser checks strict JSON syntax and formatting safety. Tree editing and its saved mode preference have been removed.
 
-Format rejects duplicate keys and numbers whose decimal value cannot survive the editor's numeric representation. Bodies over 1,000,000 UTF-8 bytes or nesting beyond 100 levels remain editable and saveable with formatting unavailable and an explanation.
+Format applies whitespace edits to the source, preserving duplicate keys and numeric spellings without reserializing values. Bodies over 1,000,000 UTF-8 bytes or nesting beyond 100 levels remain editable and saveable with formatting unavailable and an explanation.
 
 The saved body remains a string. The editor bundle loads when the Network Rule body editor is opened.
 
 ## Tree removal validation
 
-- All 83 unit tests pass, including formatting safety, escaped control characters, exact-text undo/redo, and failed-format preservation.
+- All 120 unit tests pass after merging current main, including formatting safety, escaped control characters, exact-text undo/redo, and failed-format preservation.
 - Lint, application typechecking, and the production build pass.
+- All 47 browser tests and E2E typechecking pass on the merged branch after the review fixes.
+- Sol-loop approved the final behavior after two rounds. The fixes preserve Ctrl+Enter Save and remove obsolete formatting restrictions for duplicate keys and numeric spellings.
+- A focused production-extension check verified captured drafts, exact captured-text saving, inline and expanded Ctrl+Enter, source-preserving Format/Undo, focus restoration, and invalid JSON saving without page errors.
 - A one-time check against the built extension verified removal of both mode tabs, ignoring an old Tree preference, exact-text saving, Format, toolbar and keyboard undo, redo, search, inline and expanded editing, focus restoration, Enter and Escape, and saving invalid JSON without blocking.
 - Desktop and 390-pixel mobile screenshots were inspected. The mobile page had no horizontal overflow, and no page errors occurred.
 - Temporary scripts, screenshots, and the isolated browser profile under `.scratch/verification/remove-tree/` were removed after verification.
+- The additional review verification script and isolated profile under `.scratch/verification/sol-loop/` were removed after verification.
 
 ## Original dual-mode validation, historical
 

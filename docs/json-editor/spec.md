@@ -12,7 +12,7 @@ Provide a code editor for the Network Rule response body. Keep the other rule fi
 - View changes do not create body undo steps.
 - Text edits update the body directly. An explicit Format action may rewrite its formatting.
 - Format must preserve JSON data faithfully. If that cannot be guaranteed for a body, disable Format and explain why. Keep editing and exact-text saving available.
-- Evaluate large numbers, duplicate object keys, and other representations that an editor may normalize or discard. Parsing successfully does not by itself establish that a transformation is safe.
+- Format changes whitespace around source tokens, preserving numeric spellings, duplicate object keys, and their order.
 - Do not repair invalid JSON automatically.
 
 ## Code editor
@@ -45,7 +45,7 @@ Target comfortable editing for bodies up to 1 MB. Preserve larger bodies and all
 These are engineering constraints, not additional user decisions. See the validation notes for the implementation and measured results:
 
 - Select editor dependencies that work in the extension environment and expose the required editing, diagnostics, and shared-history capabilities.
-- Verify transformation safety before enabling Format. Account for duplicate keys and numeric precision rather than relying on plain parse-and-serialize behavior.
+- Apply formatting edits to the source text without parsing and reserializing values, so duplicate keys and numeric spellings survive.
 - Reuse the application's response content-type interpretation for diagnostics. Determine valid body capabilities independently from whether the content type labels the response JSON.
 - Define formatting defaults, diagnostic update scheduling, history grouping, and measurable performance checks. Verify behavior with representative nested responses up to the agreed size target.
 - Check editor keyboard handling against the existing form shortcuts. Enter in the editor must remain usable, and editor controls must not accidentally submit or navigate away from the rule.
@@ -56,7 +56,7 @@ These are engineering constraints, not additional user decisions. See the valida
 Retain regression coverage at public application boundaries for meaningful behavior:
 
 - Exact text survives view changes and saving, including invalid and non-JSON bodies.
-- Availability decisions reject invalid or unsafe transformations while keeping saving available.
+- Availability decisions reject invalid JSON and resource-limited formatting while keeping saving available.
 - Text edits and Format share undo/redo with exact-text restoration.
 - Larger bodies remain preserved and saveable when features are restricted.
 - Transformation failures retain the body rather than replacing it with partial output.

@@ -8,18 +8,6 @@ export type BodyAnalysis = {
 }
 const limitedReason = 'Format is unavailable for bodies over 1 MB or with very deep nesting. Editing and saving remain available.'
 
-// Compare decimal values without rounding them through a JavaScript number.
-function decimalIdentity(text: string): string {
-  const [mantissa, exponent = '0'] = text.toLowerCase().split('e')
-  const [whole, fraction = ''] = mantissa.split('.')
-  let digits = (whole + fraction).replace(/^-/, '').replace(/^0+/, '') || '0'
-  let power = BigInt(exponent) - BigInt(fraction.length)
-  const trimmed = digits.replace(/0+$/, '') || '0'
-  power += BigInt(digits.length - trimmed.length)
-  digits = trimmed
-  return `${text.startsWith('-') ? '-' : ''}${digits}:${digits === '0' ? 0n : power}`
-}
-
 export function analyzeResponseBody(body: string): BodyAnalysis {
   if (body.length > 1_000_000 || new TextEncoder().encode(body).length > 1_000_000) return { available: false, reason: limitedReason }
   const scanner = createScanner(body, true)
@@ -43,32 +31,12 @@ export function analyzeResponseBody(body: string): BodyAnalysis {
     return { available: false, reason: `Format needs valid JSON. ${message} at line ${line}, column ${column}.`,
       error: { message, offset, length: first?.length ?? 0, line, column } }
   }
-  const pending = [root]
-  while (pending.length) {
-    const node = pending.pop()!
-    if (node.type === 'object') {
-      const keys = new Set<string>()
-      for (const property of node.children ?? []) {
-        const key = property.children![0].value as string
-        if (keys.has(key)) return { available: false, reason: 'Format is unavailable because this body has duplicate object keys. Editing and saving preserve the exact text.' }
-        keys.add(key)
-      }
-    }
-    if (node.type === 'number') {
-      const token = body.slice(node.offset, node.offset + node.length)
-      // Bound exponent parsing too, for adversarial numeric literals.
-      const exponent = token.toLowerCase().split('e')[1] ?? ''
-      if (!Number.isFinite(node.value) || exponent.length > 10 || decimalIdentity(token) !== decimalIdentity(JSON.stringify(node.value))) {
-        return { available: false, reason: 'Format is unavailable because a number cannot be represented faithfully. Editing and saving preserve the exact text.' }
-      }
-    }
-    if (node.children) for (const child of node.children) pending.push(child)
-  }
   return { available: true, reason: null }
 }
 
 export function formatResponseBody(body: string): string {
   const analysis = analyzeResponseBody(body)
   if (!analysis.available) throw new Error(analysis.reason!)
+  // Apply whitespace edits to the source, preserving duplicate keys and numeric tokens.
   return applyEdits(body, format(body, undefined, { insertSpaces: true, tabSize: 2, eol: '\n' }))
 }

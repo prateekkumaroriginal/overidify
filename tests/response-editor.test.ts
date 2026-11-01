@@ -2,8 +2,8 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { analyzeResponseBody, formatResponseBody } from '../src/lib/response-editor.ts'
 
-test('format availability rejects invalid or lossy JSON', () => {
-  for (const body of ['{"id":', '{"id":1,"id":2}', '{"id":9007199254740993}', '1e400', '0.10000000000000001', '-0', '{"id":1,"\\u0069d":2}', '[1,]', '/*comment*/1', '']) {
+test('format availability rejects invalid JSON', () => {
+  for (const body of ['{"id":', '[1,]', '/*comment*/1', '']) {
     const result = analyzeResponseBody(body)
     assert.equal(result.available, false, body)
     assert.ok(result.reason, body)
@@ -46,11 +46,10 @@ test('large and deeply nested bodies remain intact when formatting is restricted
   }
 })
 
-test('formatting preserves numeric data and unsafe input cannot replace the current document', () => {
+test('formatting preserves numeric spellings and duplicate keys without parsing and reserializing values', () => {
   assert.equal(formatResponseBody('{"count":1.0,"small":1e-3}'), '{\n  "count": 1.0,\n  "small": 1e-3\n}')
-  for (const body of ['{"a":1,"a":2}', '{"n":9007199254740993}', '{"a":']) {
-    assert.throws(() => formatResponseBody(body))
-  }
+  assert.equal(formatResponseBody('{"a":9007199254740993,"a":-0,"small":0.10000000000000001,"large":1e400}'),
+    '{\n  "a": 9007199254740993,\n  "a": -0,\n  "small": 0.10000000000000001,\n  "large": 1e400\n}')
 })
 
 test('formatting preserves escaped control characters in strings and property names', () => {

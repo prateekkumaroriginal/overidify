@@ -20,7 +20,8 @@ export function responseCodeExtensions() {
       { tag: tags.invalid, color: 'var(--destructive)' },
     ])),
     language.of(json()), editable.of(EditorView.editable.of(true)),
-    keymap.of([...historyKeymap, ...searchKeymap, ...foldKeymap, indentWithTab, ...defaultKeymap]),
+    // Leave Ctrl+Enter to the rule form's Save shortcut.
+    keymap.of([...historyKeymap, ...searchKeymap, ...foldKeymap, indentWithTab, ...defaultKeymap.filter(binding => binding.key !== 'Mod-Enter')]),
     EditorView.contentAttributes.of({ 'aria-label': 'Response body', spellcheck: 'false' }),
     EditorView.theme({
       '&': { backgroundColor: 'var(--field)', color: 'var(--foreground)', fontSize: '12px' },
