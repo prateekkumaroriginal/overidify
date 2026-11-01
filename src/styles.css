@@ -273,12 +273,8 @@ button, input, select, textarea, code, kbd, samp, pre {
   min-height: 220px;
   overflow: hidden;
 }
-.response-body-editor[data-expanded='true'] .cm-editor,
-.response-body-editor[data-expanded='true'] .response-tree {
+.response-body-editor[data-expanded='true'] .cm-editor {
   height: min(65dvh, 720px);
-}
-.response-body-editor .response-tree {
-  height: 340px;
 }
 .response-body-editor .cm-content,
 .response-body-editor .cm-gutters,

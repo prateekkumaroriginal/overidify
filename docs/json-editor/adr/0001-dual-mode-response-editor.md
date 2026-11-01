@@ -1,6 +1,6 @@
 # ADR 0001: Code and Tree editing for response bodies
 
-Status: accepted through design interview answers 1–12.
+Status: historical. Tree editing was subsequently removed at the user's request. The [current specification](../spec.md) describes the code editor that remains. The original decision below records the design interview answers 1–12.
 
 ## Context
 

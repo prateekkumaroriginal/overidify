@@ -2,13 +2,23 @@
 
 ## Implementation
 
-CodeMirror provides Code editing and the document history shared by Code, Tree, and Format. The JSON parser checks strict JSON syntax and transformation safety before structured operations. Tree edits handle object properties, array items and order, scalar values, and root types.
+CodeMirror provides text editing and the document history shared by edits and Format. The JSON parser checks strict JSON syntax and formatting safety. Tree editing and its saved mode preference have been removed.
 
-Tree and Format reject duplicate keys and numbers whose decimal value cannot survive the editor's numeric representation. Bodies over 1,000,000 UTF-8 bytes or nesting beyond 100 levels stay in Code with an explanation. Tree branches render at most 100 children initially, with controls to show more.
+Format rejects duplicate keys and numbers whose decimal value cannot survive the editor's numeric representation. Bodies over 1,000,000 UTF-8 bytes or nesting beyond 100 levels remain editable and saveable with formatting unavailable and an explanation.
 
-The saved body remains a string. Mode preference uses local browser storage independently from rule storage and export. The editor bundle loads when the Network Rule body editor is opened.
+The saved body remains a string. The editor bundle loads when the Network Rule body editor is opened.
 
-## Completed checks
+## Tree removal validation
+
+- All 83 unit tests pass, including formatting safety, escaped control characters, exact-text undo/redo, and failed-format preservation.
+- Lint, application typechecking, and the production build pass.
+- A one-time check against the built extension verified removal of both mode tabs, ignoring an old Tree preference, exact-text saving, Format, toolbar and keyboard undo, redo, search, inline and expanded editing, focus restoration, Enter and Escape, and saving invalid JSON without blocking.
+- Desktop and 390-pixel mobile screenshots were inspected. The mobile page had no horizontal overflow, and no page errors occurred.
+- Temporary scripts, screenshots, and the isolated browser profile under `.scratch/verification/remove-tree/` were removed after verification.
+
+## Original dual-mode validation, historical
+
+The results below describe the original implementation before Tree editing was removed.
 
 - Focused regression tests cover invalid and unsafe JSON, tree edits, exact-text history restoration, failed transformations, size and depth restrictions, formatting, and mode preference persistence and failure handling.
 - Typechecking and lint pass.
