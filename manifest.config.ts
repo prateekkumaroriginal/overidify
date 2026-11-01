@@ -16,6 +16,7 @@ export default defineManifest({
   icons,
   permissions: ['storage', 'tabs', 'webNavigation', 'declarativeNetRequest', 'declarativeNetRequestWithHostAccess', 'offscreen'],
   host_permissions: ['<all_urls>'],
+  devtools_page: 'devtools.html',
   action: {
     default_icon: icons,
     default_title: 'Overidify',

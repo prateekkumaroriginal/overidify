@@ -120,7 +120,6 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
                         <Button variant="destructive-ghost" size="icon-sm" className="invisible mr-[3px] group-hover:visible group-focus-within:visible group-data-[selected=true]:visible"
                           type="button"
                           aria-label={`Delete option ${option.name || 'Untitled'}`}
-                          title="Delete option"
                           onClick={() => deleteOption(option.id)}
                         ><Icon icon={Trash2} /></Button>
                       )}
