@@ -267,6 +267,15 @@ button, input, select, textarea, code, kbd, samp, pre {
 .response-body-editor {
   font-weight: 400;
 }
+/* Chrome can move the selection into a long editable line when an adjacent
+   empty page gutter is clicked. Keep those gutters outside text selection. */
+body:has(.response-body-editor) {
+  user-select: none;
+}
+body:has(.response-body-editor) :is(input, textarea, h1, h2, h3, p, a, span, label:not([data-slot])),
+.response-body-editor .cm-content {
+  user-select: text;
+}
 .response-body-editor .cm-editor {
   height: 340px;
   resize: vertical;
@@ -277,7 +286,22 @@ button, input, select, textarea, code, kbd, samp, pre {
   height: min(65dvh, 720px);
 }
 .response-body-editor .cm-content,
-.response-body-editor .cm-gutters,
-.response-body-editor .cm-search input {
+.response-body-editor .cm-gutters {
   font-family: ui-monospace, monospace;
+}
+
+.response-code-frame:focus-within {
+  border-color: color-mix(in srgb, var(--foreground) 40%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--foreground) 8%, transparent);
+}
+
+.response-code-frame:has(+ .response-search-host .response-search-panel) {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.response-search-host .cm-panels {
+  position: static;
+  border: 0;
+  background: transparent;
 }
