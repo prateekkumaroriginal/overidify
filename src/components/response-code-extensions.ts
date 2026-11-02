@@ -8,10 +8,10 @@ import { search, searchKeymap } from '@codemirror/search'
 import { lintGutter } from '@codemirror/lint'
 
 export function responseCodeExtensions() {
-  const language = new Compartment(), editable = new Compartment()
-  return { language, editable, extensions: [
+  const language = new Compartment(), editable = new Compartment(), panelContainer = new Compartment()
+  return { language, editable, panelContainer, extensions: [
     lineNumbers(), drawSelection(), highlightActiveLine(), highlightActiveLineGutter(),
-    bracketMatching(), indentOnInput(), indentUnit.of('  '), foldGutter(), lintGutter(), search(),
+    bracketMatching(), indentOnInput(), indentUnit.of('  '), foldGutter(), lintGutter(),
     syntaxHighlighting(HighlightStyle.define([
       { tag: tags.string, color: 'var(--syntax-string)' },
       { tag: tags.propertyName, color: 'var(--syntax-key)' },
@@ -20,20 +20,20 @@ export function responseCodeExtensions() {
       { tag: tags.invalid, color: 'var(--destructive)' },
     ])),
     language.of(json()), editable.of(EditorView.editable.of(true)),
+    panelContainer.of(search()),
     // Leave Ctrl+Enter to the rule form's Save shortcut.
     keymap.of([...historyKeymap, ...searchKeymap, ...foldKeymap, indentWithTab, ...defaultKeymap.filter(binding => binding.key !== 'Mod-Enter')]),
     EditorView.contentAttributes.of({ 'aria-label': 'Response body', spellcheck: 'false' }),
     EditorView.theme({
       '&': { backgroundColor: 'var(--field)', color: 'var(--foreground)', fontSize: '12px' },
-      '&.cm-focused': { outline: '2px solid var(--ring)', outlineOffset: '-2px' },
+      '&.cm-focused': { outline: 'none' },
       '.cm-scroller': { fontFamily: 'ui-monospace, monospace', overflow: 'auto' },
-      '.cm-content': { minHeight: '300px', caretColor: 'var(--primary)' },
+      '.cm-content': { minHeight: '300px', caretColor: 'var(--primary)', outline: 'none' },
       '.cm-gutters': { backgroundColor: 'var(--card)', color: 'var(--muted-foreground)', borderColor: 'var(--border)' },
       '.cm-activeLine, .cm-activeLineGutter': { backgroundColor: 'var(--selection)' },
       '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': { backgroundColor: 'var(--accent)' },
       '.cm-cursor': { borderLeftColor: 'var(--primary)' },
       '.cm-panels, .cm-tooltip': { backgroundColor: 'var(--card)', color: 'var(--foreground)', borderColor: 'var(--border)' },
-      '.cm-search input, .cm-search button, .cm-search select': { background: 'var(--secondary)', color: 'var(--foreground)', border: '1px solid var(--border)', borderRadius: '4px' },
       '.cm-foldPlaceholder': { backgroundColor: 'var(--secondary)', color: 'var(--foreground)', borderColor: 'var(--border)' },
     }, { dark: true }),
   ] }
