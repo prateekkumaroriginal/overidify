@@ -272,7 +272,7 @@ button, input, select, textarea, code, kbd, samp, pre {
 body:has(.response-body-editor) {
   user-select: none;
 }
-body:has(.response-body-editor) :is(input, textarea, h1, h2, h3, p),
+body:has(.response-body-editor) :is(input, textarea, h1, h2, h3, p, a, span, label:not([data-slot])),
 .response-body-editor .cm-content {
   user-select: text;
 }
