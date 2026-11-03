@@ -6,6 +6,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { build, defineConfig } from 'vite'
 
 import manifest from './manifest.config'
+import { favicon } from './scripts/favicon'
 
 // MAIN-world interception must install synchronously at document_start.
 // A shared-chunk import loader can miss the page's first inline API calls,
@@ -42,7 +43,7 @@ export default defineConfig({
       devtoolsPanel: fileURLToPath(new URL('./devtools-panel.html', import.meta.url)),
     } },
   },
-  plugins: [react(), tailwindcss(), crx({ manifest }), networkPageBundle()],
+  plugins: [react(), tailwindcss(), crx({ manifest }), networkPageBundle(), favicon()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
