@@ -10,7 +10,9 @@ test('toolbar follows Chrome appearance from options and with extension pages cl
   // Playwright otherwise forces a light media preference on visible pages.
   await driver.emulateMedia({ colorScheme: null })
   await extension.settings.emulateMedia({ colorScheme: null })
-  await driver.locator('#colorSchemeModeSelect').selectOption({ label: 'Dark' })
+  // Chrome can hide this native settings control behind theme layout changes.
+  // Its visibility is not the application behavior exercised by this fixture.
+  await driver.locator('#colorSchemeModeSelect').selectOption({ label: 'Dark' }, { force: true })
   await extension.settings.bringToFront()
   await expect.poll(() => worker.evaluate(() => chrome.storage.session.get('browserIconTheme'))).toEqual({ browserIconTheme: 'dark' })
   try {
@@ -23,7 +25,7 @@ test('toolbar follows Chrome appearance from options and with extension pages cl
     })
     for (const [label, path] of [['Light', light], ['Dark', dark]] as const) {
       await driver.bringToFront()
-      await driver.locator('#colorSchemeModeSelect').selectOption({ label })
+      await driver.locator('#colorSchemeModeSelect').selectOption({ label }, { force: true })
       await extension.settings.bringToFront()
       await expect.poll(() => worker.evaluate(() => Reflect.get(globalThis, 'lastIconPath')?.[128])).toBe(path)
     }
@@ -37,7 +39,7 @@ test('toolbar follows Chrome appearance from options and with extension pages cl
     await website.emulateMedia({ colorScheme: null })
     await website.goto(server.origin)
     await driver.bringToFront()
-    await driver.locator('#colorSchemeModeSelect').selectOption({ label: 'Light' })
+    await driver.locator('#colorSchemeModeSelect').selectOption({ label: 'Light' }, { force: true })
     await website.bringToFront()
     await expect.poll(() => worker.evaluate(() => Reflect.get(globalThis, 'lastIconPath')?.[128])).toBe(light)
   } finally {

@@ -64,7 +64,8 @@ export const test = base.extend<Fixtures>({
     const path = resolve('dist')
     const context = await chromium.launchPersistentContext(profile, {
       channel: 'chromium', headless: true,
-      args: [`--disable-extensions-except=${path}`, `--load-extension=${path}`, '--remote-debugging-port=0', '--remote-allow-origins=devtools://devtools'],
+      executablePath: process.env.OVERIDIFY_CHROME_EXECUTABLE,
+      args: ['--headless=new', `--disable-extensions-except=${path}`, `--load-extension=${path}`, '--remote-debugging-port=0', '--remote-allow-origins=devtools://devtools'],
     })
     try {
       const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker')

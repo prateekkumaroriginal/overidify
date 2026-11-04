@@ -5,6 +5,7 @@ import type { RequestHeaderRule } from '../src/lib/types.ts'
 
 Object.assign(globalThis, {
   chrome: {
+    storage: { session: { get: async () => ({}), set: async () => undefined } },
     declarativeNetRequest: {
       ResourceType: Object.fromEntries([
         'MAIN_FRAME', 'SUB_FRAME', 'STYLESHEET', 'SCRIPT', 'IMAGE', 'FONT',
@@ -13,6 +14,51 @@ Object.assign(globalThis, {
       ].map((type) => [type, type.toLowerCase()])),
     },
   },
+})
+
+test('installed rule versions keep their original Header and Switch snapshots after edits and navigation', async () => {
+  let stored: Record<string, unknown> = {}
+  let installed: chrome.declarativeNetRequest.Rule[] = []
+  Object.assign(chrome.storage.session, {
+    get: async () => structuredClone(stored),
+    set: async (next: Record<string, unknown>) => { stored = structuredClone(next) },
+  })
+  Object.assign(chrome.declarativeNetRequest, {
+    getDynamicRules: async () => [], getSessionRules: async () => installed,
+    updateSessionRules: async (update: chrome.declarativeNetRequest.UpdateRuleOptions) => { installed = update.addRules ?? [] },
+  })
+  const { readHeaderInstallations } = await import('../src/lib/dnr.ts')
+  await syncRequestHeaderSessionRules([localhostRule], [{ id: 42, url: 'http://localhost:4200' }])
+  const oldId = installed[0].id
+  await syncRequestHeaderSessionRules([{ ...localhostRule, name: 'Edited' }], [{ id: 42, url: 'http://localhost:4200' }])
+  assert.notEqual(installed[0].id, oldId)
+  await syncRequestHeaderSessionRules([], [])
+  const versions = await readHeaderInstallations()
+  assert.equal(versions.find(version => version.id === oldId)?.rule.name, 'up50')
+  assert.equal(versions.find(version => version.id === oldId)?.tabId, 42)
+  assert.equal(versions.find(version => version.id !== oldId)?.rule.name, 'Edited')
+})
+
+test('snapshot quota pressure does not prevent header installation or assign a false rule snapshot', async () => {
+  let stored: Record<string, unknown> = {}
+  let applied: chrome.declarativeNetRequest.Rule[] = []
+  Object.assign(chrome.storage.session, {
+    get: async () => stored,
+    set: async (next: { headerExecutionLedger: { entries: unknown[] } }) => {
+      if (next.headerExecutionLedger.entries.length) throw new Error('Snapshot storage quota exceeded')
+      stored = structuredClone(next)
+    },
+  })
+  Object.assign(chrome.declarativeNetRequest, {
+    getDynamicRules: async () => [], getSessionRules: async () => [],
+    updateSessionRules: async (update: chrome.declarativeNetRequest.UpdateRuleOptions) => { applied = update.addRules ?? [] },
+  })
+  await syncRequestHeaderSessionRules([localhostRule], [{ id: 42, url: 'http://localhost:4200' }])
+  assert.equal(applied.length, 1)
+  const { readHeaderInstallations } = await import('../src/lib/dnr.ts')
+  assert.deepEqual(await readHeaderInstallations(), [])
+  // Restore the normal storage boundary for subsequent independent scenarios.
+  Object.assign(chrome.storage.session, { get: async () => ({}), set: async () => undefined })
 })
 
 const { requestHeaderRulesToSessionRules, syncRequestHeaderSessionRules } = await import('../src/lib/dnr.ts')
@@ -93,10 +139,11 @@ test('sync clears dynamic rules and removes page rules when the tab navigates aw
   assert.equal(updates[1].scope, 'session')
   assert.deepEqual(updates[1].options.removeRuleIds, [901])
   assert.equal(sessionRules.length, 1)
+  const installedId = sessionRules[0].id
   assert.deepEqual(dynamicRules, [])
   updates.length = 0
   await syncRequestHeaderSessionRules([localhostRule], [{ id: 1, url: 'https://elsewhere.example.com/' }])
-  assert.deepEqual(updates, [{ scope: 'session', options: { removeRuleIds: [1000], addRules: [] } }])
+  assert.deepEqual(updates, [{ scope: 'session', options: { removeRuleIds: [installedId], addRules: [] } }])
   assert.deepEqual(sessionRules, [])
 })
 

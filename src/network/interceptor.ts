@@ -1,11 +1,47 @@
 import { selectNetworkRule } from '../lib/network-rules'
 import type { NetworkRule } from '../lib/network-rules'
+import { EXECUTION_HISTORY_BYTES } from '../lib/execution-history'
+import type { ExecutionRecord } from '../lib/execution-history'
 
 type PageWindow = Window & typeof globalThis
 const nullBody = (method: string, status: number) => method === 'HEAD' || [204, 205, 304].includes(status)
 
 export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWindow, 'setTimeout' | 'clearTimeout'> = page) {
   let networkRules: NetworkRule[] = []
+  let executionReporter: ((record: ExecutionRecord) => void) | undefined
+  const executionPrefix = Math.random().toString(36).slice(2)
+  let executionSequence = 0
+  function beginExecution(entry: NetworkRule, method: string, url: string, type: string): (error?: unknown, headers?: Headers) => void {
+    const report = executionReporter
+    if (!report) return () => undefined
+    const startedAt = Date.now()
+    // MAIN-world randomUUID requires HTTPS. Recording must also work on the
+    // ordinary HTTP websites supported by Network Rules.
+    const id = `${executionPrefix}:${++executionSequence}`
+    let reported = false
+    return (error?: unknown, responseHeaders?: Headers) => {
+      if (reported) return
+      reported = true
+      try {
+        const record: ExecutionRecord = { id, startedAt, time: startedAt, source: 'interceptor', result: error === undefined ? 'Mocked' : 'Failed',
+          rule: { id: entry.id, kind: 'network-rule', name: entry.name, url: entry.url, headers: entry.headers.map(header => ({ ...header })),
+            requestUrl: entry.requestUrl, method: entry.method, mode: entry.mode, status: entry.status, body: entry.body }, request: { url, method, type } }
+        if (error === undefined) {
+          const headers = responseHeaders ?? new page.Headers(entry.headers.map(({ key, value }) => [key, value]))
+          record.response = { status: entry.status, headers: [...headers].map(([key, value]) => ({ key, value })), body: nullBody(method, entry.status) ? '' : entry.body }
+        } else record.error = error instanceof Error ? error.message : String(error)
+        if (JSON.stringify(record).length * 2 + 128 > EXECUTION_HISTORY_BYTES) {
+          delete record.rule.body
+          record.rule.bodyOmitted = 'Configured body not retained: execution exceeds the history budget.'
+          if (record.response) {
+            delete record.response.body
+            record.response.bodyOmitted = 'Body not retained: execution exceeds the history budget.'
+          }
+        }
+        report(record)
+      } catch { /* Logging must never change the inspected request. */ }
+    }
+  }
   let initialized = false
   let missedSyncRequest = false
   let release: () => void = () => undefined
@@ -108,29 +144,35 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
       selected = selectNetworkRule(networkRules, url, method, page.document.baseURI)
     }
     if (!selected) return Reflect.apply(originalFetch, page, [request])
-    if (signal?.aborted) throw signal.reason
-    if (selected.mode === 'call-server') {
-      // Use the page's native request so credentials, CORS and DNR header rules
-      // still apply. A rejected call is never replaced with a successful mock.
-      const realResponse = await Reflect.apply(originalFetch, page, [request]) as Response
+    const completeExecution = beginExecution(selected, method, url, 'fetch')
+    try {
       if (signal?.aborted) throw signal.reason
-      const response = mockResponse(selected, method, realResponse.url || url, signal)
-      // Finish the real download without retaining its body. Cancelling here
-      // would abort the server request and truncate its DevTools entry.
-      if (realResponse.body) {
-        const reader = realResponse.body.getReader()
-        void (async () => {
-          try { while (!(await reader.read()).done) { /* Discard real bytes. */ } }
-          catch { /* The mock was already returned after receiving headers. */ }
-          finally { reader.releaseLock() }
-        })()
+      if (selected.mode === 'call-server') {
+        // Use the page's native request so credentials, CORS and DNR header rules
+        // still apply. A rejected call is never replaced with a successful mock.
+        const realResponse = await Reflect.apply(originalFetch, page, [request]) as Response
+        if (signal?.aborted) throw signal.reason
+        const response = mockResponse(selected, method, realResponse.url || url, signal)
+        // Finish the real download without retaining its body. Cancelling here
+        // would abort the server request and truncate its DevTools entry.
+        if (realResponse.body) {
+          const reader = realResponse.body.getReader()
+          void (async () => {
+            try { while (!(await reader.read()).done) { /* Discard real bytes. */ } }
+            catch { /* The mock was already returned after receiving headers. */ }
+            finally { reader.releaseLock() }
+          })()
+        }
+        completeExecution(undefined, response.headers)
+        return response
       }
+      // Complete in a task so same-turn cancellation can reject the request,
+      // just as it can before a native fetch has received response headers.
+      await withAbort(new Promise<void>(resolve => timers.setTimeout(resolve, 0)), signal)
+      const response = mockResponse(selected, method, url, signal)
+      completeExecution(undefined, response.headers)
       return response
-    }
-    // Complete in a task so same-turn cancellation can reject the request,
-    // just as it can before a native fetch has received response headers.
-    await withAbort(new Promise<void>(resolve => timers.setTimeout(resolve, 0)), signal)
-    return mockResponse(selected, method, url, signal)
+    } catch (error) { completeExecution(error ?? 'Request failed'); throw error }
   }
 
   function initializeXHR(xhr: XMLHttpRequest): PropertyDescriptorMap {
@@ -145,6 +187,7 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
     let url = ''
     let asynchronous = true
     let entry: NetworkRule | undefined
+    let completeExecution: (error?: unknown, headers?: Headers) => void = () => undefined
     let intercepting = false
     let pending = false
     let finished = false
@@ -172,6 +215,7 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
       finished = true
       pending = false
       failed = true
+      completeExecution(`XHR ${type}`)
       state = 4
       headers = new page.Headers()
       result = null
@@ -211,7 +255,7 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
         // HEADERS_RECEIVED callbacks may still choose a response type or MIME.
         if (phase === 3 || (phase === 4 && (!asynchronous || nullBody(method, entry.status)))) decodeResponse()
         state = phase
-        if (phase === 4) finished = true
+        if (phase === 4) { finished = true; completeExecution(undefined, headers) }
         event('readystatechange')
         if (generation !== version) return
         if (phase === 3) { event('progress', true); if (generation !== version) return }
@@ -273,12 +317,13 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
       let nextHref: string
       try { nextHref = new page.URL(nextUrlText, page.document.baseURI).href }
       catch { return nativeOpen(nextMethodText, nextUrlText, nextAsync, nextUsername, nextPassword) }
-      const previous = { generation, entry, intercepting, pending, finished, sent, failed, result, text,
+      const previous = { generation, entry, completeExecution, intercepting, pending, finished, sent, failed, result, text,
         state, method, url, asynchronous, timer, timeout }
       generation++
       timer = undefined
       timeout = undefined
       entry = undefined
+      completeExecution = () => undefined
       intercepting = false
       pending = false
       finished = false
@@ -292,7 +337,7 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
       asynchronous = nextAsync
       try { nativeOpen(nextMethodText, nextUrlText, nextAsync, nextUsername, nextPassword) }
       catch (error) {
-        ({ generation, entry, intercepting, pending, finished, sent, failed, result, text,
+        ({ generation, entry, completeExecution, intercepting, pending, finished, sent, failed, result, text,
           state, method, url, asynchronous, timer, timeout } = previous)
         throw error
       }
@@ -300,6 +345,7 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
       // the old request's timers, after native validation has succeeded.
       timers.clearTimeout(previous.timer)
       timers.clearTimeout(previous.timeout)
+      if (previous.entry && !previous.finished) previous.completeExecution('XHR reopened before completion')
     } }
 
     function send(body: Document | XMLHttpRequestBodyInit | null | undefined, selected?: NetworkRule) {
@@ -311,12 +357,14 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
       timers.clearTimeout(timeout)
       timeout = undefined
       if (!entry) { nativeSend(body); return }
+      completeExecution = beginExecution(entry, method, url, 'xhr')
       const version = generation
       state = 1
       if (asynchronous) event('loadstart', true)
       if (generation !== version || finished) return
       if (entry.mode === 'call-server') {
         try { nativeSend(body) } catch (error) {
+          completeExecution(error ?? 'XHR send failed')
           if (generation === version) {
             clearTimers()
             intercepting = false
@@ -409,6 +457,7 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
   page.XMLHttpRequest = InterceptedXHR
 
   return {
+    setExecutionReporter(reporter?: (record: ExecutionRecord) => void) { executionReporter = reporter },
     setNetworkRules(next: NetworkRule[]) {
       networkRules = next.map(entry => ({ ...entry, headers: entry.headers.map(header => ({ ...header })) }))
       initialized = true

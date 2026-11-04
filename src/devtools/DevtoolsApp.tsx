@@ -18,6 +18,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../com
 import { Icon } from '../components/Icon'
 import { Brand } from '../components/Brand'
 import { cn } from '../lib/utils'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
+import { ExecutionsPanel } from './ExecutionsPanel'
+import type { ExecutionController, ExecutionWindow } from './executions'
 
 type DisplayPreferences = { rows: 'one' | 'two'; fullPath: boolean; showUnsupported: boolean }
 const preferenceKey = 'overidify:devtools-display:v1'
@@ -30,7 +33,7 @@ function readDisplayPreferences(): DisplayPreferences {
   } catch { return { rows: 'two', fullPath: false, showUnsupported: false } }
 }
 
-export function DevtoolsApp() {
+function RequestsPanel() {
   const [requests, setRequests] = useState<CapturedRequest[]>([])
   const [retainedBodyBytes, setRetainedBodyBytes] = useState(0)
   const [search, setSearch] = useState('')
@@ -121,11 +124,7 @@ export function DevtoolsApp() {
 
   return (
     <TooltipProvider delayDuration={tooltipDelayDuration}>
-      <main className="mx-auto flex h-dvh min-w-0 max-w-[1240px] flex-col gap-5 p-5 mobile:p-4">
-        <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b pb-4">
-          <Brand href="options.html" openInTab />
-          <Button variant="outline" onClick={() => { void chrome.runtime.openOptionsPage() }}><Icon icon={Settings} data-icon="inline-start" />Manage rules</Button>
-        </header>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-5">
         <div className="flex shrink-0 flex-wrap items-center gap-3">
           <div className="relative min-w-0 flex-1 basis-40 mobile:basis-full">
             <Icon icon={Search} size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground" />
@@ -240,7 +239,28 @@ export function DevtoolsApp() {
             {hiddenUnsupported > 0 && <EmptyDescription>{hiddenUnsupported} unsupported {hiddenUnsupported === 1 ? 'request is' : 'requests are'} hidden.</EmptyDescription>}
           </EmptyHeader></Empty>}
         </section>
-      </main>
+      </div>
     </TooltipProvider>
   )
+}
+
+
+export function DevtoolsApp() {
+  const [controller, setController] = useState<ExecutionController | undefined>(() => (window as ExecutionWindow).overidifyExecutions)
+  useEffect(() => {
+    const shown = () => setController((window as ExecutionWindow).overidifyExecutions)
+    window.addEventListener('overidify-devtools-shown', shown)
+    return () => window.removeEventListener('overidify-devtools-shown', shown)
+  }, [])
+  return <main className="mx-auto flex h-dvh min-w-0 max-w-[1240px] flex-col gap-4 p-5 mobile:p-4">
+    <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b pb-4">
+      <Brand href="options.html" openInTab />
+      <Button variant="outline" onClick={() => { void chrome.runtime.openOptionsPage() }}><Icon icon={Settings} data-icon="inline-start" />Manage rules</Button>
+    </header>
+    <Tabs defaultValue="requests" className="min-h-0 flex-1 gap-4">
+      <TabsList variant="line" className="shrink-0"><TabsTrigger value="requests">Requests</TabsTrigger><TabsTrigger value="executions">Executions</TabsTrigger></TabsList>
+      <TabsContent value="requests" forceMount className="flex min-h-0 flex-col data-[state=inactive]:hidden"><RequestsPanel /></TabsContent>
+      <TabsContent value="executions" className="flex min-h-0 flex-col"><ExecutionsPanel controller={controller} /></TabsContent>
+    </Tabs>
+  </main>
 }

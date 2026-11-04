@@ -14,7 +14,7 @@ export default defineManifest({
   minimum_chrome_version: '119',
   description: 'Override request headers and mock API responses with website-scoped rules.',
   icons,
-  permissions: ['storage', 'tabs', 'webNavigation', 'declarativeNetRequest', 'declarativeNetRequestWithHostAccess', 'offscreen'],
+  permissions: ['storage', 'tabs', 'webNavigation', 'declarativeNetRequest', 'declarativeNetRequestWithHostAccess', 'declarativeNetRequestFeedback', 'webRequest', 'offscreen'],
   host_permissions: ['<all_urls>'],
   devtools_page: 'devtools.html',
   action: {
