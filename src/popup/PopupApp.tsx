@@ -1,9 +1,10 @@
-import { Settings } from 'lucide-react'
+import { Search, Settings } from 'lucide-react'
 import { startTransition, useEffect, useState } from 'react'
 
 import { BrandIcon } from '../components/Brand'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Button } from '../components/ui/button'
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from '../components/ui/empty'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip'
 import { Icon } from '../components/Icon'
 import { SwitchRuleOptionSelect } from '../components/SwitchRuleOptionSelect'
@@ -194,9 +195,12 @@ export function PopupApp() {
                     ))}
                   </ul>
                 ) : (
-                  <p className="py-4 text-xs text-muted-foreground">
-                    {tab.value === 'all' ? 'No matches for this page' : `No ${tab.label} match this page`}
-                  </p>
+                  <Empty className="min-h-[200px]">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon"><Icon icon={Search} /></EmptyMedia>
+                      <EmptyTitle>{tab.value === 'all' ? 'No matches for this page' : `No ${tab.label} match this page`}</EmptyTitle>
+                    </EmptyHeader>
+                  </Empty>
                 )
               )}
             </TabsContent>
