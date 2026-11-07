@@ -57,3 +57,17 @@ test('a missing source icon fails the build without overwriting the existing fav
   await assert.rejects(buildFixture(root), /icon-48\.png/)
   assert.equal(await readFile(join(root, 'favicon.ico'), 'utf8'), 'existing favicon')
 })
+
+test('dev builds package their own favicon without replacing the normal checkout favicon', async t => {
+  const root = await fixture(t)
+  await mkdir(join(root, 'icons', 'dev'))
+  for (const size of [16, 32, 48, 128]) {
+    await copyFile(new URL(`../icons/dark/icon-${size}.png`, import.meta.url), join(root, 'icons', 'dev', `icon-${size}.png`))
+  }
+  await writeFile(join(root, 'favicon.ico'), 'normal checkout favicon')
+  await build({ root, configFile: false, logLevel: 'silent', plugins: [favicon('icons/dev')] })
+  const packaged = await readFile(join(root, 'dist', 'favicon.ico'))
+  const start = packaged.readUInt32LE(34)
+  assert.deepEqual(packaged.subarray(start, start + packaged.readUInt32LE(30)), await readFile(join(root, 'icons', 'dev', 'icon-32.png')))
+  assert.equal(await readFile(join(root, 'favicon.ico'), 'utf8'), 'normal checkout favicon')
+})

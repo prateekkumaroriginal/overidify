@@ -32,22 +32,39 @@ try {
     return new XMLSerializer().serializeToString(document)
   }, source)
 
-  for (const [theme, artwork] of Object.entries({ fallback: withFallbackKeyline(dark), light: source, dark })) {
-    const directory = theme === 'fallback' ? icons : new URL(`${theme}/`, icons)
-    await mkdir(directory, { recursive: true })
-    for (const size of [16, 32, 48, 128]) {
-      const png = await page.evaluate(async ({ artwork, size }) => {
-        const image = new Image()
-        image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(artwork)}`
-        await image.decode()
-        const canvas = document.createElement('canvas')
-        canvas.width = canvas.height = size
-        const context = canvas.getContext('2d')
-        context.imageSmoothingQuality = 'high'
-        context.drawImage(image, 0, 0, size, size)
-        return canvas.toDataURL('image/png').split(',')[1]
-      }, { artwork, size })
-      await writeFile(new URL(`icon-${size}.png`, directory), Buffer.from(png, 'base64'))
+  for (const variant of ['main', 'dev']) {
+    // Invert the opposite theme so the monochrome body retains contrast.
+    // The violet insert becomes its RGB inverse; transparency is unchanged.
+    const themes = variant === 'dev'
+      ? { fallback: withFallbackKeyline(dark), light: dark, dark: source }
+      : { fallback: withFallbackKeyline(dark), light: source, dark }
+    const root = variant === 'dev' ? new URL('dev/', icons) : icons
+    for (const [theme, artwork] of Object.entries(themes)) {
+      const directory = theme === 'fallback' ? root : new URL(`${theme}/`, root)
+      await mkdir(directory, { recursive: true })
+      for (const size of [16, 32, 48, 128]) {
+        const png = await page.evaluate(async ({ artwork, size, invert }) => {
+          const image = new Image()
+          image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(artwork)}`
+          await image.decode()
+          const canvas = document.createElement('canvas')
+          canvas.width = canvas.height = size
+          const context = canvas.getContext('2d')
+          context.imageSmoothingQuality = 'high'
+          context.drawImage(image, 0, 0, size, size)
+          if (invert) {
+            const pixels = context.getImageData(0, 0, size, size)
+            for (let offset = 0; offset < pixels.data.length; offset += 4) {
+              pixels.data[offset] = 255 - pixels.data[offset]
+              pixels.data[offset + 1] = 255 - pixels.data[offset + 1]
+              pixels.data[offset + 2] = 255 - pixels.data[offset + 2]
+            }
+            context.putImageData(pixels, 0, 0)
+          }
+          return canvas.toDataURL('image/png').split(',')[1]
+        }, { artwork, size, invert: variant === 'dev' })
+        await writeFile(new URL(`icon-${size}.png`, directory), Buffer.from(png, 'base64'))
+      }
     }
   }
 } finally {

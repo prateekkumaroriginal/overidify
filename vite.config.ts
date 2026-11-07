@@ -5,7 +5,8 @@ import react from '@vitejs/plugin-react'
 import { fileURLToPath, URL } from 'node:url'
 import { build, defineConfig } from 'vite'
 
-import manifest from './manifest.config'
+import { createManifest } from './manifest.config'
+import { getBuildIdentity } from './build/identity.ts'
 import { favicon } from './scripts/favicon'
 
 // MAIN-world interception must install synchronously at document_start.
@@ -36,15 +37,36 @@ function networkPageBundle(): CrxPlugin {
   }
 }
 
-export default defineConfig({
-  build: {
-    rollupOptions: { input: {
-      offscreen: fileURLToPath(new URL('./offscreen.html', import.meta.url)),
-      devtoolsPanel: fileURLToPath(new URL('./devtools-panel.html', import.meta.url)),
-    } },
-  },
-  plugins: [react(), tailwindcss(), crx({ manifest }), networkPageBundle(), favicon()],
-  resolve: {
-    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
-  },
+export default defineConfig(({ mode }) => {
+  const identity = getBuildIdentity(mode, fileURLToPath(new URL('.', import.meta.url)))
+  return {
+    define: { __OVERIDIFY_BUILD__: JSON.stringify(identity) },
+    build: {
+      rollupOptions: { input: {
+        offscreen: fileURLToPath(new URL('./offscreen.html', import.meta.url)),
+        devtoolsPanel: fileURLToPath(new URL('./devtools-panel.html', import.meta.url)),
+      } },
+    },
+    plugins: [
+      react(), tailwindcss(),
+      {
+        name: 'overidify-build-identity',
+        transformIndexHtml: {
+          order: 'pre',
+          handler(html) {
+            if (!identity.worktree) return html
+            const title = identity.name.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+            return html.replaceAll('/icons/', `/${identity.iconRoot}/`).replace('<title>Overidify', () => `<title>${title}`)
+          },
+        },
+      },
+      crx({ manifest: createManifest(identity) }), networkPageBundle(), favicon(identity.iconRoot),
+    ],
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
+        '@build-icons': fileURLToPath(new URL(`./${identity.iconRoot}`, import.meta.url)),
+      },
+    },
+  }
 })

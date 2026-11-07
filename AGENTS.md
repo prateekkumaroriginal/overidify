@@ -2,6 +2,10 @@
 
 - Header Rules, Switch Rules, Network Rules website eligibility, and the popup must use the same matching logic.
 
+# Worktree builds
+
+- When working in a worktree, use `pnpm build:dev` to produce a visibly marked development extension in that worktree's `dist/` directory. Load that directory in the development browser.
+
 # Testing
 
 - Keep automated regression tests for meaningful application decisions, transformations, state changes, side effects, and failure handling. Test through public application interfaces below the UI.

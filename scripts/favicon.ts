@@ -2,7 +2,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Plugin } from 'vite'
 
-export function favicon(): Plugin {
+export function favicon(iconRoot = 'icons'): Plugin {
   let root: string
   return {
     name: 'overidify-favicon',
@@ -12,7 +12,7 @@ export function favicon(): Plugin {
     },
     async buildStart() {
       const sizes = [16, 32, 48, 128]
-      const images = await Promise.all(sizes.map(size => readFile(join(root, 'icons', `icon-${size}.png`))))
+      const images = await Promise.all(sizes.map(size => readFile(join(root, iconRoot, `icon-${size}.png`))))
       // ICO directory entries point to the original PNG payloads, preserving transparency.
       const directory = Buffer.alloc(6 + 16 * images.length)
       directory.writeUInt16LE(1, 2)
@@ -29,7 +29,7 @@ export function favicon(): Plugin {
         offset += image.length
       }
       const source = Buffer.concat([directory, ...images])
-      await writeFile(join(root, 'favicon.ico'), source)
+      if (iconRoot === 'icons') await writeFile(join(root, 'favicon.ico'), source)
       this.emitFile({ type: 'asset', fileName: 'favicon.ico', source })
     },
   }
