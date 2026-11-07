@@ -11,7 +11,7 @@ export function createManifest(identity: ReturnType<typeof getBuildIdentity>) {
 
   return defineManifest({
     manifest_version: 3,
-    name: identity.name,
+    name: identity.worktree ? 'Overidify Dev' : identity.name,
     version: '0.6.0',
     minimum_chrome_version: '119',
     description: 'Override request headers and mock API responses with website-scoped rules.',

@@ -21,7 +21,7 @@ That implementation selects development identity through an explicit build:dev c
 
 - `pnpm build:dev` explicitly selects development identity. `pnpm build` keeps normal branding, including nightly and stable packaging. Build selection does not inspect Git or branch names.
 - Build the visible label from the checkout directory name plus a short hash of the canonical checkout path. Keep it stable across rebuilds, commits, and branch switches at the same location. Moving or renaming a checkout can change its label and is outside the existing installation-continuity promise.
-- Compute one build identity and use it for the manifest name, toolbar title and icons, popup, settings, page titles, and DevTools tab.
+- Compute one build identity for the toolbar title and icons, popup, settings, page titles, and DevTools tab. Use the compact manifest name `Overidify Dev` for development installations so Brave's address-bar badge does not reserve space for a long worktree name. Normal builds retain `Overidify`.
 - Both variants replace the current checkout's `dist/`. The most recent build determines the identity at that path. The browser uses the identity embedded in the output; it does not need access to Git.
 - Keep `AGENTS.md` as the worktree workflow instruction. Preserve independent saved rules, manual development-copy activation, and the existing browser arrangement.
 - Rebuild and reload the extension and website tabs after changes. Reopen DevTools for a changed panel label.
