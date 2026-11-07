@@ -1,12 +1,14 @@
 import { installNetworkInterceptors } from './interceptor'
 import { normalizeNetworkRules } from '../lib/network-rules'
 import { NetworkBridgeMessageSchema } from '../lib/settings-messages'
+import type { ExecutionRecord } from '../lib/execution-history'
 
 const page = window as Window & typeof globalThis & { __overidifyNetwork?: boolean }
 if (!page.__overidifyNetwork) {
   page.__overidifyNetwork = true
   const interceptor = installNetworkInterceptors(page)
   let entries = normalizeNetworkRules([])
+  let executionReporter: ((record: ExecutionRecord) => void) | undefined
   const children = new WeakMap<Window, ReturnType<typeof installNetworkInterceptors>>()
   const watched = new WeakSet<Node>()
   const roots = new Set<WeakRef<Document | ShadowRoot>>()
@@ -62,6 +64,7 @@ if (!page.__overidifyNetwork) {
             children.set(child, controller)
           }
           controller?.setNetworkRules(entries)
+          controller?.setExecutionReporter(executionReporter)
           watchDocument(child)
         } catch { /* Opaque/cross-origin frames cannot be called by this parent. */ }
       }
@@ -75,6 +78,11 @@ if (!page.__overidifyNetwork) {
     const message = parsed.data
     if (message.type === 'hello') {
       window.postMessage({ source: 'overidify-network-page', type: 'ready' }, '*')
+    } else if (message.type === 'recording') {
+      const token = message.token
+      executionReporter = token === null ? undefined : record => window.postMessage({ source: 'overidify-network-page', type: 'execution', token, record }, '*')
+      interceptor.setExecutionReporter(executionReporter)
+      applySandboxFrames()
     } else if (message.type === 'config') {
       entries = normalizeNetworkRules(message.entries)
       interceptor.setNetworkRules(entries)

@@ -31,6 +31,7 @@ const tabsListVariants = cva(
       variant: {
         default: "bg-card",
         line: "gap-1 bg-transparent",
+        underline: "gap-5 rounded-none border-0 border-b bg-transparent p-0",
       },
     },
     defaultVariants: {
@@ -68,6 +69,7 @@ function TabsTrigger({
       data-size={size}
       className={cn(
         "inline-flex cursor-pointer items-center justify-center rounded-md border-0 px-4 py-2 text-xs font-normal text-muted-foreground focus:outline-none hover:bg-accent hover:text-foreground data-[state=active]:bg-selection data-[state=active]:text-primary",
+        "group-data-[variant=underline]/tabs-list:relative group-data-[variant=underline]/tabs-list:rounded-none group-data-[variant=underline]/tabs-list:px-0 group-data-[variant=underline]/tabs-list:py-2.5 group-data-[variant=underline]/tabs-list:hover:bg-transparent group-data-[variant=underline]/tabs-list:data-[state=active]:bg-transparent group-data-[variant=underline]/tabs-list:after:absolute group-data-[variant=underline]/tabs-list:after:inset-x-0 group-data-[variant=underline]/tabs-list:after:-bottom-px group-data-[variant=underline]/tabs-list:after:h-0.5 group-data-[variant=underline]/tabs-list:data-[state=active]:after:bg-action",
         size === "sm" && "px-1 py-[7px] text-[11px]",
         className
       )}

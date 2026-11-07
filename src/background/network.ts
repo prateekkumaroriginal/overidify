@@ -2,6 +2,7 @@ import { getNetworkRules, NETWORK_STORAGE_KEY } from '../lib/network-storage'
 import { networkRulesForPage, normalizeNetworkRules } from '../lib/network-rules'
 import { matchesPageDomain } from '../lib/pattern'
 import { NetworkActiveTabsSchema, NetworkBridgeFramesSchema, NetworkAppliedSchema, NetworkRuntimeMessageSchema } from '../lib/settings-messages'
+import { recordingTokenForTab } from './executions'
 
 const pageUrls = new Map<number, string>()
 const possiblyActiveTabs = new Set<number>()
@@ -51,7 +52,7 @@ async function updateTab(tab: chrome.tabs.Tab, priorPatterns: string[]) {
     frame.documentId !== undefined && bridgeFrames.get(tab.id!)?.get(frame.frameId) === frame.documentId)
   const applied = await Promise.all(targets.map(async frame => {
     try {
-      const response = NetworkAppliedSchema.safeParse(await chrome.tabs.sendMessage(tab.id!, { type: 'update-network-rules', entries }, {
+      const response = NetworkAppliedSchema.safeParse(await chrome.tabs.sendMessage(tab.id!, { type: 'update-network-rules', entries, recordingToken: recordingTokenForTab(tab.id) }, {
         frameId: frame.frameId, ...(frame.documentId ? { documentId: frame.documentId } : {}),
       }))
       return response.success && response.data.ok && !response.data.needsReload
@@ -103,7 +104,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (parsed.data.type === 'get-network-rules') {
     // Scope comes from the browser's tab metadata, never a page-supplied URL.
     const url = sender.tab?.id === undefined ? '' : pageUrls.get(sender.tab.id) ?? sender.tab.url ?? ''
-    void getNetworkRules().then(entries => respond({ entries: networkRulesForPage(entries, url) }), () => respond({ entries: [] }))
+    void getNetworkRules().then(entries => respond({ entries: networkRulesForPage(entries, url), recordingToken: recordingTokenForTab(sender.tab?.id) }), () => respond({ entries: [], recordingToken: recordingTokenForTab(sender.tab?.id) }))
     return true
   }
   if (parsed.data.type === 'sync-network-rules') {

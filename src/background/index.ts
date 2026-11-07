@@ -2,6 +2,7 @@ import { syncRequestHeaderSessionRules } from '../lib/dnr'
 import { getRequestHeaderRules, REQUEST_HEADER_STORAGE_KEY } from '../lib/request-header-storage'
 import './network'
 import './action-icon'
+import './executions'
 
 const pageUrls = new Map<number, string>()
 

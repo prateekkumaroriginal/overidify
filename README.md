@@ -11,7 +11,7 @@ Overidify is a Chrome extension for changing request headers and mocking API res
 
 Requires Chrome 119 or newer.
 
-- [Stable ZIP, v0.5.1](https://github.com/prateekkumaroriginal/overidify/releases/download/v0.5.1/overidify-v0.5.1.zip) is the versioned release.
+- [Stable ZIP, v0.6.0](https://github.com/prateekkumaroriginal/overidify/releases/download/v0.6.0/overidify-v0.6.0.zip) is the versioned release.
 - [Nightly ZIP](https://github.com/prateekkumaroriginal/overidify/releases/download/nightly/overidify-nightly.zip) contains the latest changes from `main` that pass CI.
 
 1. Download a ZIP and extract it into a folder you'll keep.
@@ -59,6 +59,20 @@ If Chrome cannot read a captured response body, that capture is also treated as 
 The prefilled Network Rule bypasses the server by default; you can change matching, headers, or server behavior before saving. Capturing and saving do not replay requests. The panel supports text responses, including JSON and XML, and keeps captured API requests in memory, ordered oldest to newest, without a fixed request-count cap. Supported response bodies are read when captured and retained with their original website scope, so navigation keeps them usable. A circular memory indicator opens a popover showing estimated retained text against a 250 MiB budget; this excludes request metadata and browser buffers. **Release response bodies** frees the retained bodies while keeping request rows. Older bodies are also released automatically to stay within the budget, and a body larger than the budget is not retained. Their request rows stay visible with a file-with-X icon explaining the reason on hover or keyboard focus, independently of **Show unsupported**. **Clear** releases the retained history. Bodies Chrome has already discarded cannot be recovered. Cookies and transport headers are omitted from copied responses. Unsaved captured responses stay in temporary extension session storage, so the prefilled form can be reloaded during the same browser session.
 
 Keep one copy of Overidify enabled. If native Network shows Fetch/XHR calls but the Overidify panel stays empty, disable older copies, close and reopen DevTools, then reload the website. Chrome 154 can hide calls from the panel when another extension copy's interceptor appears in their initiator stack.
+
+## Execution history in DevTools
+
+The **Executions** tab inside the Overidify DevTools panel records Header Rules, Switch Rules, and Network Rules for the inspected website tab. Recording starts when DevTools opens and continues while another panel, such as Console, is selected. Reopen DevTools after updating the extension.
+
+Select a rule name to open its inspector. **Changes** shows the returned mock response, **Headers** shows configured Header or Switch changes, **Request** shows captured request details, and **Rule** shows the settings used for that execution. The list and inspector scroll independently. In narrow panels, the inspector replaces the list; close it to return. Later edits do not change old snapshots.
+
+Header and Switch rows say **Rule matched** when Chrome reports a rule occurrence. Confirmation is polled about every 35 seconds. Chrome does not supply a request ID with these reports, so unavailable fields say **Not captured**. The Request inspector offers separate request-header observations for manual inspection; selecting one does not link it to the rule match. Network rows report **Mocked** or an observed **Failed** outcome directly from the interceptor. A request failure does not establish that its Header or Switch Rule failed.
+
+**Pause** stops new logging while rules keep running; already-started executions may finish. **Resume** records future activity without backfilling the paused interval. **Clear** removes history and rejects delayed results from before it was cleared. Reloads and navigation preserve history; closing DevTools ends it.
+
+Execution history and its separate header observations share an estimated **50 MiB** budget. Older records are removed first, with a removal count. Response bodies are retained in full when their execution fits the budget. An oversized body is omitted with an explanation. Values are shown as captured, without automatic masking. Capture is best effort; worker disconnects and missing rule snapshots produce notices.
+
+Network execution reports come from the inspected page's interceptor. Scripts on that page can alter or fabricate these reports; they are debugging information, not authenticated browser evidence.
 
 ## Import and export
 

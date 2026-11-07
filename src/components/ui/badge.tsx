@@ -11,6 +11,7 @@ const badgeVariants = cva(
         default: 'bg-primary text-primary-foreground',
         secondary: 'bg-secondary text-secondary-foreground',
         outline: 'border-border text-foreground',
+        execution: 'shrink-0 gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium text-muted-foreground data-[result=Mocked]:bg-success/8 data-[result=Mocked]:text-success data-[result=Failed]:bg-destructive/10 data-[result=Failed]:text-destructive',
         domain: 'min-w-0 max-w-full border-domain-tag/45 bg-domain-tag/18 px-2.5 font-mono text-[11px] font-normal text-foreground wrap-anywhere',
       },
     },
