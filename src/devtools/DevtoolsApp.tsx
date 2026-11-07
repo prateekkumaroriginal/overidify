@@ -9,8 +9,6 @@ import { Checkbox } from '../components/ui/checkbox'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '../components/ui/empty'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
-import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from '../components/ui/popover'
-import { Progress } from '../components/ui/progress'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { Spinner } from '../components/ui/spinner'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table'
@@ -20,6 +18,7 @@ import { Brand } from '../components/Brand'
 import { cn } from '../lib/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { ExecutionsPanel } from './ExecutionsPanel'
+import { MemoryUsage } from './MemoryUsage'
 import type { ExecutionController, ExecutionWindow } from './executions'
 
 type DisplayPreferences = { rows: 'one' | 'two'; fullPath: boolean; showUnsupported: boolean }
@@ -40,50 +39,8 @@ function RequestsPanel() {
   const [display, setDisplay] = useState(readDisplayPreferences)
   const [openingId, setOpeningId] = useState<string | null>(null)
   const [error, setError] = useState('')
-  const [memoryPopover, setMemoryPopover] = useState<'closed' | 'hover' | 'pinned'>('closed')
-  const memoryOpenTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const memoryCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const restoreMemoryFocus = useRef(false)
   const opening = useRef(false)
   const capture = useRef<ReturnType<typeof observeDevtoolsRequests> | null>(null)
-
-  useEffect(() => () => {
-    if (memoryOpenTimer.current !== null) clearTimeout(memoryOpenTimer.current)
-    if (memoryCloseTimer.current !== null) clearTimeout(memoryCloseTimer.current)
-  }, [])
-
-  function cancelMemoryTimers() {
-    if (memoryOpenTimer.current !== null) clearTimeout(memoryOpenTimer.current)
-    if (memoryCloseTimer.current !== null) clearTimeout(memoryCloseTimer.current)
-    memoryOpenTimer.current = null
-    memoryCloseTimer.current = null
-  }
-
-  function showMemoryOnHover() {
-    cancelMemoryTimers()
-    if (memoryPopover === 'closed') {
-      restoreMemoryFocus.current = false
-      memoryOpenTimer.current = setTimeout(() => {
-        memoryOpenTimer.current = null
-        setMemoryPopover(current => current === 'closed' ? 'hover' : current)
-      }, tooltipDelayDuration)
-    }
-  }
-
-  function scheduleMemoryClose() {
-    cancelMemoryTimers()
-    if (memoryPopover !== 'hover') return
-    memoryCloseTimer.current = setTimeout(() => {
-      memoryCloseTimer.current = null
-      setMemoryPopover(current => current === 'hover' ? 'closed' : current)
-    }, 150)
-  }
-
-  function pinMemoryPopover() {
-    cancelMemoryTimers()
-    restoreMemoryFocus.current = true
-    setMemoryPopover('pinned')
-  }
 
   useEffect(() => {
     const pageUrl = chrome.tabs.get(chrome.devtools.inspectedWindow.tabId).then(tab => tab.url ?? '').catch(() => '')
@@ -120,7 +77,6 @@ function RequestsPanel() {
     .map(item => ({ ...item, unsupportedReason: item.unavailableReason ?? devtoolsRequestUnsupportedReason(item.request) }))
   const visible = display.showUnsupported ? matching : matching.filter(item => !item.unsupportedReason)
   const hiddenUnsupported = matching.length - visible.length
-  const memoryPercent = retainedBodyBytes / DEVTOOLS_BODY_BUDGET_BYTES * 100
 
   return (
     <TooltipProvider delayDuration={tooltipDelayDuration}>
@@ -133,35 +89,9 @@ function RequestsPanel() {
           <div className="flex shrink-0 items-center gap-2">
             <Button variant="outline" onClick={() => capture.current?.refresh()}><Icon icon={RefreshCw} data-icon="inline-start" />Refresh</Button>
             <Button variant="outline" onClick={() => { capture.current?.clear(); setError('') }}><Icon icon={Trash2} data-icon="inline-start" />Clear</Button>
-            <Popover open={memoryPopover !== 'closed'} onOpenChange={open => {
-              if (open) pinMemoryPopover()
-              else { cancelMemoryTimers(); setMemoryPopover('closed') }
-            }}>
-              <PopoverTrigger asChild>
-                <Button variant="ghost-muted" size="icon" aria-label={`Response memory: ${Math.round(memoryPercent)}% used`}
-                  onPointerEnter={event => { if (event.pointerType !== 'touch') showMemoryOnHover() }} onPointerLeave={scheduleMemoryClose}
-                  onClick={event => { event.preventDefault(); pinMemoryPopover() }}>
-                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="-rotate-90">
-                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.2" />
-                    {retainedBodyBytes > 0 && <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" pathLength="100" strokeDasharray="100" strokeDashoffset={100 - memoryPercent} />}
-                  </svg>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" sideOffset={8} collisionPadding={8} className="flex w-80 max-w-[calc(100vw-32px)] flex-col gap-3" aria-labelledby="response-memory-title"
-                onPointerEnter={event => { if (event.pointerType !== 'touch') showMemoryOnHover() }} onPointerLeave={scheduleMemoryClose}
-                onClick={pinMemoryPopover}
-                onOpenAutoFocus={event => { if (!restoreMemoryFocus.current) event.preventDefault() }}
-                onCloseAutoFocus={event => { if (!restoreMemoryFocus.current) event.preventDefault() }}>
-                <PopoverHeader>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <PopoverTitle id="response-memory-title">Response memory</PopoverTitle>
-                    <span className="text-[11px] tabular-nums text-muted-foreground">{Math.round(memoryPercent)}% · {(retainedBodyBytes / 1024 / 1024).toFixed(1)} / {DEVTOOLS_BODY_BUDGET_BYTES / 1024 / 1024} MiB</span>
-                  </div>
-                </PopoverHeader>
-                <Progress className="h-1.5" aria-label="Retained response body memory" value={memoryPercent} />
-                <Button variant="outline" disabled={retainedBodyBytes === 0} onClick={() => { capture.current?.releaseBodies(); setError('') }}><Icon icon={Eraser} data-icon="inline-start" />Release response bodies</Button>
-              </PopoverContent>
-            </Popover>
+            <MemoryUsage bytes={retainedBodyBytes} budget={DEVTOOLS_BODY_BUDGET_BYTES} label="Response memory">
+              <Button variant="outline" disabled={retainedBodyBytes === 0} onClick={() => { capture.current?.releaseBodies(); setError('') }}><Icon icon={Eraser} data-icon="inline-start" />Release response bodies</Button>
+            </MemoryUsage>
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-5">
@@ -252,13 +182,13 @@ export function DevtoolsApp() {
     window.addEventListener('overidify-devtools-shown', shown)
     return () => window.removeEventListener('overidify-devtools-shown', shown)
   }, [])
-  return <main className="mx-auto flex h-dvh min-w-0 max-w-[1240px] flex-col gap-4 p-5 mobile:p-4">
-    <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b pb-4">
+  return <main className="devtools-app mx-auto flex h-dvh min-w-0 max-w-[1240px] flex-col gap-3 overflow-hidden p-5 mobile:p-4">
+    <Tabs defaultValue="requests" className="min-h-0 flex-1 gap-3">
+    <TooltipProvider delayDuration={tooltipDelayDuration}><header className="devtools-header">
       <Brand href="options.html" openInTab />
-      <Button variant="outline" onClick={() => { void chrome.runtime.openOptionsPage() }}><Icon icon={Settings} data-icon="inline-start" />Manage rules</Button>
-    </header>
-    <Tabs defaultValue="requests" className="min-h-0 flex-1 gap-4">
       <TabsList variant="line" className="shrink-0"><TabsTrigger value="requests">Requests</TabsTrigger><TabsTrigger value="executions">Executions</TabsTrigger></TabsList>
+      <Tooltip><TooltipTrigger asChild><Button variant="outline" aria-label="Manage rules" onClick={() => { void chrome.runtime.openOptionsPage() }}><Icon icon={Settings} data-icon="inline-start" /><span className="max-[620px]:sr-only">Manage rules</span></Button></TooltipTrigger><TooltipContent>Manage rules</TooltipContent></Tooltip>
+    </header></TooltipProvider>
       <TabsContent value="requests" forceMount className="flex min-h-0 flex-col data-[state=inactive]:hidden"><RequestsPanel /></TabsContent>
       <TabsContent value="executions" className="flex min-h-0 flex-col"><ExecutionsPanel controller={controller} /></TabsContent>
     </Tabs>

@@ -10,7 +10,9 @@ Implementation checks completed on 2026-11-04.
 - Application and browser-test TypeScript checks, lint, and the production build passed.
 - Standards and spec reviews completed. Fixes cover document-start recording, stale recording configuration, configured bodies on failed executions, delivered header normalization, metadata-budget rejection, and direct source attribution in DNR compilation.
 
-A one-time smoke check opened the native Overidify DevTools panel and recorded a real Network execution in its Executions table. Further UI, inspector, keyboard, and responsive-layout checks were stopped at the user's request. Those checks remain incomplete.
+A one-time smoke check opened the native Overidify DevTools panel and recorded a real Network execution in its Executions table.
+
+UI validation completed on 2026-11-08. The production build, lint, and all 140 unit tests passed. One-time checks exercised the list and inspector at five viewport sizes, independent scrolling, stable row heights, restored focus and scroll positions after closing the inspector, automatic scrollbar gutters, and the absence of native title attributes. Title and result text baselines were also checked at 400, 700, and 1200 pixels wide. Temporary UI verification files were removed after reporting results.
 
 ## Regression boundaries
 

@@ -4,7 +4,7 @@ Design decisions accepted through 2026-11-04. Implementation was authorized with
 
 ## Panel
 
-Add an Executions tab inside the existing Overidify DevTools panel. Keep the Requests tab. Show the execution table beside a side inspector with Changes, Request, and Rule tabs. At narrow widths, place the inspector below the table.
+Add an Executions tab inside the existing Overidify DevTools panel. Keep the Requests tab. Show the execution list beside an inspector with Changes, Request, and Rule tabs. The list and active inspector tab scroll independently. At narrow widths, opening the inspector replaces the list; its close button returns to the list. On wider panels, remember the user's Show/Hide list preference.
 
 Include Header Rules, Switch Rules, and Network Rules. Web Store compatibility is required.
 
@@ -34,7 +34,7 @@ See [the research report](../research/execution-logging.md) for primary sources,
 - Preserve history across reloads and navigation. Manual Clear and closing DevTools clear the history.
 - Use an estimated 50 MiB budget for retained execution history. Remove oldest executions first and show the removal count.
 - Retain complete response bodies when their execution records fit the shared history budget. There is no separate per-body cap. Omit an oversized body with an explicit explanation, retaining the remaining execution details.
-- Keep the selected execution pinned as new rows arrive.
+- Keep the selected execution open as new rows arrive, without pinning its list row or changing row heights.
 - Pause stops logging while rules continue running and existing history remains visible. Resume records future executions without backfilling the paused interval.
 
 ## Boundary behavior
