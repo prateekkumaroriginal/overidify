@@ -101,21 +101,22 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   }
 })
 
-// Observations carry their own browser request identity. The match-history API
+// Each send leg gets an observation identity, since redirects and auth retries
+// can reuse a browser request ID. The match-history API
 // has no shared request ID, so these events must never be joined by time alone.
 function observeTab(tabId: number) {
-  const requests = new Map<string, string>()
+  const requests = new Map<string, { token: string; id: string }>()
   const filter = { urls: ['<all_urls>'], tabId }
   const removals: (() => void)[] = []
   for (const stage of ['onBeforeSendHeaders', 'onSendHeaders'] as const) {
     const observe = (details: chrome.webRequest.OnBeforeSendHeadersDetails | chrome.webRequest.OnSendHeadersDetails) => {
       const token = tokens.get(tabId)
-      if (stage === 'onBeforeSendHeaders' && token && [...subscribers].some(item => item.tabId === tabId && !item.paused)) requests.set(details.requestId, token)
-      const startedToken = requests.get(details.requestId)
+      if (stage === 'onBeforeSendHeaders' && token && [...subscribers].some(item => item.tabId === tabId && !item.paused)) requests.set(details.requestId, { token, id: crypto.randomUUID() })
+      const observation = requests.get(details.requestId)
       if (stage === 'onSendHeaders') requests.delete(details.requestId)
-      if (!startedToken || startedToken !== token) return undefined
+      if (!observation || observation.token !== token) return undefined
       for (const subscriber of subscribers) if (subscriber.tabId === tabId && !subscriber.paused) {
-        send(subscriber, { type: 'request-observation', generation: subscriber.generation, stage, requestId: details.requestId, url: details.url,
+        send(subscriber, { type: 'request-observation', generation: subscriber.generation, stage, observationId: observation.id, requestId: details.requestId, url: details.url,
           method: details.method, headers: details.requestHeaders, time: details.timeStamp })
       }
       return undefined

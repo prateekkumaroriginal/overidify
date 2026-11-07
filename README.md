@@ -11,7 +11,7 @@ Overidify is a Chrome extension for changing request headers and mocking API res
 
 Requires Chrome 119 or newer.
 
-- [Stable ZIP, v0.5.1](https://github.com/prateekkumaroriginal/overidify/releases/download/v0.5.1/overidify-v0.5.1.zip) is the versioned release.
+- [Stable ZIP, v0.6.0](https://github.com/prateekkumaroriginal/overidify/releases/download/v0.6.0/overidify-v0.6.0.zip) is the versioned release.
 - [Nightly ZIP](https://github.com/prateekkumaroriginal/overidify/releases/download/nightly/overidify-nightly.zip) contains the latest changes from `main` that pass CI.
 
 1. Download a ZIP and extract it into a folder you'll keep.
@@ -71,6 +71,8 @@ Header and Switch rows say **Rule matched** when Chrome reports a rule occurrenc
 **Pause** stops new logging while rules keep running; already-started executions may finish. **Resume** records future activity without backfilling the paused interval. **Clear** removes history and rejects delayed results from before it was cleared. Reloads and navigation preserve history; closing DevTools ends it.
 
 Execution history and its separate header observations share an estimated **50 MiB** budget. Older records are removed first, with a removal count. Response bodies are retained in full when their execution fits the budget. An oversized body is omitted with an explanation. Values are shown as captured, without automatic masking. Capture is best effort; worker disconnects and missing rule snapshots produce notices.
+
+Network execution reports come from the inspected page's interceptor. Scripts on that page can alter or fabricate these reports; they are debugging information, not authenticated browser evidence.
 
 ## Import and export
 

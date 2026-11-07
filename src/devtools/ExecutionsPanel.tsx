@@ -23,9 +23,9 @@ const getEmpty = () => empty
 const subscribeEmpty = () => () => undefined
 const ruleType = { 'header-rule': 'Header', 'switch-rule': 'Switch', 'network-rule': 'Network' }
 const resultMeaning = {
-  Mocked: 'The Network rule supplied the response.',
+  Mocked: 'The page interceptor reported a response supplied by the Network rule. Page scripts can alter these reports.',
   Matched: 'Chrome confirmed a Header or Switch rule match. Applied values were not captured.',
-  Failed: 'Network interception reported an error. See the execution details for the reason.',
+  Failed: 'The page interceptor reported an error. Page scripts can alter these reports. See the execution details for the reason.',
 }
 const listPreferenceKey = 'overidify:executions-list:v1'
 const clockTime = (time: number) => new Date(time).toLocaleTimeString(undefined, { hour12: false })

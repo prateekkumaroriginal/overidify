@@ -35,11 +35,11 @@ export function observeExecutions(tabId: number) {
           reader.read(matches, ledger.data.entries)
           state()
         }
-      } else if (message?.type === 'request-observation' && message.generation === generation && typeof message.requestId === 'string' && typeof message.url === 'string' && typeof message.method === 'string') {
+      } else if (message?.type === 'request-observation' && message.generation === generation && typeof message.observationId === 'string' && typeof message.url === 'string' && typeof message.method === 'string') {
         const headers = Array.isArray(message.headers) ? message.headers.flatMap((header: { name?: unknown; value?: unknown }) =>
           typeof header.name === 'string' && typeof header.value === 'string' ? [{ key: header.name, value: header.value }] : []) : []
         const stage = message.stage === 'onBeforeSendHeaders' ? 'before' : 'after'
-        history.observe({ id: message.requestId, url: message.url, method: message.method, [stage]: headers }, stage)
+        history.observe({ id: message.observationId, url: message.url, method: message.method, [stage]: headers }, stage)
       } else if (message?.type === 'notice' && typeof message.message === 'string') history.notice(message.message)
     })
     port.onDisconnect.addListener(() => {
