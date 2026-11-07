@@ -14,6 +14,8 @@ A one-time smoke check opened the native Overidify DevTools panel and recorded a
 
 UI validation completed on 2026-11-08. The production build, lint, and all 140 unit tests passed. One-time checks exercised the list and inspector at five viewport sizes, independent scrolling, stable row heights, restored focus and scroll positions after closing the inspector, automatic scrollbar gutters, and the absence of native title attributes. Title and result text baselines were also checked at 400, 700, and 1200 pixels wide. Temporary UI verification files were removed after reporting results.
 
+Before filing the PR, the branch was merged with the latest main. The production build, lint, application/browser-test TypeScript checks, all 142 unit tests, and all three execution browser regression tests passed on cached Chromium.
+
 ## Regression boundaries
 
 The user requested coverage across all feature areas. Retained regression tests exercise public application interfaces below the UI: execution history and controls, DNR installation/reporting, and the Network interceptor through the extension message boundary. Routine UI checks are separate from the retained regression suite under `AGENTS.md`.
