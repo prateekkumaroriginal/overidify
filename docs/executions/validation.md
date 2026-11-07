@@ -18,6 +18,8 @@ Before filing the PR, the branch was merged with the latest main. The production
 
 Before merging, redirect and authentication send legs were given separate observation identities, with a regression that fails on the original implementation. Build, lint, browser-test TypeScript, all 143 unit tests, and all three execution browser scenarios passed after the fix. A focused Sol recheck approved the change. Network result tooltips and README now explicitly disclose that page scripts can alter or fabricate interceptor reports; these reports are not authenticated browser evidence.
 
+CI exposed a sandbox compatibility test that asserted live updates before interceptor startup completed after reload. The original reload stress failed on its fourth reload and recovered without another reload. Awaiting the existing startup fetch, as the test already does on first navigation, passed 50 reloads. The test received that readiness wait, and all 50 browser regression tests then passed locally.
+
 ## Regression boundaries
 
 The user requested coverage across all feature areas. Retained regression tests exercise public application interfaces below the UI: execution history and controls, DNR installation/reporting, and the Network interceptor through the extension message boundary. Routine UI checks are separate from the retained regression suite under `AGENTS.md`.

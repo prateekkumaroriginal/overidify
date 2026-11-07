@@ -79,6 +79,7 @@ test('script-disabled sandbox frames do not cause persistent reload warnings', a
   expect((await seed([networkRule])).reloadTabIds).toEqual([])
   expect((await fetchResult(site)).status).toBe(201)
   await site.reload()
+  await site.evaluate(() => Reflect.get(window, 'firstFetch'))
   expect((await seed([networkRule])).reloadTabIds).toEqual([])
 })
 
