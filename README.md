@@ -86,6 +86,12 @@ On the Settings home page, **Import**, **Export**, and **Select** sit beside the
 
 Files contain exact saved header values and response bodies. Enabled states are preserved on import. If activation is not confirmed after saving, use **Retry activation** without importing the file again.
 
+## Development builds
+
+Run `pnpm build:dev` when testing a worktree, then load that worktree's `dist/` directory as an unpacked extension. Development builds use inverted icons and the compact name `Overidify Dev` in the extension manager and browser address bar. The toolbar title, popup, settings, page titles, and DevTools tab retain a full label such as `Overidify Dev · feature-test · a91c62ef`. The suffix distinguishes checkouts with the same directory name and stays stable while the checkout remains at the same path.
+
+`pnpm build` keeps the standard Overidify name and icons for normal builds and release packaging. Both commands replace the current checkout's `dist/`; the most recent build determines its identity. Reload the extension and website tabs after rebuilding, and reopen DevTools to refresh its tab label. Keep one development copy enabled at a time. Saved rules belong to each installation; use import/export to transfer them.
+
 ## Things to know
 
 - Network Rules use **Bypass server** by default, which returns your mock without calling the API. **Call server, then replace response** makes the real request first.

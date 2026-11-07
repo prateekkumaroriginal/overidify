@@ -1,7 +1,7 @@
 import { Search, Settings } from 'lucide-react'
 import { startTransition, useEffect, useState } from 'react'
 
-import { BrandIcon } from '../components/Brand'
+import { BrandIcon, BuildLabel } from '../components/Brand'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Button } from '../components/ui/button'
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from '../components/ui/empty'
@@ -126,9 +126,10 @@ export function PopupApp() {
     <main className="w-full p-4">
       <header className="mb-2.5 flex items-center justify-between gap-3">
         <BrandIcon size={24} />
-        <span className="min-w-0 flex-1 truncate text-xs">
-          {getDomainPattern(pageUrl) || pageUrl}
-        </span>
+        <div className="min-w-0 flex-1">
+          <span className="block truncate text-xs">{getDomainPattern(pageUrl) || pageUrl}</span>
+          <BuildLabel />
+        </div>
         <Button variant="ghost" size="icon" asChild>
           <a href="options.html" target="_blank" rel="noreferrer" aria-label="Settings">
             <Icon icon={Settings} />
