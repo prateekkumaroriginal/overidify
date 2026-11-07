@@ -4,7 +4,7 @@
 
 # Worktree builds
 
-- When working in a worktree, use `pnpm build:dev` to produce a visibly marked development extension in that worktree's `dist/` directory. Load that directory in the development browser.
+- When working in a worktree, use `pnpm build:dev` to produce a visibly marked development extension in that worktree's `dist/` directory.
 
 # Testing
 
