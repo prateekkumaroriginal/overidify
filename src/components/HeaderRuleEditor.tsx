@@ -49,7 +49,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
                 <h2>Header rule details</h2>
               </div>
             </div>
-            <div className="mb-[22px] grid gap-5">
+            <div className="mb-[22px] grid grid-cols-[1fr_1.35fr] gap-6 mobile:grid-cols-1 mobile:gap-[17px]">
               <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">
                 Header rule name
                 <Input

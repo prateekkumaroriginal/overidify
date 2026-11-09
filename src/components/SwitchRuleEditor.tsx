@@ -95,7 +95,7 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
           <fieldset className="m-0 min-w-0 border-0 p-0" disabled={busy}>
             <div className="mb-5 rounded-lg border bg-card shadow-panel px-7 pt-[25px] mobile:px-[17px] mobile:pt-5">
               <div className="mb-6 flex items-center justify-between gap-[13px] mobile:flex-wrap mobile:gap-[9px] [&_h2]:text-[13px] [&_h2]:font-bold [&_h2]:tracking-[-0.2px]"><h2>Switch rule details</h2></div>
-              <div className="mb-[22px] grid gap-5">
+              <div className="mb-[22px] grid grid-cols-[1fr_1.35fr] gap-6 mobile:grid-cols-1 mobile:gap-[17px]">
                 <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">Switch rule name
                   <Input {...form.register('name')} placeholder="e.g. Authenticated API" autoFocus required />
                 </label>
