@@ -4,7 +4,7 @@ import { X } from 'lucide-react'
 import { getDomainPatterns, normalizeWebsiteScope, updateWebsiteScope } from '../lib/pattern'
 import type { WebsiteScope } from '../lib/pattern'
 import { Button } from './ui/button'
-import { Field, FieldDescription, FieldError, FieldLabel } from './ui/field'
+import { Field, FieldError, FieldLabel } from './ui/field'
 import { Input } from './ui/input'
 import { Icon } from './Icon'
 
@@ -49,7 +49,7 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
       <FieldLabel htmlFor={id} className="text-[11px] font-semibold">Website domains</FieldLabel>
       <Input id={id} ref={node => { input.current = node; inputRef(node) }} value={text}
         placeholder="Type a URL or domain" autoComplete="off" spellCheck={false}
-        aria-invalid={!!message} aria-describedby={`${id}-help${message ? ` ${id}-error` : ''}`}
+        aria-invalid={!!message} aria-describedby={message ? `${id}-error` : undefined}
         onBlur={onBlur} onChange={event => {
           const next = event.target.value
           setText(next); setInputError('')
@@ -62,7 +62,6 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
             event.preventDefault(); setText(''); setEditing(null); setInputError(''); onPendingChange(false)
           }
         }} />
-      <FieldDescription id={`${id}-help`} className="text-[11px]">Enter to add. Click a domain to edit.</FieldDescription>
       {domains.length > 0 && <ul className="flex flex-col" aria-label="Website domains">
         {domains.map((domain, index) => <li key={`${index}-${domain}`} className="flex min-w-0 items-center justify-between gap-3 py-0.5">
           <Button variant="domain" size="inline" className="-ml-1.5 min-w-0 justify-start" type="button" aria-label={`Edit domain ${domain}`}
