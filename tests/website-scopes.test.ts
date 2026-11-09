@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { matchesPageDomain, normalizeWebsiteScope } from '../src/lib/pattern.ts'
+import { matchesPageDomain, normalizeWebsiteScope, updateWebsiteScope } from '../src/lib/pattern.ts'
 import { createHeaderRuleDraft, createSwitchRuleDraft, headerRuleToDraft, normalizeRequestHeaderRules, switchRuleToDraft } from '../src/lib/request-header-rules.ts'
 import { createNetworkRuleDraft, networkRulesForPage, normalizeNetworkRules } from '../src/lib/network-rules.ts'
 import { HeaderRuleDraftSchema, SwitchRuleDraftSchema } from '../src/lib/request-header-schemas.ts'
@@ -16,6 +16,18 @@ const switchRule = { ...createSwitchRuleDraft(), id: crypto.randomUUID(), kind: 
   url: domains, options: [option], selectedOptionId: option.id }
 const network = { ...createNetworkRuleDraft(), id: crypto.randomUUID(), name: 'Profile', order: 0,
   url: domains, requestUrl: 'https://api.other.test/profile' }
+
+test('domain edits reject cleared text without changing the active scope, while blank additions leave it unchanged', () => {
+  const scope = ['app.example.com', 'staging.example.com']
+  for (const input of ['', '  ']) {
+    assert.throws(() => updateWebsiteScope(scope, input, 0), /Enter a domain or remove/)
+    assert.deepEqual(updateWebsiteScope(scope, input, null), scope)
+  }
+  assert.deepEqual(scope, ['app.example.com', 'staging.example.com'])
+  assert.deepEqual(updateWebsiteScope(scope, 'https://QA.EXAMPLE.COM/path', 0), ['qa.example.com', 'staging.example.com'])
+  assert.throws(() => updateWebsiteScope(scope, 'https://staging.example.com/path', 0), /already in the list/)
+  assert.throws(() => updateWebsiteScope(scope, 'bad host', 0), /Use a website domain/)
+})
 
 test('a domain list matches any member once, retaining wildcard, port and website-only boundaries', () => {
   for (const url of ['http://localhost:4200/path', 'https://deep.app.example.com:8080/path', 'https://example.com/']) {

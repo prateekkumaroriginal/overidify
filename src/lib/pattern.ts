@@ -13,6 +13,20 @@ export function normalizeWebsiteScope(scope: WebsiteScope): WebsiteScope {
   return domains.length === 1 ? domains[0] : domains
 }
 
+export function updateWebsiteScope(scope: WebsiteScope, pattern: string, editing: number | null): WebsiteScope {
+  if (!pattern.trim()) {
+    if (editing !== null) throw new Error('Enter a domain or remove it from the list.')
+    return scope
+  }
+  if (!isValidDomainPattern(pattern)) throw new Error('Use a website domain like localhost:4200, *.example.com, or *.')
+  const domains = getDomainPatterns(scope)
+  const domain = getDomainPattern(pattern)
+  if (domains.some((existing, index) => index !== editing && getDomainPattern(existing) === domain)) {
+    throw new Error('This domain is already in the list.')
+  }
+  return normalizeWebsiteScope(editing === null ? [...domains, domain] : domains.map((existing, index) => index === editing ? domain : existing))
+}
+
 export function getDomainPattern(pattern: string): string {
   return pattern.trim()
     .replace(/^(?:[a-z][a-z\d+.-]*|\*):\/\//i, '')

@@ -1,7 +1,7 @@
 import { useId, useImperativeHandle, useRef, useState } from 'react'
 import type { Ref } from 'react'
 import { X } from 'lucide-react'
-import { getDomainPattern, getDomainPatterns, isValidDomainPattern, normalizeWebsiteScope } from '../lib/pattern'
+import { getDomainPatterns, normalizeWebsiteScope, updateWebsiteScope } from '../lib/pattern'
 import type { WebsiteScope } from '../lib/pattern'
 import { Button } from './ui/button'
 import { Field, FieldDescription, FieldError, FieldLabel } from './ui/field'
@@ -28,19 +28,13 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
   const message = inputError || error
 
   function commit() {
-    if (!text.trim()) return true
-    if (!isValidDomainPattern(text)) {
-      setInputError('Use a website domain like localhost:4200, *.example.com, or *.')
+    try {
+      onChange(updateWebsiteScope(value, text, editing))
+    } catch (error) {
+      setInputError(error instanceof Error ? error.message : 'Enter a valid website domain.')
       input.current?.focus()
       return false
     }
-    const domain = getDomainPattern(text)
-    if (domains.some((existing, index) => index !== editing && getDomainPattern(existing) === domain)) {
-      setInputError('This domain is already in the list.')
-      input.current?.focus()
-      return false
-    }
-    onChange(normalizeWebsiteScope(editing === null ? [...domains, domain] : domains.map((existing, index) => index === editing ? domain : existing)))
     setText('')
     setEditing(null)
     setInputError('')
@@ -59,7 +53,7 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
         onBlur={onBlur} onChange={event => {
           const next = event.target.value
           setText(next); setInputError('')
-          onPendingChange(!!next.trim() && (editing === null || next !== domains[editing]))
+          onPendingChange(editing === null ? !!next.trim() : next !== domains[editing])
         }}
         onKeyDown={event => {
           if (event.nativeEvent.isComposing) return
