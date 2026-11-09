@@ -1,5 +1,5 @@
 import * as z from 'zod/mini'
-import { EntryShape, HeaderPairSchema, requiredName, RuleIdSchema, WebsiteSchema } from './schema-fields.ts'
+import { EntryShape, HeaderPairSchema, PersistedWebsiteScopeSchema, requiredName, RuleIdSchema, WebsiteSchema } from './schema-fields.ts'
 import { requestUrlKey } from './network-matching.ts'
 
 export const NETWORK_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'ANY'] as const
@@ -32,7 +32,7 @@ export const NetworkRuleDraftSchema = z.object({
 })
 export const PersistedNetworkRuleSchema = z.object({
   id: RuleIdSchema,
-  name: z.catch(z.string(), ''), url: z.catch(z.string(), '*'),
+  name: z.catch(z.string(), ''), url: PersistedWebsiteScopeSchema,
   requestUrl: z.catch(z.string(), ''), method: z.catch(NetworkMethodSchema, 'GET'),
   enabled: z.catch(z.boolean(), true), order: z.catch(z.optional(z.number()), undefined),
   mode: z.catch(ModeSchema, 'bypass'), body: z.catch(z.string(), ''),

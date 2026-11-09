@@ -19,6 +19,8 @@ import { useEditorForm } from './useEditorForm'
 import { downloadRules } from '../lib/rule-download'
 import { cn } from '../lib/utils'
 import { headerRowLayout } from './headerRowLayout'
+import { WebsiteDomains } from './WebsiteDomains'
+import type { WebsiteDomainsHandle } from './WebsiteDomains'
 
 type SwitchRuleEditorProps = {
   switchRule?: SwitchRule
@@ -30,8 +32,10 @@ type SwitchRuleEditorProps = {
 type DeletedOption = { option: SwitchRuleOption; index: number; selectedOptionId: string }
 
 export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: SwitchRuleEditorProps) {
-  const { form, formRef, onSubmit, busy, error, success, clearStatus } = useEditorForm({
-    schema: SwitchRuleDraftSchema, initial: () => switchRule ? switchRuleToDraft(switchRule) : createSwitchRuleDraft(),
+  const domainsRef = useRef<WebsiteDomainsHandle>(null)
+  const { form, formRef, onSubmit, busy, unsaved, setPendingInput, error, success, clearStatus } = useEditorForm({
+    schema: SwitchRuleDraftSchema, initial: () => switchRule ? switchRuleToDraft(switchRule) : { ...createSwitchRuleDraft(), url: [] },
+    beforeSubmit: () => domainsRef.current?.commit() ?? true,
     pending, returnRoute: '/switch-rules', successMessage: 'Switch rule saved.',
     onSave: async draft => { const saved = await onSave(draft); setDeletedOption(null); return switchRuleToDraft(saved) },
     onInvalid: errors => {
@@ -85,19 +89,19 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
   return (
     <FormProvider {...form}>
       <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="editor-title">
-        <RuleEditorHeader kind="switch" editing={!!switchRule} ruleName={switchRule?.name} busy={busy} onDelete={onDelete} unsaved={form.formState.isDirty}
+        <RuleEditorHeader kind="switch" editing={!!switchRule} ruleName={switchRule?.name} busy={busy} onDelete={onDelete} unsaved={unsaved}
           onExport={() => { if (switchRule) downloadRules({ requestHeaderRules: [switchRule], networkRules: [] }, 'switch-rule') }} />
         <form ref={formRef} onSubmit={onSubmit} onChange={clearStatus}>
           <fieldset className="m-0 min-w-0 border-0 p-0" disabled={busy}>
             <div className="mb-5 rounded-lg border bg-card shadow-panel px-7 pt-[25px] mobile:px-[17px] mobile:pt-5">
               <div className="mb-6 flex items-center justify-between gap-[13px] mobile:flex-wrap mobile:gap-[9px] [&_h2]:text-[13px] [&_h2]:font-bold [&_h2]:tracking-[-0.2px]"><h2>Switch rule details</h2></div>
-              <div className="mb-[22px] grid grid-cols-[1fr_1.35fr] gap-6 mobile:grid-cols-1 mobile:gap-[17px]">
+              <div className="mb-[22px] grid gap-5">
                 <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">Switch rule name
                   <Input {...form.register('name')} placeholder="e.g. Authenticated API" autoFocus required />
                 </label>
-                <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">Domain
-                  <Input className="font-sans text-[11px]" {...form.register('url')} placeholder="e.g. localhost:4200 or api.example.com" aria-label="Domain" required />
-                </label>
+                <Controller control={form.control} name="url" render={({ field, fieldState }) => (
+                  <WebsiteDomains ref={domainsRef} value={field.value} onChange={field.onChange} onBlur={field.onBlur} onPendingChange={setPendingInput} inputRef={field.ref} error={fieldState.error?.message} />
+                )} />
               </div>
               <div className="flex items-center justify-between gap-5 border-t py-[17px]">
                 <span className="text-[11px] font-semibold">Enabled</span>

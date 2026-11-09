@@ -1,4 +1,7 @@
 import { Check, Plus, X } from 'lucide-react'
+import { useRef } from 'react'
+import { WebsiteDomains } from './WebsiteDomains'
+import type { WebsiteDomainsHandle } from './WebsiteDomains'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Controller, useFieldArray } from 'react-hook-form'
@@ -21,8 +24,10 @@ type HeaderRuleEditorProps = {
 }
 
 export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: HeaderRuleEditorProps) {
-  const { form, formRef, onSubmit, busy, error, success } = useEditorForm({
-    schema: HeaderRuleDraftSchema, initial: () => headerRule ? headerRuleToDraft(headerRule) : createHeaderRuleDraft(),
+  const domainsRef = useRef<WebsiteDomainsHandle>(null)
+  const { form, formRef, onSubmit, busy, unsaved, setPendingInput, error, success } = useEditorForm({
+    schema: HeaderRuleDraftSchema, initial: () => headerRule ? headerRuleToDraft(headerRule) : { ...createHeaderRuleDraft(), url: [] },
+    beforeSubmit: () => domainsRef.current?.commit() ?? true,
     pending, returnRoute: '/header-rules', successMessage: 'Header rule saved.',
     onSave: async draft => headerRuleToDraft(await onSave(draft)),
   })
@@ -31,7 +36,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
 
   return (
     <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="editor-title">
-      <RuleEditorHeader kind="header" editing={!!headerRule} ruleName={headerRule?.name} busy={busy} onDelete={onDelete} unsaved={form.formState.isDirty}
+      <RuleEditorHeader kind="header" editing={!!headerRule} ruleName={headerRule?.name} busy={busy} onDelete={onDelete} unsaved={unsaved}
         onExport={() => { if (headerRule) downloadRules({ requestHeaderRules: [headerRule], networkRules: [] }, 'header-rule') }} />
       <form
         ref={formRef}
@@ -44,7 +49,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
                 <h2>Header rule details</h2>
               </div>
             </div>
-            <div className="mb-[22px] grid grid-cols-[1fr_1.35fr] gap-6 mobile:grid-cols-1 mobile:gap-[17px]">
+            <div className="mb-[22px] grid gap-5">
               <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">
                 Header rule name
                 <Input
@@ -54,16 +59,9 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
                   required
                 />
               </label>
-              <label className="grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1">
-                Domain
-                <Input
-                  className="font-sans text-[11px]"
-                  {...form.register('url')}
-                  placeholder="e.g. localhost:4200 or api.example.com"
-                  aria-label="Domain"
-                  required
-                />
-              </label>
+              <Controller control={form.control} name="url" render={({ field, fieldState }) => (
+                <WebsiteDomains ref={domainsRef} value={field.value} onChange={field.onChange} onBlur={field.onBlur} onPendingChange={setPendingInput} inputRef={field.ref} error={fieldState.error?.message} />
+              )} />
             </div>
             <div className="flex items-center justify-between gap-5 border-t py-[17px]">
               <span className="text-[11px] font-semibold">Enabled</span>
