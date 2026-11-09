@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useRef } from 'react'
 import { Plus, X } from 'lucide-react'
 import { Controller, useFieldArray, useWatch } from 'react-hook-form'
 import { NetworkRuleDraftSchema } from '../lib/network-schemas'
@@ -14,6 +14,8 @@ import { createNetworkRuleDraft, isJsonResponse, NETWORK_METHODS } from '../lib/
 import type { NetworkRule, NetworkRuleDraft } from '../lib/network-rules'
 import { cn } from '../lib/utils'
 import { headerRowLayout } from './headerRowLayout'
+import { WebsiteDomains } from './WebsiteDomains'
+import type { WebsiteDomainsHandle } from './WebsiteDomains'
 
 type Props = {
   networkRule?: NetworkRule
@@ -28,10 +30,12 @@ const fieldClass = 'grid min-w-0 content-start gap-2 text-[11px] font-semibold'
 const panelClass = 'mb-5 rounded-lg border bg-card shadow-panel px-7 py-6 mobile:px-[17px]'
 
 export function NetworkRuleEditor({ networkRule, initialDraft, pending, onSave, onDelete }: Props) {
-  const { form, formRef, onSubmit, busy, error } = useEditorForm({
+  const domainsRef = useRef<WebsiteDomainsHandle>(null)
+  const { form, formRef, onSubmit, busy, unsaved, setPendingInput, error } = useEditorForm({
     schema: NetworkRuleDraftSchema, initial: () => networkRule
       ? { ...networkRule, headers: networkRule.headers.map(header => ({ ...header })) }
-      : initialDraft ?? createNetworkRuleDraft(),
+      : initialDraft ?? { ...createNetworkRuleDraft(), url: [] },
+    beforeSubmit: () => domainsRef.current?.commit() ?? true,
     pending, returnRoute: '/network-rules', onSave,
   })
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'headers' })
@@ -40,7 +44,7 @@ export function NetworkRuleEditor({ networkRule, initialDraft, pending, onSave, 
 
   return (
     <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="network-editor-title">
-      <RuleEditorHeader kind="network" editing={!!networkRule} ruleName={networkRule?.name} busy={busy} titleId="network-editor-title" onDelete={onDelete} unsaved={form.formState.isDirty}
+      <RuleEditorHeader kind="network" editing={!!networkRule} ruleName={networkRule?.name} busy={busy} titleId="network-editor-title" onDelete={onDelete} unsaved={unsaved}
         onExport={() => { if (networkRule) downloadRules({ requestHeaderRules: [], networkRules: [networkRule] }, 'network-rule') }} />
       <form ref={formRef} onSubmit={onSubmit}>
         <fieldset disabled={busy} className="m-0 min-w-0 border-0 p-0">
@@ -48,7 +52,9 @@ export function NetworkRuleEditor({ networkRule, initialDraft, pending, onSave, 
             <h2 className="mb-5 text-[13px] font-bold">Request matching</h2>
             <div className="grid grid-cols-2 gap-5 mobile:grid-cols-1">
               <label className={fieldClass}>Network rule name<Input {...form.register('name')} placeholder="e.g. Featured chats" required autoFocus /></label>
-              <label className={fieldClass}>Website domain<Input {...form.register('url')} placeholder="e.g. localhost:4200" required /></label>
+              <Controller control={form.control} name="url" render={({ field, fieldState }) => (
+                <WebsiteDomains ref={domainsRef} value={field.value} onChange={field.onChange} onBlur={field.onBlur} onPendingChange={setPendingInput} inputRef={field.ref} error={fieldState.error?.message} />
+              )} />
             </div>
             <div className="mt-5 grid grid-cols-[minmax(0,1fr)_auto] gap-4 mobile:grid-cols-1">
               <label className={fieldClass}>Request URL<Input className="font-sans text-[11px]" {...form.register('requestUrl')} placeholder="https://api.example.com/chats?tab=featured" required /></label>

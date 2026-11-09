@@ -1,3 +1,4 @@
+import { getDomainPatterns } from '../lib/pattern'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { Activity, Check, ChevronDown, ChevronRight, ChevronUp, CircleAlert, Copy, PanelLeftClose, PanelLeftOpen, Pause, Play, Search, Trash2, X } from 'lucide-react'
 import { EXECUTION_HISTORY_BYTES, type ExecutionRecord, type ExecutionSnapshot, type RequestObservation } from '../lib/execution-history'
@@ -180,7 +181,7 @@ function ExecutionDetails({ record, observations, onClose }: { record: Execution
         </>}
       </div></TabsContent>
       <TabsContent value="rule" className="execution-content"><div className="flex flex-col gap-5">
-        <section className="flex flex-col gap-3"><h3 className="execution-section-title">Match conditions</h3><dl className="execution-fields"><dt>Website</dt><dd>{record.rule.url}</dd>{record.rule.requestUrl && <><dt>Request URL</dt><dd>{record.rule.requestUrl}</dd></>}{record.rule.method && <><dt>Method</dt><dd>{record.rule.method}</dd></>}</dl></section>
+        <section className="flex flex-col gap-3"><h3 className="execution-section-title">Match conditions</h3><dl className="execution-fields"><dt>Website</dt><dd>{getDomainPatterns(record.rule.url).join(', ')}</dd>{record.rule.requestUrl && <><dt>Request URL</dt><dd>{record.rule.requestUrl}</dd></>}{record.rule.method && <><dt>Method</dt><dd>{record.rule.method}</dd></>}</dl></section>
         {record.rule.kind === 'network-rule' ? <section className="flex flex-col gap-3"><h3 className="execution-section-title">Response settings</h3><dl className="execution-fields"><dt>Origin server</dt><dd>{record.rule.mode === 'bypass' ? 'Bypassed' : 'Called before replacement'}</dd><dt>Status</dt><dd>{record.rule.status ?? 'Not captured'}</dd></dl></section> : <section className="flex flex-col gap-3"><h3 className="execution-section-title">Configured headers</h3><Headers headers={record.rule.headers} /></section>}
         <p className="execution-note">A snapshot from this execution. Later rule edits do not change these settings.</p>
         <details className="execution-snapshot"><summary>View full rule snapshot</summary><pre className="execution-code mt-3">{JSON.stringify(record.rule, null, 2)}</pre></details>

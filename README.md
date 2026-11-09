@@ -36,11 +36,13 @@ Settings opens on the **All** tab, which shows all three rule types together as 
 For example, to add a token to requests from your local app:
 
 1. Under **Header Rules**, click **+ New** and give it a name.
-2. Set **Domain** to `localhost:4200`.
+2. Under **Website domains**, type `localhost:4200` and press Enter.
 3. Add a header named `Authorization` with the value `Bearer your-test-token`.
 4. Click **Save**, then make a request from your app at `http://localhost:4200`.
 
-The domain identifies the website in your address bar. Requests from that website receive the header even when they call another host, such as `https://api.example.com`.
+Add more domains in the same field to share one rule across websites. Each domain appears below as a link. Click it to load and select its text in the input, then press Enter to update it. Only the domain being edited is highlighted. Use its × to remove it immediately. Saving also includes any domain still typed in the input.
+
+The domains identify websites in your address bar. A rule applies when any listed domain matches. Requests from those websites receive the header even when they call another host, such as `https://api.example.com`. Header, Switch, and Network Rules use the same domain list and matching behavior, including in the popup.
 
 Open the extension popup on a website to toggle matching rules or choose a Switch Rule option. Your rules are saved locally in your browser.
 
@@ -85,6 +87,8 @@ On the Settings home page, **Import**, **Export**, and **Select** sit beside the
 - **Import** opens a JSON file picker and review. Overlapping UUIDs get one **Replace** or **Add** choice. Replace updates those rules; Add keeps both as separate copies. Invalid rules can be excluded after you accept a partial import.
 
 Files contain exact saved header values and response bodies. Enabled states are preserved on import. If activation is not confirmed after saving, use **Retry activation** without importing the file again.
+
+Backups containing a domain list use export format version 2 and require an extension version with multi-domain support. Single-domain backups retain format version 1, and both formats can be imported here.
 
 ## Development builds
 

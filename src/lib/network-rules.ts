@@ -1,4 +1,4 @@
-import { getDomainPattern, matchesPageDomain } from './pattern.ts'
+import { normalizeWebsiteScope, matchesPageDomain } from './pattern.ts'
 import type * as z from 'zod/mini'
 import { NetworkRuleDraftSchema, PersistedNetworkRuleSchema } from './network-schemas.ts'
 import type { NetworkMethodSchema, NetworkRuleSchema } from './network-schemas.ts'
@@ -59,7 +59,7 @@ export function normalizeNetworkRules(input: unknown): NetworkRule[] {
     if (!parsed.success) return []
     const item = parsed.data
     const entry: NetworkRule = {
-      ...item, name: item.name.trim(), url: getDomainPattern(item.url), requestUrl: item.requestUrl.trim(),
+      ...item, name: item.name.trim(), url: normalizeWebsiteScope(item.url), requestUrl: item.requestUrl.trim(),
       order: item.order ?? index, headers: cleanResponseHeaders(item.headers),
     }
     // Invalid persisted entries remain editable, but can never intercept.
