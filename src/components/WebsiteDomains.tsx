@@ -1,12 +1,14 @@
 import { useId, useImperativeHandle, useRef, useState } from 'react'
 import type { ComponentProps, Ref } from 'react'
-import { X } from 'lucide-react'
-import { getDomainPatterns, normalizeWebsiteScope, updateWebsiteScope } from '../lib/pattern'
+import { CircleHelp, X } from 'lucide-react'
+import { getDomainPatterns, updateWebsiteScope } from '../lib/pattern'
 import type { WebsiteScope } from '../lib/pattern'
+import { removeWebsiteDomain } from '../lib/website-domain-draft'
 import { Button } from './ui/button'
 import { Field, FieldError, FieldLabel } from './ui/field'
 import { Input } from './ui/input'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 import { Icon } from './Icon'
 
 export type WebsiteDomainsHandle = { commit: () => boolean }
@@ -24,24 +26,30 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
   const id = useId()
   const input = useRef<HTMLInputElement>(null)
   const managerInput = useRef<HTMLInputElement>(null)
-  const [open, setOpen] = useState(false)
-  const [text, setText] = useState('')
-  const [editing, setEditing] = useState<number | null>(null)
-  const [inputError, setInputError] = useState('')
   const domains = getDomainPatterns(value)
+  const [open, setOpen] = useState(false)
+  const [listMode, setListMode] = useState(domains.length > 1)
+  const [text, setText] = useState(domains.length === 1 ? domains[0] : '')
+  const [editing, setEditing] = useState<number | null>(domains.length === 1 ? 0 : null)
+  const [inputError, setInputError] = useState('')
   const message = inputError || error
+  const showManage = domains.length > 0 && (listMode || domains.length > 1)
 
-  function commit() {
+  function commit(asList = false) {
     try {
-      onChange(updateWebsiteScope(value, text, editing))
+      const next = updateWebsiteScope(value, text, editing)
+      const nextDomains = getDomainPatterns(next)
+      const nextListMode = nextDomains.length > 0 && (asList || listMode || nextDomains.length > 1)
+      onChange(next)
+      setListMode(nextListMode)
+      setText(!nextListMode && nextDomains.length === 1 ? nextDomains[0] : '')
+      setEditing(!nextListMode && nextDomains.length === 1 ? 0 : null)
     } catch (error) {
       setInputError(error instanceof Error ? error.message : 'Enter a valid website domain.')
       const activeInput = open ? managerInput.current : input.current
       activeInput?.focus()
       return false
     }
-    setText('')
-    setEditing(null)
     setInputError('')
     onPendingChange(false)
     return true
@@ -50,7 +58,10 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
   useImperativeHandle(ref, () => ({ commit }))
 
   function discard() {
-    setText(''); setEditing(null); setInputError(''); onPendingChange(false)
+    const inlineSingle = domains.length === 1
+    setListMode(domains.length > 1)
+    setText(inlineSingle ? domains[0] : ''); setEditing(inlineSingle ? 0 : null)
+    setInputError(''); onPendingChange(false)
   }
 
   const inputProps = {
@@ -63,8 +74,8 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
     },
     onKeyDown: event => {
       if (event.nativeEvent.isComposing) return
-      if (event.key === 'Enter' && !event.ctrlKey && !event.metaKey) { event.preventDefault(); commit() }
-      if (event.key === 'Escape' && !event.defaultPrevented && (text || editing !== null)) {
+      if (event.key === 'Enter' && !event.ctrlKey && !event.metaKey) { event.preventDefault(); commit(true) }
+      if (event.key === 'Escape' && !open && !event.defaultPrevented && (showManage || text !== domains[0]) && (text || editing !== null)) {
         event.preventDefault(); event.stopPropagation(); discard()
       }
     },
@@ -74,9 +85,17 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
     <Sheet open={open} onOpenChange={setOpen}>
       <Field className="min-w-0 gap-2" data-invalid={!!message} data-disabled={disabled}>
         <div className="flex items-center justify-between gap-3">
-          <FieldLabel htmlFor={id} className="text-[11px] font-semibold">Website domains</FieldLabel>
-          <SheetTrigger asChild><Button variant="domain" size="inline" type="button" disabled={disabled}
-            aria-label={`Manage website domains (${domains.length})`}>Manage {domains.length}</Button></SheetTrigger>
+          <div className="flex items-center gap-1">
+            <FieldLabel htmlFor={id} className="text-[11px] font-semibold">Website domains</FieldLabel>
+            <TooltipProvider delayDuration={350}><Tooltip>
+              <TooltipTrigger asChild><Button className="-my-1" variant="ghost-muted" size="icon-sm" type="button" aria-label="How website domains work">
+                <Icon icon={CircleHelp} />
+              </Button></TooltipTrigger>
+              <TooltipContent className="max-w-64" align="start">Type a URL or domain. Press Enter to keep it and add another. Manage opens the list. Click a domain to edit it; × removes it. Esc closes the list.</TooltipContent>
+            </Tooltip></TooltipProvider>
+          </div>
+          {showManage && <SheetTrigger asChild><Button variant="domain" size="inline" type="button" disabled={disabled}
+            aria-label={`Manage website domains (${domains.length})`}>Manage {domains.length}</Button></SheetTrigger>}
         </div>
         <Input {...inputProps} id={id} ref={node => { input.current = node; inputRef(node) }}
           aria-describedby={message && !open ? `${id}-error` : undefined} />
@@ -89,13 +108,12 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
         event.preventDefault(); input.current?.focus()
       }} onEscapeKeyDown={event => {
         event.stopPropagation()
-        if (text || editing !== null) { event.preventDefault(); discard() }
       }}>
         <SheetHeader className="shrink-0"><SheetTitle>Website domains</SheetTitle></SheetHeader>
         <Field className="shrink-0 gap-2" data-invalid={!!message} data-disabled={disabled}>
           <div className="flex items-center justify-between gap-3">
             <FieldLabel htmlFor={`${id}-manager`} className="text-[11px] font-semibold">Add or edit a domain</FieldLabel>
-            <span className="text-[11px] text-muted-foreground">{domains.length} {domains.length === 1 ? 'domain' : 'domains'}</span>
+            {domains.length > 0 && <span className="text-[11px] text-muted-foreground">{domains.length} {domains.length === 1 ? 'domain' : 'domains'}</span>}
           </div>
           <Input {...inputProps} id={`${id}-manager`} ref={managerInput}
             aria-describedby={message ? `${id}-manager-error` : undefined} />
@@ -111,9 +129,10 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
               requestAnimationFrame(() => managerInput.current?.select())
             }}>{domain}</Button>
           <Button variant="ghost-muted" size="icon-sm" type="button" disabled={disabled} aria-label={`Remove domain ${domain}`} onClick={() => {
-            onChange(normalizeWebsiteScope(domains.filter((_, position) => position !== index)))
-            if (editing === index) { setEditing(null); setText(''); onPendingChange(false) }
-            else if (editing !== null && index < editing) setEditing(editing - 1)
+            const next = removeWebsiteDomain(value, index, { text, editing })
+            onChange(next.value)
+            setText(next.text); setEditing(next.editing); setListMode(next.listMode)
+            onPendingChange(next.pending)
             setInputError('')
           }}><Icon icon={X} /></Button>
         </li>)}
