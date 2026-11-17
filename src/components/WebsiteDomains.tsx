@@ -88,10 +88,11 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
           <div className="flex items-center gap-1">
             <FieldLabel htmlFor={id} className="text-[11px] font-semibold">Website domains</FieldLabel>
             <TooltipProvider delayDuration={350}><Tooltip>
-              <TooltipTrigger asChild><Button className="-my-1" variant="ghost-muted" size="icon-sm" type="button" aria-label="How website domains work">
-                <Icon icon={CircleHelp} />
-              </Button></TooltipTrigger>
-              <TooltipContent className="max-w-64" align="start">Type a URL or domain. Press Enter to keep it and add another. Manage opens the list. Click a domain to edit it; × removes it. Esc closes the list.</TooltipContent>
+              <TooltipTrigger asChild><span tabIndex={0} role="img" aria-label="How website domains work"
+                className="inline-flex shrink-0 cursor-help text-muted-foreground outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring">
+                <Icon icon={CircleHelp} size={14} />
+              </span></TooltipTrigger>
+              <TooltipContent className="max-w-64" align="start" sideOffset={4}>Type a URL or domain. Press Enter to keep it and add another. Manage opens the list. Click a domain to edit it; × removes it. Esc closes the list.</TooltipContent>
             </Tooltip></TooltipProvider>
           </div>
           {showManage && <SheetTrigger asChild><Button variant="domain" size="inline" type="button" disabled={disabled}

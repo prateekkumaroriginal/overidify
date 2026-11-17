@@ -51,9 +51,7 @@ function TooltipContent({
         {...props}
       >
         {children}
-        {/* Keep the arrow centered when collision handling shifts the tooltip. */}
-        <span data-slot="tooltip-arrow" aria-hidden="true"
-          className="pointer-events-none absolute size-2 rotate-45 bg-foreground group-data-[side=top]/tooltip:-bottom-1 group-data-[side=top]/tooltip:left-[calc(50%-4px)] group-data-[side=bottom]/tooltip:-top-1 group-data-[side=bottom]/tooltip:left-[calc(50%-4px)] group-data-[side=left]/tooltip:-right-1 group-data-[side=left]/tooltip:top-[calc(50%-4px)] group-data-[side=right]/tooltip:-left-1 group-data-[side=right]/tooltip:top-[calc(50%-4px)]" />
+        <TooltipPrimitive.Arrow data-slot="tooltip-arrow" width={8} height={4} className="fill-foreground" />
       </TooltipPrimitive.Content>
     </TooltipPrimitive.Portal>
   )
