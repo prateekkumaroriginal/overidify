@@ -100,7 +100,7 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
                   <Input {...form.register('name')} placeholder="e.g. Authenticated API" autoFocus required />
                 </label>
                 <Controller control={form.control} name="url" render={({ field, fieldState }) => (
-                  <WebsiteDomains ref={domainsRef} value={field.value} onChange={field.onChange} onBlur={field.onBlur} onPendingChange={setPendingInput} inputRef={field.ref} error={fieldState.error?.message} />
+                  <WebsiteDomains ref={domainsRef} disabled={busy} value={field.value} onChange={field.onChange} onBlur={field.onBlur} onPendingChange={setPendingInput} inputRef={field.ref} error={fieldState.error?.message} />
                 )} />
               </div>
               <div className="flex items-center justify-between gap-5 border-t py-[17px]">

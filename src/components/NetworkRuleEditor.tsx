@@ -53,7 +53,7 @@ export function NetworkRuleEditor({ networkRule, initialDraft, pending, onSave, 
             <div className="grid grid-cols-2 gap-5 mobile:grid-cols-1">
               <label className={fieldClass}>Network rule name<Input {...form.register('name')} placeholder="e.g. Featured chats" required autoFocus /></label>
               <Controller control={form.control} name="url" render={({ field, fieldState }) => (
-                <WebsiteDomains ref={domainsRef} value={field.value} onChange={field.onChange} onBlur={field.onBlur} onPendingChange={setPendingInput} inputRef={field.ref} error={fieldState.error?.message} />
+                <WebsiteDomains ref={domainsRef} disabled={busy} value={field.value} onChange={field.onChange} onBlur={field.onBlur} onPendingChange={setPendingInput} inputRef={field.ref} error={fieldState.error?.message} />
               )} />
             </div>
             <div className="mt-5 grid grid-cols-[minmax(0,1fr)_auto] gap-4 mobile:grid-cols-1">
