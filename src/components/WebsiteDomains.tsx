@@ -29,6 +29,7 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
   const managerInput = useRef<HTMLInputElement>(null)
   const domains = getDomainPatterns(value)
   const [open, setOpen] = useState(false)
+  const [showSingleDomainManager, setShowSingleDomainManager] = useState(domains.length !== 1)
   // A null draft displays the saved singleton without submitting it as a new domain.
   const [creationDraft, setCreationDraft] = useState<string | null>(domains.length === 1 ? null : '')
   const [managerDraft, setManagerDraft] = useState<WebsiteDomainDraft>({ text: '', editing: null })
@@ -39,7 +40,7 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
   const managerPending = managerDraft.editing === null ? !!managerDraft.text.trim() : managerDraft.text !== domains[managerDraft.editing]
   const creationMessage = inputErrors.creation || (!open ? error : undefined)
   const managerMessage = inputErrors.manager || error
-  const showManage = domains.length > 0 || !!managerDraft.text || managerDraft.editing !== null
+  const showManage = domains.length > 1 || (domains.length === 1 && showSingleDomainManager) || !!managerDraft.text || managerDraft.editing !== null
 
   function showError(field: 'creation' | 'manager', message: string) {
     setInputErrors(current => ({ ...current, [field]: message }))
@@ -56,8 +57,12 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
       showError(field, error instanceof Error ? error.message : 'Enter a valid website domain.')
       return
     }
-    if (field === 'creation') setCreationDraft('')
-    else setManagerDraft({ text: '', editing: null })
+    if (field === 'creation') {
+      setCreationDraft('')
+      setShowSingleDomainManager(true)
+    } else {
+      setManagerDraft({ text: '', editing: null })
+    }
     setInputErrors(current => ({ ...current, [field]: '' }))
     onPendingChange(field === 'creation' ? managerPending : creationPending)
   }
@@ -66,7 +71,9 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
     const result = commitWebsiteDomainDrafts(value, creationText, managerDraft)
     if (!result.ok) { showError(result.field, result.message); return false }
     onChange(result.value)
-    setCreationDraft(''); setManagerDraft({ text: '', editing: null })
+    setCreationDraft('')
+    setShowSingleDomainManager(true)
+    setManagerDraft({ text: '', editing: null })
     setInputErrors({ creation: '', manager: '' })
     onPendingChange(false)
     return true
