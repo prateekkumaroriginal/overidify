@@ -92,14 +92,12 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
                 className="inline-flex shrink-0 cursor-help text-muted-foreground outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring">
                 <Icon icon={CircleHelp} size={14} />
               </span></TooltipTrigger>
-              <TooltipContent className="max-w-72" align="start" sideOffset={4}>
+              <TooltipContent className="max-w-72" align="start" alignOffset={-8} sideOffset={4}>
                 <div className="flex flex-col gap-2 text-left">
                   <p className="font-semibold">Use the same rule on multiple websites.</p>
                   <ul className="flex list-disc flex-col gap-1 pl-4">
                     <li>Type a URL or domain and press <kbd>Enter</kbd> to add it.</li>
                     <li>Open <strong>Manage</strong> to see all domains.</li>
-                    <li>Click a domain to edit it, or × to remove it.</li>
-                    <li>Press <kbd>Esc</kbd> to close the list and keep your draft.</li>
                   </ul>
                 </div>
               </TooltipContent>
