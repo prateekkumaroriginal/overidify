@@ -128,8 +128,8 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
             aria-describedby={message ? `${id}-manager-error` : undefined} />
           {message && <FieldError id={`${id}-manager-error`} className="text-[11px]">{message}</FieldError>}
         </Field>
-        <ul className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain" aria-label="Website domains">
-        {domains.map((domain, index) => <li key={`${index}-${domain}`} className="flex min-w-0 items-center justify-between gap-3 py-0.5">
+        <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain" aria-label="Website domains">
+        {domains.map((domain, index) => <li key={`${index}-${domain}`} className="flex min-w-0 items-center justify-between gap-3">
           <Button variant="domain" size="inline" className="min-w-0 justify-start" type="button" disabled={disabled} aria-label={`Edit domain ${domain}`}
             aria-pressed={editing === index} onClick={() => {
               setEditing(index); setText(domain); setInputError(''); onPendingChange(false)
