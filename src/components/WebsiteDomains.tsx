@@ -97,7 +97,7 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
                   <p className="font-semibold">Use the same rule on multiple websites.</p>
                   <ul className="flex list-disc flex-col gap-1 pl-4">
                     <li>Type a URL or domain and press <kbd>Enter</kbd> to add it.</li>
-                    <li>Open <strong>Manage</strong> to see all domains.</li>
+                    <li>Click <strong>Manage</strong> to see all domains.</li>
                   </ul>
                 </div>
               </TooltipContent>
