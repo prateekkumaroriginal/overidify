@@ -1,21 +1,32 @@
-import { getDomainPatterns, normalizeWebsiteScope } from './pattern.ts'
+import { getDomainPatterns, normalizeWebsiteScope, updateWebsiteScope } from './pattern.ts'
 import type { WebsiteScope } from './pattern.ts'
 
-export function removeWebsiteDomain(value: WebsiteScope, index: number, draft: { text: string; editing: number | null }) {
+export type WebsiteDomainDraft = { text: string; editing: number | null }
+
+export function commitWebsiteDomainDrafts(value: WebsiteScope, creation: string, manager: WebsiteDomainDraft):
+  | { ok: true; value: WebsiteScope }
+  | { ok: false; field: 'creation' | 'manager'; message: string } {
+  let field: 'creation' | 'manager' = 'manager'
+  try {
+    const edited = updateWebsiteScope(value, manager.text, manager.editing)
+    field = 'creation'
+    return { ok: true, value: updateWebsiteScope(edited, creation, null) }
+  } catch (error) {
+    return { ok: false, field, message: error instanceof Error ? error.message : 'Enter a valid website domain.' }
+  }
+}
+
+export function removeWebsiteDomain(value: WebsiteScope, index: number, draft: WebsiteDomainDraft) {
   const remaining = getDomainPatterns(value).filter((_, position) => position !== index)
   let { text, editing } = draft
-  const listMode = remaining.length > 1 || (remaining.length === 1 && editing === null && !!text)
-  if (remaining.length === 1 && (editing === index || (editing === null && !text))) {
-    editing = 0
-    text = remaining[0]
-  } else if (editing === index) {
+  if (editing === index) {
     editing = null
     text = ''
   } else if (editing !== null && index < editing) {
     editing--
   }
   return {
-    value: normalizeWebsiteScope(remaining), text, editing, listMode,
+    value: normalizeWebsiteScope(remaining), text, editing,
     pending: editing === null ? !!text.trim() : text !== remaining[editing],
   }
 }
