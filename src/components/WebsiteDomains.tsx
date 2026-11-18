@@ -29,9 +29,12 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
   const managerInput = useRef<HTMLInputElement>(null)
   const domains = getDomainPatterns(value)
   const [open, setOpen] = useState(false)
-  const [creationText, setCreationText] = useState('')
+  // A null draft displays the saved singleton without submitting it as a new domain.
+  const [creationDraft, setCreationDraft] = useState<string | null>(domains.length === 1 ? null : '')
   const [managerDraft, setManagerDraft] = useState<WebsiteDomainDraft>({ text: '', editing: null })
   const [inputErrors, setInputErrors] = useState({ creation: '', manager: '' })
+  const creationText = creationDraft ?? ''
+  const creationValue = creationDraft ?? (domains.length === 1 ? domains[0] : '')
   const creationPending = !!creationText.trim()
   const managerPending = managerDraft.editing === null ? !!managerDraft.text.trim() : managerDraft.text !== domains[managerDraft.editing]
   const creationMessage = inputErrors.creation || (!open ? error : undefined)
@@ -53,7 +56,7 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
       showError(field, error instanceof Error ? error.message : 'Enter a valid website domain.')
       return
     }
-    if (field === 'creation') setCreationText('')
+    if (field === 'creation') setCreationDraft('')
     else setManagerDraft({ text: '', editing: null })
     setInputErrors(current => ({ ...current, [field]: '' }))
     onPendingChange(field === 'creation' ? managerPending : creationPending)
@@ -63,7 +66,7 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
     const result = commitWebsiteDomainDrafts(value, creationText, managerDraft)
     if (!result.ok) { showError(result.field, result.message); return false }
     onChange(result.value)
-    setCreationText(''); setManagerDraft({ text: '', editing: null })
+    setCreationDraft(''); setManagerDraft({ text: '', editing: null })
     setInputErrors({ creation: '', manager: '' })
     onPendingChange(false)
     return true
@@ -72,13 +75,13 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
   useImperativeHandle(ref, () => ({ commit }))
 
   const inputProps = (field: 'creation' | 'manager') => ({
-    value: field === 'creation' ? creationText : managerDraft.text,
+    value: field === 'creation' ? creationValue : managerDraft.text,
     placeholder: 'Type a URL or domain', autoComplete: 'off', spellCheck: false, disabled, onBlur,
     'aria-invalid': !!(field === 'creation' ? creationMessage : managerMessage),
     onChange: event => {
       const next = event.target.value
       if (field === 'creation') {
-        setCreationText(next)
+        setCreationDraft(next)
         onPendingChange(!!next.trim() || managerPending)
       } else {
         setManagerDraft({ ...managerDraft, text: next })
@@ -91,7 +94,7 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
       if (event.key === 'Enter' && !event.ctrlKey && !event.metaKey) { event.preventDefault(); commitInput(field) }
       if (event.key === 'Escape' && field === 'creation' && !event.defaultPrevented && creationText) {
         event.preventDefault(); event.stopPropagation()
-        setCreationText(''); setInputErrors(current => ({ ...current, creation: '' })); onPendingChange(managerPending)
+        setCreationDraft(''); setInputErrors(current => ({ ...current, creation: '' })); onPendingChange(managerPending)
       }
     },
   } satisfies ComponentProps<typeof Input>)
