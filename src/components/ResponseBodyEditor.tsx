@@ -121,7 +121,7 @@ export default function ResponseBodyEditor({ value, onChange, onBlur, disabled, 
       {!current ? 'Checking JSON…' : hasVariables && analysis.error ? 'Format is unavailable where variables replace JSON keys or structure. Editing and saving remain available.'
         : isJson || !analysis.error ? analysis.reason : 'Format needs valid JSON. This response can still be edited and saved as text.'}
     </p>}
-    {current && isJson && resolvedInvalid &&
+    {current && isJson && resolvedInvalid && deferredResolved === resolvedBody &&
       <p className="text-xs text-muted-foreground" role="status">With the current variable values, the body is not valid JSON. You can still save it.</p>}
     {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
   </div>
