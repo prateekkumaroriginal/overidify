@@ -43,17 +43,21 @@ export function exportRules(rules: RuleCollection): string {
     requestHeaderRules: rules.requestHeaderRules.map(byName), networkRules: rules.networkRules.map(byName) }, null, 2)
 }
 
-/** Links exported `{ "variable": "NAME" }` parts to local variables by name, ignoring case. */
-function linkImportedVariables(value: unknown, index: ReturnType<typeof indexVariables>): unknown {
-  if (Array.isArray(value)) return value.map(item => linkImportedVariables(item, index))
+/**
+ * Links exported `{ "variable": "NAME" }` parts to local variables by name, ignoring case.
+ * Only version 3 files hold variables, and only in that shape; anything else makes the rule invalid.
+ */
+function linkImportedVariables(value: unknown, index: ReturnType<typeof indexVariables>, allowVariables: boolean): unknown {
+  if (Array.isArray(value)) return value.map(item => linkImportedVariables(item, index, allowVariables))
   if (isTemplateObject(value)) {
+    if (!allowVariables) return { invalid: 'Variables need format version 3.' }
     return { segments: value.segments.map((segment: unknown) => {
-      if (!segment || typeof segment !== 'object' || typeof (segment as { variable?: unknown }).variable !== 'string') return segment
-      const name = (segment as { variable: string }).variable
-      return { variableId: index.byName.get(nameKey(name))?.id ?? '', name }
+      if (typeof segment === 'string') return segment
+      const name = segment && typeof segment === 'object' && Object.keys(segment).length === 1 ? (segment as { variable?: unknown }).variable : undefined
+      return typeof name === 'string' ? { variableId: index.byName.get(nameKey(name))?.id ?? '', name } : { invalid: 'Variables must be { "variable": "NAME" }.' }
     }) }
   }
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, linkImportedVariables(item, index)]))
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, linkImportedVariables(item, index, allowVariables)]))
   return value
 }
 
@@ -62,9 +66,9 @@ export function reviewImport(text: string, existing: RuleCollection, variables: 
   try { input = JSON.parse(text) } catch { throw new Error('This file is not readable JSON.') }
   const envelope = EnvelopeSchema.safeParse(input)
   if (!envelope.success) throw new Error('This is not a supported Overidify export. Check the file format and version.')
-  // Only version 3 files can hold variables. Older files keep {{NAME}} text literal.
+  // Older files keep {{NAME}} text literal.
   const index = indexVariables(variables)
-  const link = (values: unknown[]) => envelope.data.version === 3 ? values.map(value => linkImportedVariables(value, index)) : values
+  const link = (values: unknown[]) => values.map(value => linkImportedVariables(value, index, envelope.data.version === 3))
   const incomingHeaderRules = link(envelope.data.requestHeaderRules)
   const incomingNetworkRules = link(envelope.data.networkRules)
   const incoming = [...incomingHeaderRules, ...incomingNetworkRules]

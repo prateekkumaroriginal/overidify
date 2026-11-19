@@ -196,4 +196,3 @@ export function ruleTemplateFields(rule: RequestHeaderRule | NetworkRule): Templ
   return [...fields, ...rule.options.flatMap(option => pairs(option.headers))]
 }
 
-export const hasProblems = (check: RuleCheck | undefined) => !!check?.problems.length

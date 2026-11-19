@@ -16,7 +16,10 @@ import { cn } from '../lib/utils'
 import { headerRowLayout } from './headerRowLayout'
 import { WebsiteDomains } from './WebsiteDomains'
 import { TemplateField } from './TemplateField'
-import { displayText } from '../lib/templates'
+import { displayText, hasTokens } from '../lib/templates'
+import type { TemplateText } from '../lib/templates'
+import { indexVariables, resolveTemplate } from '../lib/variables'
+import { useVariables } from './variables-context'
 import { problemAt, TURNED_OFF_SAVED, useDraftCheck } from './rule-problems'
 import { RuleProblemsNote } from './RuleProblemsNote'
 import { toast } from 'sonner'
@@ -26,8 +29,8 @@ type Props = {
   networkRule?: NetworkRule
   initialDraft?: NetworkRuleDraft
   pending: boolean
-  /** Resolves to whether the rule was saved enabled. */
-  onSave: (draft: NetworkRuleDraft) => Promise<boolean | void>
+  /** Resolves to whether the rule was saved enabled. `enabledChanged` is false when the user left the toggle alone. */
+  onSave: (draft: NetworkRuleDraft, enabledChanged: boolean) => Promise<boolean | void>
   onDelete?: () => void
 }
 const ResponseBodyEditor = lazy(() => import('./ResponseBodyEditor'))
@@ -44,12 +47,17 @@ export function NetworkRuleEditor({ networkRule, initialDraft, pending, onSave, 
     beforeSubmit: () => domainsRef.current?.commit() ?? true,
     pending, returnRoute: '/network-rules',
     onSave: async draft => {
-      const enabled = await onSave(draft)
+      const enabled = await onSave(draft, !!form.formState.dirtyFields.enabled)
       if (draft.enabled && enabled === false) toast.warning('Network rule saved turned off', { description: TURNED_OFF_SAVED })
     },
   })
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'headers' })
-  const [method, status, headers] = useWatch({ control: form.control, name: ['method', 'status', 'headers'] })
+  const [method, status, headers, body] = useWatch({ control: form.control, name: ['method', 'status', 'headers', 'body'] })
+  // JSON checks use the values the page will receive.
+  const index = indexVariables(useVariables() ?? [])
+  const filled = (value: TemplateText) => { const result = resolveTemplate(value, index); return result.ok ? result.value : displayText(value) }
+  const isJson = isJsonResponse(headers.map(header => ({ key: filled(header.key), value: filled(header.value) })))
+  const resolvedBody = hasTokens(body) ? resolveTemplate(body, index) : null
   const noBody = method === 'HEAD' || [204, 205, 304].includes(status)
   const draft = useWatch({ control: form.control }) as NetworkRuleDraft
   const { problems } = useDraftCheck({ kind: 'network-rule', value: draft })
@@ -98,7 +106,8 @@ export function NetworkRuleEditor({ networkRule, initialDraft, pending, onSave, 
             <div className="mb-5 flex flex-wrap items-center justify-between gap-4"><h2 className="text-[13px] font-bold">Mock response</h2><label className="flex items-center gap-3 text-[11px] font-semibold">Status code<Input className="w-24 font-sans" type="number" min={200} max={599} step={1} required {...form.register('status', { valueAsNumber: true })} /></label></div>
             <div className={fieldClass} data-response-body><span id="response-body-label">Response body</span>
               <Controller control={form.control} name="body" render={({ field }) => <Suspense fallback={<textarea aria-label="Response body" rows={12} className="rounded-md border bg-field p-3" value={displayText(field.value)} readOnly disabled={busy} />}>
-                <ResponseBodyEditor value={field.value} onChange={field.onChange} onBlur={field.onBlur} disabled={busy} isJson={isJsonResponse(headers)} />
+                <ResponseBodyEditor value={field.value} onChange={field.onChange} onBlur={field.onBlur} disabled={busy} isJson={isJson}
+                  resolvedBody={resolvedBody?.ok ? resolvedBody.value : undefined} />
               </Suspense>} />
             </div>
             {noBody && <p className="mt-3 text-xs text-muted-foreground" role="status">HEAD and status 204, 205, or 304 return no body. Your entered text is still saved.</p>}

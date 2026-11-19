@@ -110,14 +110,15 @@ export function OptionsApp() {
     } finally { setPending(false) }
   }
 
-  async function handleSaveNetworkRule(draft: NetworkRuleDraft, id?: string) {
+  async function handleSaveNetworkRule(draft: NetworkRuleDraft, id?: string, enabledChanged = true) {
     const entry: NetworkRule = {
       ...draft, id: id ?? createRuleId(), order: 0,
       name: draft.name.trim(), url: normalizeWebsiteScope(draft.url), requestUrl: trimTemplate(draft.requestUrl),
       headers: cleanResponseHeaders(draft.headers),
     }
     const saved = await persistNetworkRules(rules => id
-      ? rules.map(item => item.id === id ? { ...entry, order: item.order } : item)
+      // Without a toggle change, keep the stored state: another page may have turned the rule off.
+      ? rules.map(item => item.id === id ? { ...entry, order: item.order, enabled: enabledChanged ? entry.enabled : item.enabled } : item)
       : [...rules, { ...entry, order: rules.length }])
     window.location.hash = '/network-rules'
     // A rule that can't run with the current variables is saved turned off.
@@ -162,11 +163,12 @@ export function OptionsApp() {
   }
 
   /** Returns the rule as saved. A rule that can't run with the current variables is saved turned off. */
-  async function persistEntry<Rule extends RequestHeaderRule>(entry: Rule, existingId?: string): Promise<Rule> {
+  async function persistEntry<Rule extends RequestHeaderRule>(entry: Rule, existingId?: string, enabledChanged = true): Promise<Rule> {
     const saved = await persistEntries(rules => existingId
       ? rules.map(current => {
         if (current.id !== existingId) return current
-        const next = { ...entry, order: current.order }
+        // Without a toggle change, keep the stored state: another page may have turned the rule off.
+        const next = { ...entry, order: current.order, enabled: enabledChanged ? entry.enabled : current.enabled }
         return next.kind === 'switch-rule' && current.kind === 'switch-rule' && next.options.some(option => option.id === current.selectedOptionId)
           ? { ...next, selectedOptionId: current.selectedOptionId }
           : next
@@ -176,7 +178,7 @@ export function OptionsApp() {
     return (saved.find(rule => rule.id === entry.id) as Rule | undefined) ?? entry
   }
 
-  async function handleSaveHeaderRule(draft: HeaderRuleDraft, ruleId?: string): Promise<HeaderRule> {
+  async function handleSaveHeaderRule(draft: HeaderRuleDraft, ruleId?: string, enabledChanged = true): Promise<HeaderRule> {
     const rule: HeaderRule = {
       kind: 'header-rule',
       id: ruleId ?? createRuleId(),
@@ -186,10 +188,10 @@ export function OptionsApp() {
       headers: sanitizeHeaders(draft.headers),
       order: 0,
     }
-    return persistEntry(rule, ruleId)
+    return persistEntry(rule, ruleId, enabledChanged)
   }
 
-  async function handleSaveSwitchRule(draft: SwitchRuleDraft, switchRuleId?: string): Promise<SwitchRule> {
+  async function handleSaveSwitchRule(draft: SwitchRuleDraft, switchRuleId?: string, enabledChanged = true): Promise<SwitchRule> {
     const switchRule: SwitchRule = {
       kind: 'switch-rule',
       id: switchRuleId ?? createRuleId(),
@@ -202,7 +204,7 @@ export function OptionsApp() {
       selectedOptionId: draft.selectedOptionId,
       order: 0,
     }
-    return persistEntry(switchRule, switchRuleId)
+    return persistEntry(switchRule, switchRuleId, enabledChanged)
   }
 
   async function handleDelete(entry: RequestHeaderRule) {
@@ -278,14 +280,14 @@ export function OptionsApp() {
             onSave={draft => handleSaveCapturedNetworkRule(capturedDraftId, draft)} />
         ) : route === '/network-rules/new' || selectedNetworkRule ? (
           <NetworkRuleEditor key={route} networkRule={selectedNetworkRule} pending={pending}
-            onSave={draft => handleSaveNetworkRule(draft, selectedNetworkRule?.id)}
+            onSave={(draft, enabledChanged) => handleSaveNetworkRule(draft, selectedNetworkRule?.id, enabledChanged)}
             onDelete={selectedNetworkRule ? () => { void handleDeleteNetworkRule(selectedNetworkRule) } : undefined} />
         ) : route === '/header-rules/new' || selected?.kind === 'header-rule' ? (
           <HeaderRuleEditor
             key={route}
             headerRule={selected?.kind === 'header-rule' ? selected : undefined}
             pending={pending}
-            onSave={(draft) => handleSaveHeaderRule(draft, selected?.id)}
+            onSave={(draft, enabledChanged) => handleSaveHeaderRule(draft, selected?.id, enabledChanged)}
             onDelete={selected ? () => { void handleDelete(selected) } : undefined}
           />
         ) : route === '/switch-rules/new' || selected?.kind === 'switch-rule' ? (
@@ -293,7 +295,7 @@ export function OptionsApp() {
             key={route}
             switchRule={selected?.kind === 'switch-rule' ? selected : undefined}
             pending={pending}
-            onSave={(draft) => handleSaveSwitchRule(draft, selected?.id)}
+            onSave={(draft, enabledChanged) => handleSaveSwitchRule(draft, selected?.id, enabledChanged)}
             onDelete={selected ? () => { void handleDelete(selected) } : undefined}
           />
         ) : (

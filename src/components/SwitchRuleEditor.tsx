@@ -30,7 +30,8 @@ import type { WebsiteDomainsHandle } from './WebsiteDomains'
 type SwitchRuleEditorProps = {
   switchRule?: SwitchRule
   pending: boolean
-  onSave: (draft: SwitchRuleDraft) => Promise<SwitchRule>
+  /** `enabledChanged` is false when the user left the toggle alone, so Save keeps the stored state. */
+  onSave: (draft: SwitchRuleDraft, enabledChanged: boolean) => Promise<SwitchRule>
   onDelete?: () => void
 }
 
@@ -43,7 +44,7 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
     beforeSubmit: () => domainsRef.current?.commit() ?? true,
     pending, returnRoute: '/switch-rules', successMessage: 'Switch rule saved.',
     onSave: async draft => {
-      const saved = await onSave(draft)
+      const saved = await onSave(draft, !!form.formState.dirtyFields.enabled)
       setDeletedOption(null)
       if (draft.enabled && !saved.enabled) toast.warning('Switch rule saved turned off', { description: TURNED_OFF_SAVED })
       return switchRuleToDraft(saved)

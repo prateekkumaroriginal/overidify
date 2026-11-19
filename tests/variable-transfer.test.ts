@@ -62,14 +62,20 @@ test('imports link variables by name ignoring case, list missing names, and keep
   const invalidName = JSON.stringify({ format: 'overidify', version: 3, networkRules: [],
     requestHeaderRules: [rule({ headers: [{ key: 'X', value: { segments: [{ variable: 'bad name' }] } as never }] })] })
   assert.equal(reviewImport(invalidName, { requestHeaderRules: [], networkRules: [] }, []).issues.length, 1)
+  // Only version 3 references by name are accepted; IDs from another installation are not.
+  const internal = (version: number) => JSON.stringify({ format: 'overidify', version, networkRules: [],
+    requestHeaderRules: [rule({ headers: [{ key: 'X', value: tpl(token(5, 'STAGE_AUTH_TOKEN')) }] })] })
+  for (const version of [1, 3]) assert.equal(reviewImport(internal(version), { requestHeaderRules: [], networkRules: [] }, [local]).issues.length, 1)
 })
 
 test('imported rules that use missing variables are saved turned off', async () => {
   const { data, restore } = storage({ variables: [] })
   try {
     const review = reviewImport(exportRules({ requestHeaderRules: [rule()], networkRules: [] }), { requestHeaderRules: [], networkRules: [] }, [])
-    await saveImportedRules(review.rules)
+    const saved = await saveImportedRules(review.rules)
     assert.equal((data.requestHeaderRules as RequestHeaderRule[])[0].enabled, false)
+    // Settings shows the rules as saved, not the enabled import.
+    assert.equal(saved.rules.requestHeaderRules[0].enabled, false)
   } finally { restore() }
 })
 
@@ -94,10 +100,14 @@ test('deleting a variable in use asks first, then writes the variables and the t
     const confirm = await saveVariables({ baseline: [AUTH], draft: [] })
     assert.deepEqual(confirm, { status: 'confirm', turnedOff: [{ id: id(101), name: 'Stage API', type: 'header-rule' }] })
     assert.deepEqual(writes, [])
-    const saved = await saveVariables({ baseline: [AUTH], draft: [], confirmTurnOff: true })
+    // A rule added after the confirmation is not covered by it.
+    data.requestHeaderRules = [rule(), rule({ id: id(102), name: 'Added later' })]
+    assert.equal((await saveVariables({ baseline: [AUTH], draft: [], confirmedTurnOff: [id(101)] })).status, 'confirm')
+    assert.deepEqual(writes, [])
+    const saved = await saveVariables({ baseline: [AUTH], draft: [], confirmedTurnOff: [id(101), id(102)] })
     assert.equal(saved.status, 'saved')
     assert.deepEqual(writes, [['variables', 'requestHeaderRules']])
     assert.deepEqual(data.variables, [])
-    assert.equal((data.requestHeaderRules as RequestHeaderRule[])[0].enabled, false)
+    assert.deepEqual((data.requestHeaderRules as RequestHeaderRule[]).map(item => item.enabled), [false, false])
   } finally { restore() }
 })

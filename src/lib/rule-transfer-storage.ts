@@ -49,8 +49,7 @@ export async function duplicateSavedRule(id: string) {
       networkRules: networkRules.flatMap(rule => rule.id === id ? [rule, copy] : [rule]).map((rule, order) => ({ ...rule, order })),
     }
     copy.order = source.order + 1
-    await persistRules(rules)
-    return { rules, copy }
+    return { rules: await persistRules(rules), copy }
   })
   return { ...saved, activation: await activateImportedRules() }
 }
@@ -71,9 +70,10 @@ export async function activateImportedRules(): Promise<TransferActivation> {
   return { ok: errors.length === 0, reloadTabIds: [...reloadTabIds], error: errors.length ? errors.join(' ') : undefined }
 }
 
-export async function saveImportedRules(rules: RuleCollection): Promise<TransferActivation> {
-  await withRuleStorageLocks(() => persistRules(rules))
-  return activateImportedRules()
+/** Saves an import. `rules` are the rules as saved, with rules that can't run turned off. */
+export async function saveImportedRules(input: RuleCollection): Promise<TransferActivation & { rules: RuleCollection }> {
+  const rules = await withRuleStorageLocks(() => persistRules(input))
+  return { ...await activateImportedRules(), rules }
 }
 
 export async function persistRuleDeletion(selectedIds: ReadonlySet<string>) {
@@ -97,7 +97,8 @@ export async function deleteSavedRules(selectedIds: ReadonlySet<string>) {
   return { ...result, activation }
 }
 
-async function persistRules(input: RuleCollection): Promise<void> {
+/** Returns the rules as saved, after rules that can't run are turned off. */
+async function persistRules(input: RuleCollection): Promise<RuleCollection> {
   // Imported, copied, and remaining rules that cannot run with the saved variables are saved turned off.
   const variables = await getVariables()
   const rules = {
@@ -106,4 +107,5 @@ async function persistRules(input: RuleCollection): Promise<void> {
   }
   // One write keeps the two rule collections together; activation is a separate result.
   await writeStorage(rules)
+  return rules
 }

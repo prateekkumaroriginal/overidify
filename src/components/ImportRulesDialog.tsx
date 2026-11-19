@@ -44,9 +44,9 @@ export function ImportRulesDialog({ onSaved, onSuccess }: {
     try {
       let result: TransferActivation
       if (action && review) {
-        const rules = applyImport(await getSavedRules(), review, action)
-        result = await saveImportedRules(rules)
-        onSaved(rules)
+        const saved = await saveImportedRules(applyImport(await getSavedRules(), review, action))
+        result = saved
+        onSaved(saved.rules)
       } else result = await activateImportedRules()
       if (result.ok) { setOpen(false); onSuccess(count, result.reloadTabIds) }
       else setActivation(result)

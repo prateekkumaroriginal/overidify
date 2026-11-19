@@ -23,7 +23,8 @@ import { RuleProblemsNote } from './RuleProblemsNote'
 type HeaderRuleEditorProps = {
   headerRule?: HeaderRule
   pending: boolean
-  onSave: (draft: HeaderRuleDraft) => Promise<HeaderRule>
+  /** `enabledChanged` is false when the user left the toggle alone, so Save keeps the stored state. */
+  onSave: (draft: HeaderRuleDraft, enabledChanged: boolean) => Promise<HeaderRule>
   onDelete?: () => void
 }
 
@@ -34,7 +35,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
     beforeSubmit: () => domainsRef.current?.commit() ?? true,
     pending, returnRoute: '/header-rules', successMessage: 'Header rule saved.',
     onSave: async draft => {
-      const saved = await onSave(draft)
+      const saved = await onSave(draft, !!form.formState.dirtyFields.enabled)
       if (draft.enabled && !saved.enabled) toast.warning('Header rule saved turned off', { description: TURNED_OFF_SAVED })
       return headerRuleToDraft(saved)
     },

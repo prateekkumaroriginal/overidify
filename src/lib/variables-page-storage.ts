@@ -18,12 +18,13 @@ export const VARIABLES_SAVE_FAILED = 'Variables were not saved. Your previous va
  * Saves a Variables page draft under the header, Network, and variables locks, in that order.
  * Rules the change turns off are written in the same storage write, after confirmation.
  */
-export async function saveVariables({ baseline, draft, confirmTurnOff = false }: { baseline: Variable[]; draft: Variable[]; confirmTurnOff?: boolean }): Promise<VariablesSaveResult> {
+/** `confirmedTurnOff` lists the rule IDs the user agreed to turn off. Any other rule that would turn off asks again. */
+export async function saveVariables({ baseline, draft, confirmedTurnOff = [] }: { baseline: Variable[]; draft: Variable[]; confirmedTurnOff?: string[] }): Promise<VariablesSaveResult> {
   const result = await withRuleStorageLocks(() => navigator.locks.request(VARIABLES_STORAGE_KEY, async (): Promise<VariablesSaveResult> => {
     const [stored, requestHeaderRules, networkRules] = await Promise.all([getVariables(), getRequestHeaderRules(), getNetworkRules()])
     const plan = planVariablesSave({ stored, baseline, draft, rules: { requestHeaderRules, networkRules } })
     if (!plan.ok) return { status: 'invalid', errors: plan.errors }
-    if (plan.turnedOff.length && !confirmTurnOff) return { status: 'confirm', turnedOff: plan.turnedOff }
+    if (plan.turnedOff.some(rule => !confirmedTurnOff.includes(rule.id))) return { status: 'confirm', turnedOff: plan.turnedOff }
     const changes: Record<string, unknown> = {}
     if (plan.variablesChanged) changes[VARIABLES_STORAGE_KEY] = plan.variables
     if (plan.headerChanged) changes[REQUEST_HEADER_STORAGE_KEY] = plan.rules.requestHeaderRules

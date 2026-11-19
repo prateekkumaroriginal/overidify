@@ -18,6 +18,10 @@ import { useVariables } from './variables-context'
 import { VariableSuggestionList } from './VariableSuggestions'
 import { useCreateVariableDialog } from './useCreateVariableDialog'
 
+function isJsonText(text: string) {
+  try { JSON.parse(text); return true } catch { return false }
+}
+
 function CodeView({ session, panelContainer, onView, disabled, listId }: { session: ResponseEditorSession; panelContainer: Compartment; onView: (view: EditorView | null) => void; disabled: boolean; listId: string }) {
   const host = useRef<HTMLDivElement>(null)
   const [frame, setFrame] = useState<HTMLDivElement | null>(null)
@@ -45,9 +49,10 @@ function CodeView({ session, panelContainer, onView, disabled, listId }: { sessi
   </div>
 }
 
-type Props = { value: TemplateText; onChange: (body: TemplateText) => void; onBlur: () => void; disabled: boolean; isJson: boolean }
+/** `resolvedBody` is the body with variables filled in, when it has variables that all exist. */
+type Props = { value: TemplateText; onChange: (body: TemplateText) => void; onBlur: () => void; disabled: boolean; isJson: boolean; resolvedBody?: string }
 
-export default function ResponseBodyEditor({ value, onChange, onBlur, disabled, isJson }: Props) {
+export default function ResponseBodyEditor({ value, onChange, onBlur, disabled, isJson, resolvedBody }: Props) {
   const listId = useId()
   const { request, dialog } = useCreateVariableDialog()
   const [{ session, config }] = useState(() => {
@@ -109,6 +114,8 @@ export default function ResponseBodyEditor({ value, onChange, onBlur, disabled, 
     {(!current || analysis.reason) && <p className="text-xs text-muted-foreground" role="status">
       {!current ? 'Checking JSON…' : isJson || !analysis.error ? analysis.reason : 'Format needs valid JSON. This response can still be edited and saved as text.'}
     </p>}
+    {current && isJson && analysis.available && resolvedBody !== undefined && !isJsonText(resolvedBody) &&
+      <p className="text-xs text-muted-foreground" role="status">With the current variable values, the body is not valid JSON. You can still save it.</p>}
     {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
   </div>
   return <Dialog open={expanded} onOpenChange={setExpanded}>

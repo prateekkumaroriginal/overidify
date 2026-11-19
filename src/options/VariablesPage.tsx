@@ -98,7 +98,7 @@ export function VariablesPage({ requestHeaderRules, networkRules }: { requestHea
     setDraft(null); setServerErrors({}); setShowErrors(false); setTouched(new Set()); setFailure(''); setRevealed(new Set())
   }
 
-  async function save(confirmTurnOff = false) {
+  async function save(confirmedTurnOff: string[] = []) {
     if (!draft || busy) return
     if (Object.keys(localErrors).length) {
       setShowErrors(true)
@@ -108,7 +108,7 @@ export function VariablesPage({ requestHeaderRules, networkRules }: { requestHea
     setBusy(true)
     setFailure('')
     try {
-      const result = await saveVariables({ baseline: draft.baseline, draft: draft.rows, confirmTurnOff })
+      const result = await saveVariables({ baseline: draft.baseline, draft: draft.rows, confirmedTurnOff })
       if (result.status === 'invalid') { setServerErrors(result.errors); setShowErrors(true); return }
       if (result.status === 'confirm') { setConfirm({ open: true, rules: result.turnedOff }); return }
       setConfirm(current => ({ ...current, open: false }))
@@ -251,7 +251,7 @@ export function VariablesPage({ requestHeaderRules, networkRules }: { requestHea
         </ul>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" disabled={busy} onClick={event => { event.preventDefault(); void save(true) }}>Save and turn off</AlertDialogAction>
+          <AlertDialogAction variant="destructive" disabled={busy} onClick={event => { event.preventDefault(); void save(confirm.rules.map(rule => rule.id)) }}>Save and turn off</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
