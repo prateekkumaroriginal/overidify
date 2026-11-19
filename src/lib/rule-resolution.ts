@@ -195,4 +195,3 @@ export function ruleTemplateFields(rule: RequestHeaderRule | NetworkRule): Templ
   if (rule.kind === 'header-rule') return [...fields, ...pairs(rule.headers)]
   return [...fields, ...rule.options.flatMap(option => pairs(option.headers))]
 }
-

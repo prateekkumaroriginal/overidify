@@ -22,6 +22,7 @@ import { indexVariables, resolveTemplate } from '../lib/variables'
 import { useVariables } from './variables-context'
 import { problemAt, TURNED_OFF_SAVED, useDraftCheck } from './rule-problems'
 import { RuleProblemsNote } from './RuleProblemsNote'
+import { useStoredEnabled } from './useStoredEnabled'
 import { toast } from 'sonner'
 import type { WebsiteDomainsHandle } from './WebsiteDomains'
 
@@ -47,7 +48,7 @@ export function NetworkRuleEditor({ networkRule, initialDraft, pending, onSave, 
     beforeSubmit: () => domainsRef.current?.commit() ?? true,
     pending, returnRoute: '/network-rules',
     onSave: async draft => {
-      const enabled = await onSave(draft, !!form.formState.dirtyFields.enabled)
+      const enabled = await onSave(draft, enabledChanged(draft))
       if (draft.enabled && enabled === false) toast.warning('Network rule saved turned off', { description: TURNED_OFF_SAVED })
     },
   })
@@ -61,6 +62,7 @@ export function NetworkRuleEditor({ networkRule, initialDraft, pending, onSave, 
   const noBody = method === 'HEAD' || [204, 205, 304].includes(status)
   const draft = useWatch({ control: form.control }) as NetworkRuleDraft
   const { problems } = useDraftCheck({ kind: 'network-rule', value: draft })
+  const enabledChanged = useStoredEnabled(form, networkRule?.enabled)
 
   return (
     <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="network-editor-title">

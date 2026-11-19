@@ -47,18 +47,29 @@ export function exportRules(rules: RuleCollection): string {
  * Links exported `{ "variable": "NAME" }` parts to local variables by name, ignoring case.
  * Only version 3 files hold variables, and only in that shape; anything else makes the rule invalid.
  */
+function linkImportedField(value: unknown, index: ReturnType<typeof indexVariables>, allowVariables: boolean): unknown {
+  if (Array.isArray(value)) return value.map(item => isTemplateObject(item) ? linkImportedField(item, index, allowVariables) : item)
+  if (!isTemplateObject(value)) return value
+  if (!allowVariables) return { invalid: 'Variables need format version 3.' }
+  return { segments: value.segments.map((segment: unknown) => {
+    if (typeof segment === 'string') return segment
+    const name = segment && typeof segment === 'object' && Object.keys(segment).length === 1 ? (segment as { variable?: unknown }).variable : undefined
+    return typeof name === 'string' ? { variableId: index.byName.get(nameKey(name))?.id ?? '', name } : { invalid: 'Variables must be { "variable": "NAME" }.' }
+  }) }
+}
+
+/** Visits only the rule fields that can hold variables. */
 function linkImportedVariables(value: unknown, index: ReturnType<typeof indexVariables>, allowVariables: boolean): unknown {
-  if (Array.isArray(value)) return value.map(item => linkImportedVariables(item, index, allowVariables))
-  if (isTemplateObject(value)) {
-    if (!allowVariables) return { invalid: 'Variables need format version 3.' }
-    return { segments: value.segments.map((segment: unknown) => {
-      if (typeof segment === 'string') return segment
-      const name = segment && typeof segment === 'object' && Object.keys(segment).length === 1 ? (segment as { variable?: unknown }).variable : undefined
-      return typeof name === 'string' ? { variableId: index.byName.get(nameKey(name))?.id ?? '', name } : { invalid: 'Variables must be { "variable": "NAME" }.' }
-    }) }
-  }
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, linkImportedVariables(item, index, allowVariables)]))
-  return value
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value
+  const field = (item: unknown) => linkImportedField(item, index, allowVariables)
+  const pairs = (headers: unknown) => Array.isArray(headers) ? headers.map(pair => pair && typeof pair === 'object'
+    ? { ...pair, key: field((pair as { key?: unknown }).key), value: field((pair as { value?: unknown }).value) } : pair) : headers
+  const rule = { ...value } as Record<string, unknown>
+  for (const key of ['url', 'requestUrl', 'body']) if (key in rule) rule[key] = field(rule[key])
+  if ('headers' in rule) rule.headers = pairs(rule.headers)
+  if (Array.isArray(rule.options)) rule.options = rule.options.map(option => option && typeof option === 'object'
+    ? { ...option, headers: pairs((option as { headers?: unknown }).headers) } : option)
+  return rule
 }
 
 export function reviewImport(text: string, existing: RuleCollection, variables: readonly Variable[] = []): ImportReview {

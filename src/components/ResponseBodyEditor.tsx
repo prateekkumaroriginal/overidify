@@ -11,7 +11,7 @@ import { responseCodeExtensions } from './response-code-extensions'
 import { ResponseSearchPanel } from './ResponseSearchPanel'
 import { Button } from './ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
-import { setVariables } from '../lib/template-editor'
+import { setVariables, TOKEN_CHAR } from '../lib/template-editor'
 import type { TemplateText } from '../lib/templates'
 import { closeSuggestionsOnEscape, createVariableHandler, templateViewExtensions } from './template-editor-view'
 import { useVariables } from './variables-context'
@@ -66,6 +66,7 @@ export default function ResponseBodyEditor({ value, onChange, onBlur, disabled, 
   const body = useMemo(() => state.doc.toString(), [state.doc])
   const deferredBody = useDeferredValue(body)
   const analysis = useMemo(() => analyzeResponseBody(deferredBody), [deferredBody])
+  const hasVariables = body.includes(TOKEN_CHAR)
   const current = deferredBody === body
   const [expanded, setExpanded] = useState(false)
   const [error, setError] = useState('')
@@ -85,11 +86,12 @@ export default function ResponseBodyEditor({ value, onChange, onBlur, disabled, 
     session.dispatch(session.state.update({ effects: config.language.reconfigure(expensiveFeatures ? json() : []) }))
   }, [session, config, expensiveFeatures])
   useEffect(() => {
-    const diagnostic = current && isJson ? analysis.error : undefined
+    // With variables, positions are only known for placeholders, so the filled-in body is checked instead.
+    const diagnostic = current && isJson && !hasVariables ? analysis.error : undefined
     session.dispatch(session.state.update(setDiagnostics(session.state, diagnostic ? [{
       from: Math.min(diagnostic.offset, body.length), to: Math.min(diagnostic.offset + diagnostic.length, body.length), severity: 'error', message: diagnostic.message,
     }] : [])))
-  }, [session, analysis, isJson, current, body.length])
+  }, [session, analysis, isJson, current, body.length, hasVariables])
 
   function run(action: () => void) {
     if (disabled) return
@@ -112,9 +114,10 @@ export default function ResponseBodyEditor({ value, onChange, onBlur, disabled, 
     </div>
     <CodeView session={session} panelContainer={config.panelContainer} onView={onView} disabled={disabled} listId={listId} />
     {(!current || analysis.reason) && <p className="text-xs text-muted-foreground" role="status">
-      {!current ? 'Checking JSON…' : isJson || !analysis.error ? analysis.reason : 'Format needs valid JSON. This response can still be edited and saved as text.'}
+      {!current ? 'Checking JSON…' : hasVariables && analysis.error ? 'Format is unavailable where variables replace JSON keys or structure. Editing and saving remain available.'
+        : isJson || !analysis.error ? analysis.reason : 'Format needs valid JSON. This response can still be edited and saved as text.'}
     </p>}
-    {current && isJson && analysis.available && resolvedBody !== undefined && !isJsonText(resolvedBody) &&
+    {current && isJson && resolvedBody !== undefined && !isJsonText(resolvedBody) &&
       <p className="text-xs text-muted-foreground" role="status">With the current variable values, the body is not valid JSON. You can still save it.</p>}
     {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
   </div>

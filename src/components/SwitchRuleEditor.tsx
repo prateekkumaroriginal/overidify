@@ -22,6 +22,7 @@ import { headerRowLayout } from './headerRowLayout'
 import { TemplateField } from './TemplateField'
 import { problemAt, TURNED_OFF_SAVED, useDraftCheck } from './rule-problems'
 import { RuleProblemsNote } from './RuleProblemsNote'
+import { useStoredEnabled } from './useStoredEnabled'
 import type { RuleProblem } from '../lib/rule-resolution'
 import { toast } from 'sonner'
 import { WebsiteDomains } from './WebsiteDomains'
@@ -44,7 +45,7 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
     beforeSubmit: () => domainsRef.current?.commit() ?? true,
     pending, returnRoute: '/switch-rules', successMessage: 'Switch rule saved.',
     onSave: async draft => {
-      const saved = await onSave(draft, !!form.formState.dirtyFields.enabled)
+      const saved = await onSave(draft, enabledChanged(draft))
       setDeletedOption(null)
       if (draft.enabled && !saved.enabled) toast.warning('Switch rule saved turned off', { description: TURNED_OFF_SAVED })
       return switchRuleToDraft(saved)
@@ -59,6 +60,7 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
   const options = form.getValues('options')
   const draft = useWatch({ control: form.control }) as SwitchRuleDraft
   const { problems, optionProblems } = useDraftCheck({ kind: 'switch-rule', value: draft })
+  const enabledChanged = useStoredEnabled(form, switchRule?.enabled)
   const [editingId, setEditingId] = useState(() => form.getValues('selectedOptionId'))
   const [deletedOption, setDeletedOption] = useState<DeletedOption | null>(null)
   const optionNameInput = useRef<HTMLInputElement>(null)

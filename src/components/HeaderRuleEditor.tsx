@@ -19,6 +19,7 @@ import { headerRowLayout } from './headerRowLayout'
 import { TemplateField } from './TemplateField'
 import { problemAt, TURNED_OFF_SAVED, useDraftCheck } from './rule-problems'
 import { RuleProblemsNote } from './RuleProblemsNote'
+import { useStoredEnabled } from './useStoredEnabled'
 
 type HeaderRuleEditorProps = {
   headerRule?: HeaderRule
@@ -35,7 +36,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
     beforeSubmit: () => domainsRef.current?.commit() ?? true,
     pending, returnRoute: '/header-rules', successMessage: 'Header rule saved.',
     onSave: async draft => {
-      const saved = await onSave(draft, !!form.formState.dirtyFields.enabled)
+      const saved = await onSave(draft, enabledChanged(draft))
       if (draft.enabled && !saved.enabled) toast.warning('Header rule saved turned off', { description: TURNED_OFF_SAVED })
       return headerRuleToDraft(saved)
     },
@@ -43,6 +44,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
   const { fields, append, remove, replace } = useFieldArray({ control: form.control, name: 'headers' })
   const draft = useWatch({ control: form.control }) as HeaderRuleDraft
   const { problems } = useDraftCheck({ kind: 'header-rule', value: draft })
+  const enabledChanged = useStoredEnabled(form, headerRule?.enabled)
   const saveState = { tone: error ? 'error' : 'success', message: error || success }
 
   return (
