@@ -128,7 +128,7 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
               </TooltipContent>
             </Tooltip></TooltipProvider>
           </div>
-          {showManage && <SheetTrigger asChild><Button variant="domain" size="inline" type="button" disabled={disabled}
+          {showManage && <SheetTrigger asChild><Button variant="domain" size="inline" className="py-0" type="button" disabled={disabled}
             aria-label={domains.length ? `Manage website domains (${domains.length})` : 'Manage website domains'}>Manage{domains.length > 0 && ` ${domains.length}`}</Button></SheetTrigger>}
         </div>
         <Input {...inputProps('creation')} id={id} ref={node => { input.current = node; inputRef(node) }}
