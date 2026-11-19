@@ -7,6 +7,7 @@ import { NetworkPageMessageSchema, NetworkRuntimeMessageSchema, NetworkSettingsR
 
 test('a delayed configuration response cannot turn off a newer recording session', async () => {
   const sent: { type: string; token?: string | null; id?: number }[] = []
+  const requests: string[] = []
   let pageMessage: (event: unknown) => void = () => undefined
   let runtimeMessage: (message: unknown, sender: unknown, respond: (value: unknown) => void) => void = () => undefined
   let settings: (value: unknown) => void = () => undefined
@@ -16,16 +17,24 @@ test('a delayed configuration response cannot turn off a newer recording session
     addEventListener(_type: string, listener: typeof pageMessage) { pageMessage = listener },
     postMessage(message: (typeof sent)[number]) {
       sent.push(message)
-      if (message.type === 'config') queueMicrotask(() => pageMessage({ source: page,
-        data: { source: 'overidify-network-page', type: 'applied', id: message.id, needsReload: false } }))
+      if (message.type === 'hello' || message.type === 'config') queueMicrotask(() => pageMessage({ source: page,
+        data: message.type === 'hello' ? { source: 'overidify-network-page', type: 'ready' }
+          : { source: 'overidify-network-page', type: 'applied', id: message.id, needsReload: false } }))
     },
   }
   const source = readFileSync(new URL('../src/network/bridge.ts', import.meta.url), 'utf8').replace(/^import .*\r?\n/gm, '')
   const code = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2023 } }).outputText
   runInNewContext(code, { window: page, NetworkPageMessageSchema, NetworkRuntimeMessageSchema, NetworkSettingsResponseSchema,
-    chrome: { runtime: { sendMessage: () => pendingSettings, onMessage: { addListener: (listener: typeof runtimeMessage) => { runtimeMessage = listener } } } } })
+    chrome: { runtime: { sendMessage: ({ type }: { type: string }) => {
+      requests.push(type)
+      return type === 'get-network-rules' ? pendingSettings : Promise.resolve({ ok: true })
+    }, onMessage: { addListener: (listener: typeof runtimeMessage) => { runtimeMessage = listener } } } } })
+  await new Promise(resolve => setImmediate(resolve))
+  assert.deepEqual(requests, ['network-page-ready', 'get-network-rules'])
   runtimeMessage({ type: 'record-network-executions', token: 'new-recording-session' }, {}, () => undefined)
   settings({ entries: [], recordingToken: null })
   await new Promise(resolve => setImmediate(resolve))
-  assert.equal(sent.filter(message => message.type === 'recording').at(-1)?.token, 'new-recording-session')
+  assert.deepEqual(sent.slice(-2).map(message => [message.type, message.token]), [
+    ['recording', 'new-recording-session'], ['config', undefined],
+  ])
 })

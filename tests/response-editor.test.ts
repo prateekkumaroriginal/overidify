@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { analyzeResponseBody, formatResponseBody } from '../src/lib/response-editor.ts'
+import { confirmSuggestionSpec, insertPartsSpec, partsInRange, setKnownVariables, suggestionItems } from '../src/lib/template-editor-state.ts'
 
 test('format availability rejects invalid JSON', () => {
   for (const body of ['{"id":', '[1,]', '/*comment*/1', '']) {
@@ -68,4 +69,43 @@ test('an externally renamed reference survives undo of subsequent user changes',
   editor.dispatch(editor.state.update({ changes: { from: editor.state.doc.length, insert: ' new' }, userEvent: 'input.type' }))
   assert.equal(editor.undo(), true)
   assert.deepEqual(editor.template, renamed)
+})
+
+test('confirming a suggestion creates a reference while typed and pasted look-alikes stay literal', async () => {
+  const { ResponseEditorSession } = await import('../src/lib/response-editor-session.ts')
+  const editor = new ResponseEditorSession('Bearer ')
+  editor.dispatch(editor.state.update({ effects: setKnownVariables.of(['AUTH', 'OTHER']) }))
+  function type(insert: string) {
+    const from = editor.state.doc.length
+    editor.dispatch(editor.state.update({ changes: { from, insert }, selection: { anchor: from + insert.length }, userEvent: 'input.type' }))
+  }
+  type('{')
+  type('{')
+  type('AU')
+  assert.deepEqual(suggestionItems(editor.state), ['AUTH'])
+  const confirmation = confirmSuggestionSpec(editor.state, 'AUTH')
+  assert.ok(confirmation)
+  editor.dispatch(editor.state.update(confirmation))
+  type(' {{AUTH}}')
+  const end = editor.state.doc.length
+  editor.dispatch(editor.state.update({ ...insertPartsSpec(end, end, [' {{AUTH}}'], false), userEvent: 'input.paste' }))
+  assert.deepEqual(editor.template, { template: ['Bearer ', { variable: 'AUTH' }, ' {{AUTH}} {{AUTH}}'] })
+})
+
+test('a structured paste moves with surrounding edits and an atomic replacement can be undone and redone', async () => {
+  const { ResponseEditorSession } = await import('../src/lib/response-editor-session.ts')
+  const copied = new ResponseEditorSession({ template: [{ variable: 'AUTH' }] })
+  const parts = partsInRange(copied.state, 0, copied.state.doc.length)
+  const editor = new ResponseEditorSession('left right')
+  editor.dispatch(editor.state.update({ ...insertPartsSpec(5, 5, [...parts, ' '], false), userEvent: 'input.paste' }))
+  editor.dispatch(editor.state.update({ changes: { from: 0, insert: 'far ' }, userEvent: 'input.type' }))
+  const withReference = { template: ['far left ', { variable: 'AUTH' }, ' right'] }
+  assert.deepEqual(editor.template, withReference)
+  const from = editor.body.indexOf('AUTH')
+  editor.dispatch(editor.state.update({ changes: { from, to: from + 4, insert: 'masked' }, userEvent: 'input.replace' }))
+  assert.equal(editor.template, 'far left masked right')
+  assert.equal(editor.undo(), true)
+  assert.deepEqual(editor.template, withReference)
+  assert.equal(editor.redo(), true)
+  assert.equal(editor.template, 'far left masked right')
 })
