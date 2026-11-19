@@ -1,10 +1,11 @@
+import { toast } from 'sonner'
 import { Check, Plus, X } from 'lucide-react'
 import { useRef } from 'react'
 import { WebsiteDomains } from './WebsiteDomains'
 import type { WebsiteDomainsHandle } from './WebsiteDomains'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Controller, useFieldArray } from 'react-hook-form'
+import { Controller, useFieldArray, useWatch } from 'react-hook-form'
 import { HeaderRuleDraftSchema } from '../lib/request-header-schemas'
 import { createHeaderPair, createHeaderRuleDraft, headerRuleToDraft } from '../lib/request-header-rules'
 import type { HeaderRule, HeaderRuleDraft } from '../lib/types'
@@ -15,6 +16,9 @@ import { useEditorForm } from './useEditorForm'
 import { downloadRules } from '../lib/rule-download'
 import { cn } from '../lib/utils'
 import { headerRowLayout } from './headerRowLayout'
+import { TemplateField } from './TemplateField'
+import { problemAt, TURNED_OFF_SAVED, useDraftCheck } from './rule-problems'
+import { RuleProblemsNote } from './RuleProblemsNote'
 
 type HeaderRuleEditorProps = {
   headerRule?: HeaderRule
@@ -29,9 +33,15 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
     schema: HeaderRuleDraftSchema, initial: () => headerRule ? headerRuleToDraft(headerRule) : { ...createHeaderRuleDraft(), url: [] },
     beforeSubmit: () => domainsRef.current?.commit() ?? true,
     pending, returnRoute: '/header-rules', successMessage: 'Header rule saved.',
-    onSave: async draft => headerRuleToDraft(await onSave(draft)),
+    onSave: async draft => {
+      const saved = await onSave(draft)
+      if (draft.enabled && !saved.enabled) toast.warning('Header rule saved turned off', { description: TURNED_OFF_SAVED })
+      return headerRuleToDraft(saved)
+    },
   })
   const { fields, append, remove, replace } = useFieldArray({ control: form.control, name: 'headers' })
+  const draft = useWatch({ control: form.control }) as HeaderRuleDraft
+  const { problems } = useDraftCheck({ kind: 'header-rule', value: draft })
   const saveState = { tone: error ? 'error' : 'success', message: error || success }
 
   return (
@@ -65,7 +75,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
             </div>
             <div className="flex items-center justify-between gap-5 border-t py-[17px]">
               <span className="text-[11px] font-semibold">Enabled</span>
-              <Controller control={form.control} name="enabled" render={({ field }) => <ToggleSwitch checked={field.value} label="Header rule enabled" onChange={field.onChange} />} />
+              <Controller control={form.control} name="enabled" render={({ field }) => <ToggleSwitch checked={field.value && !problems.length} disabled={!!problems.length} label="Header rule enabled" onChange={field.onChange} />} />
             </div>
           </div>
           <div className="mb-5 rounded-lg border bg-card shadow-panel px-7 pt-[25px] mobile:px-[17px] mobile:pt-5">
@@ -88,21 +98,17 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
                   </span>
                   <label className={cn("col-start-2 grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1", index === 0 && headerRowLayout.labelledField)}>
                     {index === 0 && 'Name'}
-                    <Input
-                      className="font-sans text-[11px]"
-                      {...form.register(`headers.${index}.key`)}
-                      placeholder="e.g. Authorization"
-                      aria-label={`Header ${index + 1} name`}
-                    />
+                    <Controller control={form.control} name={`headers.${index}.key`} render={({ field }) => (
+                      <TemplateField className="font-sans text-[11px]" value={field.value} onChange={field.onChange} onBlur={field.onBlur} ref={field.ref}
+                        placeholder="e.g. Authorization" aria-label={`Header ${index + 1} name`} invalid={!!problemAt(problems, ['headers', index, 'key'])} />
+                    )} />
                   </label>
                   <label className={cn("col-start-3 grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1", index === 0 && headerRowLayout.labelledField)}>
                     {index === 0 && 'Value'}
-                    <Input
-                      className="font-sans text-[11px]"
-                      {...form.register(`headers.${index}.value`)}
-                      placeholder="e.g. Bearer token"
-                      aria-label={`Header ${index + 1} value`}
-                    />
+                    <Controller control={form.control} name={`headers.${index}.value`} render={({ field }) => (
+                      <TemplateField className="font-sans text-[11px]" value={field.value} onChange={field.onChange} onBlur={field.onBlur} ref={field.ref}
+                        placeholder="e.g. Bearer token" aria-label={`Header ${index + 1} value`} invalid={!!problemAt(problems, ['headers', index, 'value'])} />
+                    )} />
                   </label>
                   <Button variant="ghost-muted" size="icon-field" className={cn("col-start-4", headerRowLayout.action, index === 0 && headerRowLayout.labelledControl)}
                     type="button"
@@ -115,6 +121,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
               ))}
             </div>
           </div>
+          <RuleProblemsNote problems={problems} />
           {saveState.message && (
             <p
               className={`mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 ${saveState.tone === 'error' ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-input bg-secondary text-secondary-foreground'}`}

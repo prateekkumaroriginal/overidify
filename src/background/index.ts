@@ -1,5 +1,7 @@
 import { syncRequestHeaderSessionRules } from '../lib/dnr'
 import { getRequestHeaderRules, REQUEST_HEADER_STORAGE_KEY } from '../lib/request-header-storage'
+import { resolveRules } from '../lib/rule-resolution'
+import { getVariables, VARIABLES_STORAGE_KEY } from '../lib/variables-storage'
 import './network'
 import './action-icon'
 import './executions'
@@ -7,8 +9,9 @@ import './executions'
 const pageUrls = new Map<number, string>()
 
 async function syncFromStorage(): Promise<void> {
-  const [rules, tabs] = await Promise.all([getRequestHeaderRules(), chrome.tabs.query({})])
-  await syncRequestHeaderSessionRules(rules, tabs.map((tab) => ({
+  const [rules, variables, tabs] = await Promise.all([getRequestHeaderRules(), getVariables(), chrome.tabs.query({})])
+  const resolved = resolveRules({ requestHeaderRules: rules, networkRules: [] }, variables).requestHeaderRules
+  await syncRequestHeaderSessionRules(resolved, tabs.map((tab) => ({
     id: tab.id,
     url: tab.id === undefined ? tab.url : pageUrls.get(tab.id) ?? tab.url,
   })))
@@ -87,7 +90,7 @@ chrome.runtime.onStartup.addListener(() => {
 })
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== 'local' || !(REQUEST_HEADER_STORAGE_KEY in changes)) {
+  if (areaName !== 'local' || !(REQUEST_HEADER_STORAGE_KEY in changes || VARIABLES_STORAGE_KEY in changes)) {
     return
   }
 

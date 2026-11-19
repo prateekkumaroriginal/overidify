@@ -19,6 +19,11 @@ import { useEditorForm } from './useEditorForm'
 import { downloadRules } from '../lib/rule-download'
 import { cn } from '../lib/utils'
 import { headerRowLayout } from './headerRowLayout'
+import { TemplateField } from './TemplateField'
+import { problemAt, TURNED_OFF_SAVED, useDraftCheck } from './rule-problems'
+import { RuleProblemsNote } from './RuleProblemsNote'
+import type { RuleProblem } from '../lib/rule-resolution'
+import { toast } from 'sonner'
 import { WebsiteDomains } from './WebsiteDomains'
 import type { WebsiteDomainsHandle } from './WebsiteDomains'
 
@@ -37,7 +42,12 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
     schema: SwitchRuleDraftSchema, initial: () => switchRule ? switchRuleToDraft(switchRule) : { ...createSwitchRuleDraft(), url: [] },
     beforeSubmit: () => domainsRef.current?.commit() ?? true,
     pending, returnRoute: '/switch-rules', successMessage: 'Switch rule saved.',
-    onSave: async draft => { const saved = await onSave(draft); setDeletedOption(null); return switchRuleToDraft(saved) },
+    onSave: async draft => {
+      const saved = await onSave(draft)
+      setDeletedOption(null)
+      if (draft.enabled && !saved.enabled) toast.warning('Switch rule saved turned off', { description: TURNED_OFF_SAVED })
+      return switchRuleToDraft(saved)
+    },
     onInvalid: errors => {
       const index = form.getValues('options').findIndex((_, index) => errors.options?.[index])
       if (index >= 0) setEditingId(form.getValues(`options.${index}.id`))
@@ -46,6 +56,8 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
   const { append, remove, insert } = useFieldArray({ control: form.control, name: 'options' })
   useWatch({ control: form.control, name: 'options' })
   const options = form.getValues('options')
+  const draft = useWatch({ control: form.control }) as SwitchRuleDraft
+  const { problems, optionProblems } = useDraftCheck({ kind: 'switch-rule', value: draft })
   const [editingId, setEditingId] = useState(() => form.getValues('selectedOptionId'))
   const [deletedOption, setDeletedOption] = useState<DeletedOption | null>(null)
   const optionNameInput = useRef<HTMLInputElement>(null)
@@ -105,7 +117,7 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
               </div>
               <div className="flex items-center justify-between gap-5 border-t py-[17px]">
                 <span className="text-[11px] font-semibold">Enabled</span>
-                <Controller control={form.control} name="enabled" render={({ field }) => <ToggleSwitch checked={field.value} label="Switch rule enabled" onChange={enabled => { field.onChange(enabled); clearStatus() }} />} />
+                <Controller control={form.control} name="enabled" render={({ field }) => <ToggleSwitch checked={field.value && !problems.length} disabled={!!problems.length} label="Switch rule enabled" onChange={enabled => { field.onChange(enabled); clearStatus() }} />} />
               </div>
             </div>
             <div className="mb-5 rounded-lg border bg-card shadow-panel px-7 pt-[25px] mobile:px-[17px] mobile:pt-5 pb-6 mobile:pb-5">
@@ -130,10 +142,12 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
                     </div>
                   ))}
                 </div>
-                <SwitchRuleOptionEditor key={`${editingOption.id}-${editingIndex}`} index={editingIndex} nameRef={optionNameInput} onEdit={clearStatus} />
+                <SwitchRuleOptionEditor key={`${editingOption.id}-${editingIndex}`} index={editingIndex} nameRef={optionNameInput} onEdit={clearStatus}
+                  problems={optionProblems[editingOption.id] ?? []} />
               </div>
               {deletedOption && <div className="mt-[18px] flex items-center gap-3 border-t pt-4 text-xs text-muted-foreground" role="status"><span>{deletedOption.option.name} deleted</span><Button variant="link" size="inline" type="button" onClick={undoDelete}>Undo</Button></div>}
             </div>
+            <RuleProblemsNote problems={problems} />
             {saveState.message && <p className={`mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 ${saveState.tone === 'error' ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-input bg-secondary text-secondary-foreground'}`} role={saveState.tone === 'error' ? 'alert' : 'status'}>{saveState.message}</p>}
             <div className="mt-[25px] mb-10 flex items-center gap-2">
               <Button asChild variant="ghost" size="default" className="ml-auto"><a href="#/switch-rules">Cancel</a></Button>
@@ -146,8 +160,8 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
   )
 }
 
-function SwitchRuleOptionEditor({ index: optionIndex, nameRef, onEdit }: {
-  index: number; nameRef: RefObject<HTMLInputElement | null>; onEdit: () => void
+function SwitchRuleOptionEditor({ index: optionIndex, nameRef, onEdit, problems }: {
+  index: number; nameRef: RefObject<HTMLInputElement | null>; onEdit: () => void; problems: RuleProblem[]
 }) {
   const { register, control } = useFormContext<SwitchRuleDraft>()
   const { fields, append, remove } = useFieldArray({ control, name: `options.${optionIndex}.headers` })
@@ -161,10 +175,16 @@ function SwitchRuleOptionEditor({ index: optionIndex, nameRef, onEdit }: {
         {fields.map((header, index) => (
           <div className={cn("mb-4 grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_26px] items-center gap-x-3 gap-y-2 mobile:grid-cols-[1fr_26px] mobile:gap-y-3 mobile:border-b mobile:pb-5 mobile:last:border-b-0 mobile:last:pb-0", index === 0 && headerRowLayout.labelledRow)} key={header.id}>
             <label className={cn("col-start-1 grid min-w-0 content-start gap-2 text-[11px] font-semibold", index === 0 && headerRowLayout.labelledField)}>{index === 0 && 'Header'}
-              <Input className="font-sans text-[11px]" {...register(`options.${optionIndex}.headers.${index}.key`, { onChange: onEdit })} placeholder="e.g. Authorization" aria-label={`Header ${index + 1} name`} />
+              <Controller control={control} name={`options.${optionIndex}.headers.${index}.key`} render={({ field }) => (
+                <TemplateField className="font-sans text-[11px]" value={field.value} onChange={value => { field.onChange(value); onEdit() }} onBlur={field.onBlur} ref={field.ref}
+                  placeholder="e.g. Authorization" aria-label={`Header ${index + 1} name`} invalid={!!problemAt(problems, ['options', optionIndex, 'headers', index, 'key'])} />
+              )} />
             </label>
             <label className={cn("col-start-2 grid min-w-0 content-start gap-2 text-[11px] font-semibold mobile:col-start-1", index === 0 && headerRowLayout.labelledField)}>{index === 0 && 'Value'}
-              <Input className="font-sans text-[11px]" {...register(`options.${optionIndex}.headers.${index}.value`, { onChange: onEdit })} placeholder="e.g. Bearer token" aria-label={`Header ${index + 1} value`} />
+              <Controller control={control} name={`options.${optionIndex}.headers.${index}.value`} render={({ field }) => (
+                <TemplateField className="font-sans text-[11px]" value={field.value} onChange={value => { field.onChange(value); onEdit() }} onBlur={field.onBlur} ref={field.ref}
+                  placeholder="e.g. Bearer token" aria-label={`Header ${index + 1} value`} invalid={!!problemAt(problems, ['options', optionIndex, 'headers', index, 'value'])} />
+              )} />
             </label>
             <Button variant="ghost-muted" size="icon-field" className={cn("col-start-3", headerRowLayout.action, index === 0 && headerRowLayout.labelledControl)} type="button" aria-label={`Remove header ${index + 1}`} onClick={() => { remove(index); onEdit() }}><Icon icon={X} /></Button>
           </div>

@@ -1,6 +1,8 @@
 import { normalizeNetworkRules, validateNetworkRule } from './network-rules.ts'
 import type { NetworkRule } from './network-rules'
 import { ActivationResultSchema } from './settings-messages.ts'
+import { prepareRulesForSave } from './rule-resolution.ts'
+import { getVariables } from './variables-storage.ts'
 export type { NetworkApplyResult } from './settings-messages'
 
 export const NETWORK_STORAGE_KEY = 'networkRules'
@@ -23,7 +25,9 @@ export async function getNetworkRules(): Promise<NetworkRule[]> {
   return normalizeNetworkRules(data)
 }
 
-async function saveNetworkRules(entries: NetworkRule[]): Promise<NetworkRule[]> {
+async function saveNetworkRules(input: NetworkRule[]): Promise<NetworkRule[]> {
+  // A rule that cannot run with the saved variables is saved turned off.
+  const entries = prepareRulesForSave(input, await getVariables()).rules
   for (const entry of entries) {
     if (entry.enabled) {
       const error = validateNetworkRule(entry)

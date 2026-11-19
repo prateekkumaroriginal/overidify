@@ -1,4 +1,4 @@
-import type { NetworkRule } from './network-rules.ts'
+import type { ResolvedNetworkRule } from './network-rules.ts'
 
 // Include repeated query keys while ignoring their order and URL fragments.
 export function requestUrlKey(input: string, base?: string): string | null {
@@ -10,7 +10,7 @@ export function requestUrlKey(input: string, base?: string): string | null {
     return JSON.stringify([url.origin, url.pathname, pairs])
   } catch { return null }
 }
-export function matchesNetworkRequest(networkRule: NetworkRule, input: string, method: string, base?: string): boolean {
+export function matchesNetworkRequest(networkRule: Pick<ResolvedNetworkRule, 'requestUrl' | 'method'>, input: string, method: string, base?: string): boolean {
   const key = requestUrlKey(input, base)
   return key !== null && requestUrlKey(networkRule.requestUrl) === key &&
     (networkRule.method === 'ANY' || networkRule.method === method.toUpperCase())

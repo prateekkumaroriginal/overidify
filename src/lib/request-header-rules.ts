@@ -1,5 +1,5 @@
 import { normalizeWebsiteScope } from './pattern.ts'
-import { HeaderPairSchema } from './schema-fields.ts'
+import { isBlankTemplate, isStoredTemplate, normalizeStoredTemplate, trimTemplate } from './templates.ts'
 import { PersistedRequestHeaderRuleSchema, PersistedSwitchRuleOptionSchema } from './persisted-request-header-schemas.ts'
 import type {
   RequestHeaderRule,
@@ -71,17 +71,18 @@ export function switchRuleToDraft(switchRule: SwitchRule): SwitchRuleDraft {
 
 export function sanitizeHeaders(headers: HeaderPair[]): HeaderPair[] {
   return headers
-    .map((header) => ({ key: header.key.trim(), value: header.value.trim() }))
-    .filter((header) => header.key || header.value)
+    .map((header) => ({ key: trimTemplate(header.key), value: trimTemplate(header.value) }))
+    .filter((header) => !isBlankTemplate(header.key) || !isBlankTemplate(header.value))
 }
 
 function normalizeHeaders(input: unknown): HeaderPair[] {
   if (!Array.isArray(input)) return []
   return input.flatMap((header: unknown) => {
-    const parsed = HeaderPairSchema.safeParse(header)
-    if (!parsed.success) return []
-    const key = parsed.data.key.trim(), value = parsed.data.value.trim()
-    return key && value ? [{ key, value }] : []
+    if (!header || typeof header !== 'object') return []
+    const { key, value } = header as Record<string, unknown>
+    if (!isStoredTemplate(key) || !isStoredTemplate(value)) return []
+    const pair = { key: trimTemplate(normalizeStoredTemplate(key)), value: trimTemplate(normalizeStoredTemplate(value)) }
+    return isBlankTemplate(pair.key) || isBlankTemplate(pair.value) ? [] : [pair]
   })
 }
 

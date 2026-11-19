@@ -1,5 +1,5 @@
 import { installNetworkInterceptors } from './interceptor'
-import { normalizeNetworkRules } from '../lib/network-rules'
+import type { ResolvedNetworkRule } from '../lib/network-rules'
 import { NetworkBridgeMessageSchema } from '../lib/settings-messages'
 import type { ExecutionRecord } from '../lib/execution-history'
 
@@ -7,7 +7,7 @@ const page = window as Window & typeof globalThis & { __overidifyNetwork?: boole
 if (!page.__overidifyNetwork) {
   page.__overidifyNetwork = true
   const interceptor = installNetworkInterceptors(page)
-  let entries = normalizeNetworkRules([])
+  let entries: ResolvedNetworkRule[] = []
   let executionReporter: ((record: ExecutionRecord) => void) | undefined
   const children = new WeakMap<Window, ReturnType<typeof installNetworkInterceptors>>()
   const watched = new WeakSet<Node>()
@@ -84,7 +84,8 @@ if (!page.__overidifyNetwork) {
       interceptor.setExecutionReporter(executionReporter)
       applySandboxFrames()
     } else if (message.type === 'config') {
-      entries = normalizeNetworkRules(message.entries)
+      // The extension sends only enabled rules that can run, with variables filled in.
+      entries = [...message.entries].sort((left, right) => left.order - right.order)
       interceptor.setNetworkRules(entries)
       applySandboxFrames()
       window.postMessage({ source: 'overidify-network-page', type: 'applied', id: message.id, needsReload: interceptor.needsReload }, '*')

@@ -17,6 +17,10 @@ A rule containing named header options, with one selected option supplying its r
 **Network Rule**:
 A rule specifying a mock response for a request target within a website scope.
 
+**Variable**:
+A named value from the global Variables list. A rule field uses it only when it was picked from the `{{` suggestions; matching text typed by hand stays literal.
+_Avoid_: Placeholder, environment
+
 **Rule export**:
 A transferable collection of saved rules for backup or sharing.
 

@@ -1,15 +1,18 @@
 import { normalizeWebsiteScope, matchesPageDomain } from './pattern.ts'
 import type * as z from 'zod/mini'
 import { NetworkRuleDraftSchema, PersistedNetworkRuleSchema } from './network-schemas.ts'
-import type { NetworkMethodSchema, NetworkRuleSchema } from './network-schemas.ts'
+import type { NetworkMethodSchema, NetworkRuleSchema, ResolvedNetworkRuleSchema } from './network-schemas.ts'
+import { displayText, isBlankTemplate, trimTemplate } from './templates.ts'
 import { matchesNetworkRequest } from './network-matching.ts'
 export { requestUrlKey, matchesNetworkRequest } from './network-matching.ts'
 export { NETWORK_METHODS } from './network-schemas.ts'
-import type { HeaderPair } from './types'
+import type { HeaderPair, PlainHeaderPair } from './types'
 
 export type NetworkMethod = z.infer<typeof NetworkMethodSchema>
 export type NetworkRule = z.infer<typeof NetworkRuleSchema>
 export type NetworkRuleDraft = z.infer<typeof NetworkRuleDraftSchema>
+/** A Network Rule with variables filled in, as the page interceptor uses it. */
+export type ResolvedNetworkRule = z.infer<typeof ResolvedNetworkRuleSchema>
 
 export function createNetworkRuleDraft(): NetworkRuleDraft {
   return {
@@ -20,19 +23,19 @@ export function createNetworkRuleDraft(): NetworkRuleDraft {
 }
 
 export function cleanResponseHeaders(headers: HeaderPair[]): HeaderPair[] {
-  return headers.map(({ key, value }) => ({ key: key.trim(), value: value.trim() }))
-    .filter(({ key, value }) => key || value)
+  return headers.map(({ key, value }) => ({ key: trimTemplate(key), value: trimTemplate(value) }))
+    .filter(({ key, value }) => !isBlankTemplate(key) || !isBlankTemplate(value))
 }
 
-export function selectNetworkRule(entries: NetworkRule[], url: string, method: string, base?: string): NetworkRule | undefined {
-  let selected: NetworkRule | undefined
+export function selectNetworkRule(entries: ResolvedNetworkRule[], url: string, method: string, base?: string): ResolvedNetworkRule | undefined {
+  let selected: ResolvedNetworkRule | undefined
   for (const entry of entries) {
     if (entry.enabled && matchesNetworkRequest(entry, url, method, base) && (!selected || entry.order >= selected.order)) selected = entry
   }
   return selected ? { ...selected, headers: selected.headers.map(header => ({ ...header })) } : undefined
 }
 
-export function networkRulesForPage(entries: NetworkRule[], pageUrl: string): NetworkRule[] {
+export function networkRulesForPage(entries: ResolvedNetworkRule[], pageUrl: string): ResolvedNetworkRule[] {
   return entries.filter(entry => matchesPageDomain(entry.url, pageUrl))
 }
 
@@ -41,12 +44,12 @@ export function validateNetworkRule(draft: NetworkRuleDraft): string | null {
   return result.success ? null : result.error.issues[0]?.message ?? 'Invalid Network Rule.'
 }
 
-export function isJsonResponse(headers: HeaderPair[]): boolean {
-  const contentType = headers.find(header => header.key.trim().toLowerCase() === 'content-type')?.value ?? ''
-  return /\bjson\b/i.test(contentType)
+export function isJsonResponse(headers: (HeaderPair | PlainHeaderPair)[]): boolean {
+  const contentType = headers.find(header => displayText(header.key).trim().toLowerCase() === 'content-type')?.value ?? ''
+  return /\bjson\b/i.test(displayText(contentType))
 }
 
-export function jsonBodyWarning(draft: Pick<NetworkRuleDraft, 'body' | 'headers'>): string | null {
+export function jsonBodyWarning(draft: { body: string; headers: PlainHeaderPair[] }): string | null {
   if (!isJsonResponse(draft.headers)) return null
   try { JSON.parse(draft.body); return null } catch { return 'The body is not valid JSON. You can still save and return this text.' }
 }
@@ -59,7 +62,7 @@ export function normalizeNetworkRules(input: unknown): NetworkRule[] {
     if (!parsed.success) return []
     const item = parsed.data
     const entry: NetworkRule = {
-      ...item, name: item.name.trim(), url: normalizeWebsiteScope(item.url), requestUrl: item.requestUrl.trim(),
+      ...item, name: item.name.trim(), url: normalizeWebsiteScope(item.url), requestUrl: trimTemplate(item.requestUrl),
       order: item.order ?? index, headers: cleanResponseHeaders(item.headers),
     }
     // Invalid persisted entries remain editable, but can never intercept.

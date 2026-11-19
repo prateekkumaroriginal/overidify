@@ -1,5 +1,5 @@
-import { Search, Settings } from 'lucide-react'
-import { startTransition, useEffect, useState } from 'react'
+import { Search, Settings, TriangleAlert } from 'lucide-react'
+import { startTransition, useEffect, useMemo, useState } from 'react'
 
 import { BrandIcon, BuildLabel } from '../components/Brand'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
@@ -10,9 +10,11 @@ import { Icon } from '../components/Icon'
 import { SwitchRuleOptionSelect } from '../components/SwitchRuleOptionSelect'
 import { ToggleSwitch } from '../components/ToggleSwitch'
 import { getDomainPattern, matchesPageDomain } from '../lib/pattern'
+import { resolveRules } from '../lib/rule-resolution'
+import type { RuleCheck } from '../lib/rule-resolution'
+import { useVariables } from '../components/variables-context'
 import { getRequestHeaderRules, updateRequestHeaderRules, subscribeToRequestHeaderRules } from '../lib/request-header-storage'
 import type { RequestHeaderRule } from '../lib/types'
-import { networkRulesForPage } from '../lib/network-rules'
 import type { NetworkRule } from '../lib/network-rules'
 import { getNetworkRules, updateNetworkRules, subscribeToNetworkRules } from '../lib/network-storage'
 
@@ -31,12 +33,18 @@ async function getCurrentPageUrl(): Promise<string> {
   return tab?.url ?? ''
 }
 
-function PopupRuleName({ name }: { name: string }) {
+function PopupRuleName({ name, check }: { name: string; check?: RuleCheck }) {
+  const problem = check?.problems.length ? `Turned off: ${check.problems.map(item => item.message).join(' ')}` : ''
   return <Tooltip>
     <TooltipTrigger asChild>
-      <span tabIndex={0} className="min-w-0 flex-1 truncate text-xs">{name}</span>
+      <span tabIndex={0} className="flex min-w-0 flex-1 flex-col text-xs">
+        <span className="truncate">{name}</span>
+        {problem && <span className="flex min-w-0 items-center gap-1 text-[11px] text-destructive">
+          <Icon icon={TriangleAlert} size={11} className="shrink-0" /><span className="truncate">{problem}</span>
+        </span>}
+      </span>
     </TooltipTrigger>
-    <TooltipContent className="max-w-[min(380px,calc(100vw-24px))] wrap-anywhere">{name}</TooltipContent>
+    <TooltipContent className="max-w-[min(380px,calc(100vw-24px))] wrap-anywhere">{name}{problem && <><br />{problem}</>}</TooltipContent>
   </Tooltip>
 }
 
@@ -109,8 +117,12 @@ export function PopupApp() {
     }
   }
 
-  const pageRules = rules.filter((rule) => matchesPageDomain(rule.url, pageUrl))
-  const pageNetworkRules = networkRulesForPage(networkRules, pageUrl)
+  const variables = useVariables()
+  // Website matching uses domains with variables filled in, the same as the extension uses.
+  const checks = useMemo(() => variables && resolveRules({ requestHeaderRules: rules, networkRules }, variables).checks, [rules, networkRules, variables])
+  const matchesPage = (id: string) => { const domains = checks?.get(id)?.domains; return !!domains && matchesPageDomain(domains, pageUrl) }
+  const pageRules = rules.filter(rule => matchesPage(rule.id))
+  const pageNetworkRules = networkRules.filter(rule => matchesPage(rule.id))
 
   async function toggleNetworkRule(networkRule: NetworkRule, enabled: boolean) {
     setPending(true)
@@ -155,7 +167,7 @@ export function PopupApp() {
 
           return (
             <TabsContent key={tab.value} value={tab.value}>
-              {loading ? (
+              {loading || !checks ? (
                 <p className="py-4 text-xs text-muted-foreground" role="status">
                   Loading...
                 </p>
@@ -169,11 +181,12 @@ export function PopupApp() {
                           checked={rule.enabled}
                           label={`Enable ${rule.name}`}
                           pending={pending}
+                          disabled={!rule.enabled && !!checks?.get(rule.id)?.problems.length}
                           onChange={(enabled) => {
                             void handleUpdate(rule, { enabled })
                           }}
                         />
-                        <PopupRuleName name={rule.name} />
+                        <PopupRuleName name={rule.name} check={checks?.get(rule.id)} />
                         {rule.kind === 'switch-rule' && <SwitchRuleOptionSelect
                           size="sm"
                           switchRule={rule}
@@ -189,9 +202,10 @@ export function PopupApp() {
                           checked={networkRule.enabled}
                           label={`Enable ${networkRule.name}`}
                           pending={pending}
+                          disabled={!networkRule.enabled && !!checks?.get(networkRule.id)?.problems.length}
                           onChange={enabled => { void toggleNetworkRule(networkRule, enabled) }}
                         />
-                        <PopupRuleName name={networkRule.name} />
+                        <PopupRuleName name={networkRule.name} check={checks?.get(networkRule.id)} />
                       </li>
                     ))}
                   </ul>

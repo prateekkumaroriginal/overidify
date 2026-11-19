@@ -46,6 +46,14 @@ The domains identify websites in your address bar. A rule applies when any liste
 
 Open the extension popup on a website to toggle matching rules or choose a Switch Rule option. Your rules are saved locally in your browser.
 
+### Variables
+
+Store a value such as a stage token once and use it in any rule field. Open **Variables** at the top of Settings, click **New variable**, and save `STAGE_AUTH_TOKEN` with its value. Turn on **Secret** to mask the value in Overidify.
+
+In a header value, website domain, request URL, response header, or response body, type `{{` to open the list of variables. Keep typing to search, then press Enter, press Tab, or click a name. The field shows `{{STAGE_AUTH_TOKEN}}` in color, and requests get the current value. Anything you don't pick from the list stays plain text, including `{{STAGE_AUTH_TOKEN}}` typed or pasted by hand. When no variable matches, **Create** adds one without leaving the rule.
+
+A rule that can't run with the current variables is turned off, for example after you delete a variable it uses. Its switch stays locked until the problem is fixed, and you turn it back on yourself. Exports include variable names, never values.
+
 To override an API response directly from DevTools:
 
 1. Open DevTools on your website and select the **Overidify** panel. It may be under the overflow menu. After updating the extension, reopen DevTools to see it.

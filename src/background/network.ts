@@ -1,12 +1,23 @@
 import { getNetworkRules, NETWORK_STORAGE_KEY } from '../lib/network-storage'
-import { networkRulesForPage, normalizeNetworkRules } from '../lib/network-rules'
+import { networkRulesForPage, normalizeNetworkRules as normalizeStoredNetworkRules } from '../lib/network-rules'
+import type { ResolvedNetworkRule } from '../lib/network-rules'
 import { getDomainPatterns, matchesPageDomain } from '../lib/pattern'
+import { resolveRules } from '../lib/rule-resolution'
+import { getVariables, VARIABLES_STORAGE_KEY } from '../lib/variables-storage'
 import { NetworkActiveTabsSchema, NetworkBridgeFramesSchema, NetworkAppliedSchema, NetworkRuntimeMessageSchema } from '../lib/settings-messages'
 import { recordingTokenForTab } from './executions'
 
 const pageUrls = new Map<number, string>()
 const possiblyActiveTabs = new Set<number>()
 const previousPatterns = new Set<string>()
+// Domains of the rules last sent to pages. Variables can change them, so stored rules alone cannot say.
+const appliedPatterns = new Set<string>()
+
+/** Enabled Network Rules that can run, with variables filled in. */
+async function readResolvedNetworkRules(): Promise<ResolvedNetworkRule[]> {
+  const [networkRules, variables] = await Promise.all([getNetworkRules(), getVariables()])
+  return resolveRules({ requestHeaderRules: [], networkRules }, variables).networkRules
+}
 const ACTIVE_TABS_KEY = 'networkRuleActiveTabs'
 const BRIDGE_FRAMES_KEY = 'networkRuleBridgeFrames'
 const bridgeFrames = new Map<number, Map<number, string>>()
@@ -37,11 +48,11 @@ function forgetTab(tabId: number) {
   void rememberActiveTab(tabId, false).catch(error => console.error('Failed to clear network activation state.', error))
 }
 
-async function updateTab(tab: chrome.tabs.Tab, priorPatterns: string[]) {
+async function updateTab(tab: chrome.tabs.Tab, priorPatterns: string[], rules: ResolvedNetworkRule[]) {
   if (tab.id === undefined) return false
   await activationReady
   const url = pageUrls.get(tab.id) ?? tab.url ?? ''
-  const entries = networkRulesForPage(await getNetworkRules(), url)
+  const entries = networkRulesForPage(rules, url)
   const enabled = entries.some(entry => entry.enabled)
   if (enabled || priorPatterns.some(pattern => matchesPageDomain(pattern, url))) await rememberActiveTab(tab.id, true)
   const frames = await chrome.webNavigation.getAllFrames({ tabId: tab.id }).catch(() => null)
@@ -74,10 +85,13 @@ function sync(): Promise<number[]> {
     try {
       while (requested) {
         requested = false
-        const priorPatterns = [...previousPatterns]
+        const priorPatterns = [...previousPatterns, ...appliedPatterns]
         previousPatterns.clear()
+        const rules = await readResolvedNetworkRules()
+        appliedPatterns.clear()
+        for (const rule of rules) for (const domain of getDomainPatterns(rule.url)) appliedPatterns.add(domain)
         const tabs = (await chrome.tabs.query({})).filter(tab => /^https?:\/\//.test(pageUrls.get(tab.id ?? -1) ?? tab.url ?? ''))
-        const results = await Promise.all(tabs.map(async tab => await updateTab(tab, priorPatterns) ? tab.id! : undefined))
+        const results = await Promise.all(tabs.map(async tab => await updateTab(tab, priorPatterns, rules) ? tab.id! : undefined))
         reloadTabIds = results.filter((id): id is number => id !== undefined)
       }
       return reloadTabIds
@@ -104,7 +118,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (parsed.data.type === 'get-network-rules') {
     // Scope comes from the browser's tab metadata, never a page-supplied URL.
     const url = sender.tab?.id === undefined ? '' : pageUrls.get(sender.tab.id) ?? sender.tab.url ?? ''
-    void getNetworkRules().then(entries => respond({ entries: networkRulesForPage(entries, url), recordingToken: recordingTokenForTab(sender.tab?.id) }), () => respond({ entries: [], recordingToken: recordingTokenForTab(sender.tab?.id) }))
+    void readResolvedNetworkRules().then(entries => respond({ entries: networkRulesForPage(entries, url), recordingToken: recordingTokenForTab(sender.tab?.id) }), () => respond({ entries: [], recordingToken: recordingTokenForTab(sender.tab?.id) }))
     return true
   }
   if (parsed.data.type === 'sync-network-rules') {
@@ -113,10 +127,12 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   }
 })
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== 'local' || !(NETWORK_STORAGE_KEY in changes)) return
-  // oldValue also recovers possible stale activation after a worker restart.
-  for (const entry of normalizeNetworkRules(changes[NETWORK_STORAGE_KEY].oldValue)) {
-    if (entry.enabled) for (const domain of getDomainPatterns(entry.url)) previousPatterns.add(domain)
+  if (area !== 'local' || !(NETWORK_STORAGE_KEY in changes || VARIABLES_STORAGE_KEY in changes)) return
+  // Literal domains in oldValue also recover possible stale activation after a worker restart.
+  if (NETWORK_STORAGE_KEY in changes) {
+    for (const entry of normalizeStoredNetworkRules(changes[NETWORK_STORAGE_KEY].oldValue)) {
+      if (entry.enabled) for (const domain of getDomainPatterns(entry.url)) if (typeof domain === 'string') previousPatterns.add(domain)
+    }
   }
   requestSync()
 })
