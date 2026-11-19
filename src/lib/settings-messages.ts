@@ -1,12 +1,21 @@
 import * as z from 'zod/mini'
-import { NetworkRuleSchema } from './network-schemas.ts'
-import { ExecutionRecordSchema } from './execution-schemas.ts'
+import { ModeSchema, NetworkMethodSchema } from './network-schemas.ts'
+import { ExecutionRecordSchema, ExecutionRuleSchema } from './execution-schemas.ts'
+import { RuleIdSchema } from './schema-fields.ts'
 
-const entries = z.array(NetworkRuleSchema)
+// Pages receive concrete settings for their own active rules, plus the template
+// snapshot their execution records must use instead of resolved values.
+export const ActiveNetworkRuleSchema = z.object({
+  id: RuleIdSchema, name: z.string(), url: z.union([z.string(), z.array(z.string())]), enabled: z.boolean(), order: z.number(),
+  requestUrl: z.string(), method: NetworkMethodSchema, mode: ModeSchema, body: z.string(), status: z.number(),
+  headers: z.array(z.object({ key: z.string(), value: z.string() })),
+  execution: ExecutionRuleSchema, templated: z.object({ requestUrl: z.boolean(), responseHeaders: z.boolean(), body: z.boolean() }),
+})
+const entries = z.array(ActiveNetworkRuleSchema)
 const id = z.int().check(z.minimum(0))
 export const NetworkActiveTabsSchema = z.array(id)
 export const NetworkBridgeFramesSchema = z.array(z.object({ tabId: id,
-  frames: z.array(z.object({ frameId: id, documentId: z.string() })) }))
+  frames: z.array(z.object({ frameId: id, documentId: z.string(), protectsUrl: z.optional(z.boolean()) })) }))
 export const NetworkSettingsResponseSchema = z.object({ entries, recordingToken: z.optional(z.nullable(z.string())) })
 export const ActivationResultSchema = z.discriminatedUnion('ok', [
   z.object({ ok: z.literal(true), reloadTabIds: z.optional(z.array(id)) }),

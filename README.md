@@ -62,6 +62,24 @@ The prefilled Network Rule bypasses the server by default; you can change matchi
 
 Keep one copy of Overidify enabled. If native Network shows Fetch/XHR calls but the Overidify panel stays empty, disable older copies, close and reopen DevTools, then reload the website. Chrome 154 can hide calls from the panel when another extension copy's interceptor appears in their initiator stack.
 
+## Variables
+
+Enter a value such as an auth token once and use it in many rules. Open **Settings** and choose **Variables** in the page navigation.
+
+1. Click **Add variable**, enter a name such as `AUTH_TOKEN` and its value, then click **Save**.
+2. In any rule text field, type `{{` and choose the variable from the list. Arrow keys move, Enter or a click confirms, and Escape closes the list. The variable appears as a violet `{{AUTH_TOKEN}}` chip.
+3. Save the rule. Requests now use the variable's value, and changing the value on the Variables page updates every rule that uses it.
+
+Only a chosen suggestion creates a variable. Typing or pasting `{{AUTH_TOKEN}}` as text keeps it as literal text, so existing Mustache-style bodies are unchanged. Copying a chip within Overidify keeps it a chip; pasting it elsewhere gives the text `{{AUTH_TOKEN}}`.
+
+Variables work in rule names, website domains, header names and values, Switch option names, Network Rule request URLs, response bodies, and response headers. Names use letters, digits, and underscores, start with a letter or underscore, and are case-sensitive. Values are inserted exactly once, without trimming, encoding, or resolving references inside a value.
+
+Variable edits stay in a draft until **Save**; **Cancel** or leaving the page discards them. Values are hidden until you reveal them. Hiding is a display choice only: values are stored unencrypted in this browser's local extension storage and are never synchronized. Renaming a variable updates every saved rule that uses it. Deleting a variable that rules use asks for confirmation; those rules keep the reference and stay inactive until you create a variable with the same name again.
+
+A rule with a variable problem, such as a missing variable or a value that makes a header invalid, still saves and keeps its toggle on, but it stays **Inactive** and is marked in Settings, the editor, and the popup until the problem is fixed.
+
+Exports keep the variable references but never include values, including in full backups. After importing on another browser, add the listed variables on the Variables page. Execution history in DevTools shows rule templates such as `Bearer {{AUTH_TOKEN}}`, never the inserted values.
+
 ## Execution history in DevTools
 
 The **Executions** tab inside the Overidify DevTools panel records Header Rules, Switch Rules, and Network Rules for the inspected website tab. Recording starts when DevTools opens and continues while another panel, such as Console, is selected. Reopen DevTools after updating the extension.
@@ -86,9 +104,11 @@ On the Settings home page, **Import**, **Export**, and **Select** sit beside the
 - A rule's **Export** icon downloads its latest saved settings directly from the list.
 - **Import** opens a JSON file picker and review. Overlapping UUIDs get one **Replace** or **Add** choice. Replace updates those rules; Add keeps both as separate copies. Invalid rules can be excluded after you accept a partial import.
 
-Files contain exact saved header values and response bodies. Enabled states are preserved on import. If activation is not confirmed after saving, use **Retry activation** without importing the file again.
+Files contain exact saved header values and response bodies, with variable references in place of variable values. Enabled states are preserved on import. If activation is not confirmed after saving, use **Retry activation** without importing the file again.
 
 Backups containing a domain list use export format version 2 and require an extension version with multi-domain support. Single-domain backups retain format version 1, and both formats can be imported here.
+
+Rules that use variables export in format version 3 and require an extension version with variables. Variable values are never exported or imported, including in a full backup; the import review lists the variables the rules use and any that are missing in this browser. Rules without variables keep format version 1 or 2.
 
 ## Development builds
 

@@ -1,18 +1,27 @@
 import type { HeaderPair } from './types.ts'
+import type { TemplateWebsiteScope } from './pattern.ts'
+import type { TemplateText } from './templates.ts'
 
+// Execution history holds templates only, never resolved variable values.
 export type ExecutionRule = {
-  id: string; kind: 'header-rule' | 'switch-rule' | 'network-rule'; name: string; url: string | string[]; headers: HeaderPair[]
-  option?: string; requestUrl?: string; method?: string; mode?: string; status?: number; body?: string; bodyOmitted?: string
+  id: string; kind: 'header-rule' | 'switch-rule' | 'network-rule'; name: TemplateText; url: TemplateWebsiteScope; headers: HeaderPair[]
+  option?: TemplateText; requestUrl?: TemplateText; method?: string; mode?: string; status?: number; body?: TemplateText; bodyOmitted?: string
 }
 export type ExecutionRecord = {
   id: string; time: number; startedAt: number; source: 'chrome' | 'interceptor'; result: 'Matched' | 'Mocked' | 'Failed'
   rule: ExecutionRule
-  request?: { url: string; method: string; type?: string; frameId?: number }
-  response?: { status: number; headers: HeaderPair[]; body?: string; bodyOmitted?: string }
+  request?: { url?: string; urlOmitted?: string; method: string; type?: string; frameId?: number }
+  response?: { status: number; headers: HeaderPair[]; body?: TemplateText; bodyOmitted?: string }
   error?: string
 }
 export const EXECUTION_HISTORY_BYTES = 50 * 1024 * 1024
-export type RequestObservation = { id: string; url: string; method: string; time: number; before?: HeaderPair[]; after?: HeaderPair[] }
+export const HIDDEN_FROM_VARIABLE = { hidden: 'variable' } as const
+export type ObservedHeader = { key: string; value: string | typeof HIDDEN_FROM_VARIABLE }
+export type RequestObservation = {
+  id: string; url?: string; urlOmitted?: string; method: string; time: number; before?: ObservedHeader[]; after?: ObservedHeader[]
+  hiddenHeaders?: { before?: number; after?: number }; detailsHidden?: string
+}
+export type ObservationInput = Omit<RequestObservation, 'time' | 'hiddenHeaders'> & { hiddenHeaders?: number }
 export type ExecutionSnapshot = { records: readonly ExecutionRecord[]; observations: readonly RequestObservation[]; bytes: number; removed: number; paused: boolean; notice: string }
 
 export function createExecutionHistory({ now = Date.now, budget = EXECUTION_HISTORY_BYTES }: { now?: () => number; budget?: number } = {}) {
@@ -73,10 +82,17 @@ export function createExecutionHistory({ now = Date.now, budget = EXECUTION_HIST
     subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener) } },
     add(input: ExecutionRecord) { addMany([input]) },
     addMany,
-    observe(input: Omit<RequestObservation, 'time'>, stage: 'before' | 'after') {
+    observe(input: ObservationInput, stage: 'before' | 'after') {
       if (snapshot.paused) return
       const existing = snapshot.observations.find(entry => entry.id === input.id)
-      const observation = { ...existing, id: input.id, url: input.url, method: input.method, time: existing?.time ?? now(), [stage]: structuredClone(input[stage]) }
+      const observation: RequestObservation = { ...existing, id: input.id, method: input.method, time: existing?.time ?? now(), [stage]: structuredClone(input[stage]) }
+      // A stage that hid its URL or details keeps the observation hidden; later stages never reveal it.
+      const urlOmitted = input.urlOmitted ?? existing?.urlOmitted
+      if (urlOmitted) { observation.urlOmitted = urlOmitted; delete observation.url }
+      else observation.url = input.url
+      const detailsHidden = input.detailsHidden ?? existing?.detailsHidden
+      if (detailsHidden) observation.detailsHidden = detailsHidden
+      if (input.hiddenHeaders) observation.hiddenHeaders = { ...existing?.hiddenHeaders, [stage]: input.hiddenHeaders }
       const key = `observation:${input.id}`
       const prior = sizes.get(key) ?? 0
       const bytes = JSON.stringify(observation).length * 2 + 128

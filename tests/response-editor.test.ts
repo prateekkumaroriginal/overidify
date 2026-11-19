@@ -56,3 +56,16 @@ test('formatting preserves escaped control characters in strings and property na
   const body = '{"text":"a\\nb\\r\\nc\\rd","a\\nb":123}'
   assert.equal(formatResponseBody(body), '{\n  "text": "a\\nb\\r\\nc\\rd",\n  "a\\nb": 123\n}')
 })
+
+test('an externally renamed reference survives undo of subsequent user changes', async () => {
+  const { ResponseEditorSession } = await import('../src/lib/response-editor-session.ts')
+  const editor = new ResponseEditorSession({ template: [{ variable: 'OLD' }] })
+  editor.dispatch(editor.state.update({ changes: { from: editor.state.doc.length, insert: ' draft' }, userEvent: 'input.type' }))
+  const renamed = { template: [{ variable: 'NEW' }, ' draft'] }
+  editor.replaceFromOutside(renamed)
+  assert.deepEqual(editor.template, renamed)
+  assert.equal(editor.undo(), false)
+  editor.dispatch(editor.state.update({ changes: { from: editor.state.doc.length, insert: ' new' }, userEvent: 'input.type' }))
+  assert.equal(editor.undo(), true)
+  assert.deepEqual(editor.template, renamed)
+})

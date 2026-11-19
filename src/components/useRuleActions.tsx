@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { downloadRules } from '../lib/rule-download'
+import { displayText } from '../lib/templates'
 import { ruleType } from '../lib/rule-transfer'
 import type { RuleCollection, TransferRule } from '../lib/rule-transfer'
 import { activateImportedRules, persistRuleDeletion, duplicateSavedRule, getSavedRules } from '../lib/rule-transfer-storage'
@@ -114,7 +115,7 @@ export function useRuleActions(pending: boolean, requestHeaderRules: RuleCollect
       className="max-h-[calc(100dvh_-_2rem)] overflow-y-auto data-[size=default]:sm:max-w-md">
       <AlertDialogHeader>
         <AlertDialogTitle>Delete rule?</AlertDialogTitle>
-        <AlertDialogDescription className="wrap-anywhere">&quot;{deleting?.name}&quot; will be permanently deleted. This action cannot be undone.</AlertDialogDescription>
+        <AlertDialogDescription className="wrap-anywhere">&quot;{deleting ? displayText(deleting.name) : ''}&quot; will be permanently deleted. This action cannot be undone.</AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>
         <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>

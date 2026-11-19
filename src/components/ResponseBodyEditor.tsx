@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useDeferredValue, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { Compartment, EditorState } from '@codemirror/state'
 import { EditorView, panels } from '@codemirror/view'
@@ -9,6 +9,12 @@ import { analyzeResponseBody } from '../lib/response-editor'
 import { ResponseEditorSession } from '../lib/response-editor-session'
 import { responseCodeExtensions } from './response-code-extensions'
 import { ResponseSearchPanel } from './ResponseSearchPanel'
+import { setKnownVariables, stateTemplate } from '../lib/template-editor-state'
+import { hasReferences } from '../lib/templates'
+import type { TemplateText } from '../lib/templates'
+import { closeSuggestionsOnEscape, templateViewExtensions } from './template-editor-view'
+import { TemplateSuggestionList } from './TemplateInput'
+import { useVariableNames } from './variables-context'
 import { Button } from './ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
 
@@ -35,28 +41,37 @@ function CodeView({ session, panelContainer, onView, disabled }: { session: Resp
   </div>
 }
 
-type Props = { value: string; onChange: (body: string) => void; onBlur: () => void; disabled: boolean; isJson: boolean }
+type Props = { value: TemplateText; onChange: (body: TemplateText) => void; onBlur: () => void; disabled: boolean; isJson: boolean; warning?: string | null }
+const VARIABLES_REASON = 'Format is unavailable while the body contains variables.'
 
-export default function ResponseBodyEditor({ value, onChange, onBlur, disabled, isJson }: Props) {
+export default function ResponseBodyEditor({ value, onChange, onBlur, disabled, isJson, warning }: Props) {
+  const listId = useId()
   const [{ session, config }] = useState(() => {
     const config = responseCodeExtensions()
-    return { config, session: new ResponseEditorSession(value, config.extensions) }
+    return { config, session: new ResponseEditorSession(value, [config.extensions, templateViewExtensions({ listId, singleLine: false })]) }
   })
   const state = useSyncExternalStore(session.subscribe, () => session.state)
   const body = useMemo(() => state.doc.toString(), [state.doc])
+  const templated = useMemo(() => hasReferences(stateTemplate(state)), [state])
   const deferredBody = useDeferredValue(body)
-  const analysis = useMemo(() => analyzeResponseBody(deferredBody), [deferredBody])
+  const plainAnalysis = useMemo(() => analyzeResponseBody(deferredBody), [deferredBody])
+  // Live JSON markers and Format treat references as literal text, so both pause while the body has references.
+  const analysis = templated ? { available: false, reason: VARIABLES_REASON } : plainAnalysis
+  const names = useVariableNames()
+  const [wrapper, setWrapper] = useState<HTMLDivElement | null>(null)
+  const [view, setView] = useState<EditorView | null>(null)
+  useEffect(() => { session.dispatch(session.state.update({ effects: setKnownVariables.of(names) })) }, [session, names])
   const current = deferredBody === body
   const [expanded, setExpanded] = useState(false)
   const [error, setError] = useState('')
   const viewRef = useRef<EditorView | null>(null)
   // A stable setter keeps the editor mounted across ordinary React renders.
-  const [onView] = useState(() => (view: EditorView | null) => { viewRef.current = view })
+  const [onView] = useState(() => (view: EditorView | null) => { viewRef.current = view; setView(view) })
 
   useEffect(() => session.subscribe(transactions => {
-    if (transactions.some(transaction => transaction.docChanged)) onChange(session.body)
+    if (transactions.some(transaction => transaction.docChanged)) onChange(session.template)
   }), [session, onChange])
-  useEffect(() => { if (value !== session.body) session.replace(value) }, [value, session])
+  useEffect(() => { session.replaceFromOutside(value) }, [value, session])
   useEffect(() => {
     session.dispatch(session.state.update({ effects: config.editable.reconfigure([EditorView.editable.of(!disabled), EditorState.readOnly.of(disabled)]) }))
   }, [session, config, disabled])
@@ -65,17 +80,17 @@ export default function ResponseBodyEditor({ value, onChange, onBlur, disabled, 
     session.dispatch(session.state.update({ effects: config.language.reconfigure(expensiveFeatures ? json() : []) }))
   }, [session, config, expensiveFeatures])
   useEffect(() => {
-    const diagnostic = current && isJson ? analysis.error : undefined
+    const diagnostic = current && isJson && !templated ? plainAnalysis.error : undefined
     session.dispatch(session.state.update(setDiagnostics(session.state, diagnostic ? [{
       from: Math.min(diagnostic.offset, body.length), to: Math.min(diagnostic.offset + diagnostic.length, body.length), severity: 'error', message: diagnostic.message,
     }] : [])))
-  }, [session, analysis, isJson, current, body.length])
+  }, [session, plainAnalysis, isJson, current, body.length, templated])
 
   function run(action: () => void) {
     if (disabled) return
     try { action(); setError('') } catch (failure) { setError(`Change not applied. ${failure instanceof Error ? failure.message : 'Please try again.'}`) }
   }
-  const editor = <div className="response-body-editor grid min-w-0 gap-3" data-expanded={expanded} onBlur={onBlur} onKeyDown={event => {
+  const editor = <div ref={setWrapper} className="response-body-editor relative grid min-w-0 gap-3" data-expanded={expanded} onBlur={onBlur} onKeyDown={event => {
     // Let editor controls consume their shortcuts before form-level navigation.
     if (event.key === 'Enter' && !event.ctrlKey && !event.metaKey) event.stopPropagation()
     if (event.key === 'Escape') {
@@ -91,14 +106,18 @@ export default function ResponseBodyEditor({ value, onChange, onBlur, disabled, 
       {expanded ? <Button type="button" variant="secondary" size="sm" onClick={() => setExpanded(false)}>Return inline</Button> : <DialogTrigger asChild><Button type="button" variant="secondary" size="sm" disabled={disabled}>Expand editor</Button></DialogTrigger>}
     </div>
     <CodeView session={session} panelContainer={config.panelContainer} onView={onView} disabled={disabled} />
+    <TemplateSuggestionList view={view} listId={listId} container={wrapper} />
     {(!current || analysis.reason) && <p className="text-xs text-muted-foreground" role="status">
-      {!current ? 'Checking JSON…' : isJson || !analysis.error ? analysis.reason : 'Format needs valid JSON. This response can still be edited and saved as text.'}
+      {!current ? 'Checking JSON…' : templated || isJson || !plainAnalysis.error ? analysis.reason : 'Format needs valid JSON. This response can still be edited and saved as text.'}
     </p>}
+    {warning && <p className="text-xs text-muted-foreground" role="status">{warning}</p>}
     {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
   </div>
   return <Dialog open={expanded} onOpenChange={setExpanded}>
     {expanded ? <DialogContent className="max-w-[1200px]" onEscapeKeyDown={event => {
       event.stopPropagation()
+      // An open suggestion list consumes Escape before the dialog does.
+      if (closeSuggestionsOnEscape(event)) { event.preventDefault(); return }
       // The dialog sees Escape before the panel's own keyboard handler.
       if (viewRef.current && searchPanelOpen(viewRef.current.state)) {
         event.preventDefault()

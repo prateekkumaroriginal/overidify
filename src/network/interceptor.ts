@@ -1,7 +1,19 @@
-import { selectNetworkRule } from '../lib/network-rules'
-import type { NetworkRule } from '../lib/network-rules'
-import { EXECUTION_HISTORY_BYTES } from '../lib/execution-history'
-import type { ExecutionRecord } from '../lib/execution-history'
+import { selectNetworkRule } from '../lib/network-rules.ts'
+import { EXECUTION_HISTORY_BYTES } from '../lib/execution-history.ts'
+import type { ExecutionRecord } from '../lib/execution-history.ts'
+import type { ActiveNetworkRule } from '../lib/resolve-rules.ts'
+
+export type PageNetworkRule = ActiveNetworkRule
+type NetworkRule = PageNetworkRule
+export const REQUEST_URL_OMITTED = "Hidden because the rule's request URL contains a variable."
+
+// Records use the rule's template snapshot. Values that came from a variable
+// stay out of history, including in error text, which can quote input.
+function executionError(error: unknown, entry: NetworkRule, aborted: boolean): string {
+  const templated = entry.templated.requestUrl || entry.templated.responseHeaders || entry.templated.body
+  if (!templated) return error instanceof Error ? error.message : String(error)
+  return aborted || (error instanceof Error && error.name === 'AbortError') ? 'Request aborted' : 'Request failed'
+}
 
 type PageWindow = Window & typeof globalThis
 const nullBody = (method: string, status: number) => method === 'HEAD' || [204, 205, 304].includes(status)
@@ -11,7 +23,7 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
   let executionReporter: ((record: ExecutionRecord) => void) | undefined
   const executionPrefix = Math.random().toString(36).slice(2)
   let executionSequence = 0
-  function beginExecution(entry: NetworkRule, method: string, url: string, type: string): (error?: unknown, headers?: Headers) => void {
+  function beginExecution(entry: NetworkRule, method: string, url: string, type: string): (error?: unknown, headers?: Headers, aborted?: boolean) => void {
     const report = executionReporter
     if (!report) return () => undefined
     const startedAt = Date.now()
@@ -19,17 +31,18 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
     // ordinary HTTP websites supported by Network Rules.
     const id = `${executionPrefix}:${++executionSequence}`
     let reported = false
-    return (error?: unknown, responseHeaders?: Headers) => {
+    return (error?: unknown, responseHeaders?: Headers, aborted = false) => {
       if (reported) return
       reported = true
       try {
         const record: ExecutionRecord = { id, startedAt, time: startedAt, source: 'interceptor', result: error === undefined ? 'Mocked' : 'Failed',
-          rule: { id: entry.id, kind: 'network-rule', name: entry.name, url: entry.url, headers: entry.headers.map(header => ({ ...header })),
-            requestUrl: entry.requestUrl, method: entry.method, mode: entry.mode, status: entry.status, body: entry.body }, request: { url, method, type } }
+          rule: { ...entry.execution }, request: entry.templated.requestUrl ? { urlOmitted: REQUEST_URL_OMITTED, method, type } : { url, method, type } }
         if (error === undefined) {
-          const headers = responseHeaders ?? new page.Headers(entry.headers.map(({ key, value }) => [key, value]))
-          record.response = { status: entry.status, headers: [...headers].map(([key, value]) => ({ key, value })), body: nullBody(method, entry.status) ? '' : entry.body }
-        } else record.error = error instanceof Error ? error.message : String(error)
+          const headers = entry.templated.responseHeaders ? entry.execution.headers
+            : [...responseHeaders ?? new page.Headers(entry.headers.map(({ key, value }) => [key, value]))].map(([key, value]) => ({ key, value }))
+          const body = nullBody(method, entry.status) ? '' : entry.templated.body ? entry.execution.body ?? '' : entry.body
+          record.response = { status: entry.status, headers, body }
+        } else record.error = executionError(error, entry, aborted)
         if (JSON.stringify(record).length * 2 + 128 > EXECUTION_HISTORY_BYTES) {
           delete record.rule.body
           record.rule.bodyOmitted = 'Configured body not retained: execution exceeds the history budget.'
@@ -172,7 +185,7 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
       const response = mockResponse(selected, method, url, signal)
       completeExecution(undefined, response.headers)
       return response
-    } catch (error) { completeExecution(error ?? 'Request failed'); throw error }
+    } catch (error) { completeExecution(error ?? 'Request failed', undefined, signal.aborted); throw error }
   }
 
   function initializeXHR(xhr: XMLHttpRequest): PropertyDescriptorMap {
@@ -187,7 +200,7 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
     let url = ''
     let asynchronous = true
     let entry: NetworkRule | undefined
-    let completeExecution: (error?: unknown, headers?: Headers) => void = () => undefined
+    let completeExecution: ReturnType<typeof beginExecution> = () => undefined
     let intercepting = false
     let pending = false
     let finished = false
@@ -215,7 +228,7 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
       finished = true
       pending = false
       failed = true
-      completeExecution(`XHR ${type}`)
+      completeExecution(`XHR ${type}`, undefined, type === 'abort')
       state = 4
       headers = new page.Headers()
       result = null
@@ -459,7 +472,7 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
   return {
     setExecutionReporter(reporter?: (record: ExecutionRecord) => void) { executionReporter = reporter },
     setNetworkRules(next: NetworkRule[]) {
-      networkRules = next.map(entry => ({ ...entry, headers: entry.headers.map(header => ({ ...header })) }))
+      networkRules = next.map(entry => ({ ...entry, headers: entry.headers.map(header => ({ ...header })), execution: { ...entry.execution } }))
       initialized = true
       timers.clearTimeout(startup)
       release()

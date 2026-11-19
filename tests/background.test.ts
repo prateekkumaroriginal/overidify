@@ -20,7 +20,11 @@ const resourceTypes = Object.fromEntries([
   'WEBBUNDLE', 'OTHER',
 ].map((type) => [type, type.toLowerCase()]))
 Object.assign(globalThis, { chrome: { declarativeNetRequest: { ResourceType: resourceTypes } } })
-const { requestHeaderRulesToSessionRules } = await import('../src/lib/dnr.ts')
+const { requestHeaderRulesToSessionRules, headerActivationMessage } = await import('../src/lib/dnr.ts')
+const { resolveRules } = await import('../src/lib/resolve-rules.ts')
+const { normalizeRequestHeaderRules } = await import('../src/lib/request-header-rules.ts')
+const { normalizeVariables, variableValues } = await import('../src/lib/variables.ts')
+const { createObservationRedaction } = await import('../src/lib/observation-redaction.ts')
 
 // Run the actual worker with isolated Chrome events and storage adapters.
 const source = readFileSync(new URL('../src/background/index.ts', import.meta.url), 'utf8')
@@ -38,7 +42,10 @@ function harness(initialTabs: PageTab[]) {
   const errors: unknown[] = []
   const api = {
     runtime: { onInstalled: event(), onStartup: event(), onMessage: event() },
-    storage: { onChanged: event() },
+    storage: { onChanged: event(), local: { get: async (keys: string[]) => {
+      assert.deepEqual(Array.from(keys), ['requestHeaderRules', 'variables'])
+      return { requestHeaderRules: entries, variables: [] }
+    } } },
     tabs: {
       query: async () => tabs,
       onUpdated: event(), onCreated: event(), onRemoved: event(), onReplaced: event(),
@@ -49,7 +56,9 @@ function harness(initialTabs: PageTab[]) {
     chrome: api,
     console: { error: (...args: unknown[]) => errors.push(args) },
     REQUEST_HEADER_STORAGE_KEY: 'requestHeaderRules',
-    getRequestHeaderRules: async () => entries,
+    VARIABLES_STORAGE_KEY: 'variables',
+    normalizeRequestHeaderRules, normalizeVariables, variableValues, resolveRules, headerActivationMessage,
+    observationRedaction: createObservationRedaction(),
     syncRequestHeaderSessionRules: async (rules: RequestHeaderRule[], pages: PageTab[]) => {
       applied = JSON.parse(JSON.stringify(requestHeaderRulesToSessionRules(rules, pages)))
     },

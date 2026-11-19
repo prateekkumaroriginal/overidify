@@ -23,7 +23,7 @@ export function useEditorForm<Values extends FieldValues>({ schema, initial, pen
   pending: boolean
   returnRoute: string
   onSave: (values: Values) => Promise<Values | void>
-  successMessage?: string
+  successMessage?: string | ((values: Values) => string)
   onInvalid?: (errors: FieldErrors<Values>) => void
   beforeSubmit?: () => boolean
 }) {
@@ -43,7 +43,7 @@ export function useEditorForm<Values extends FieldValues>({ schema, initial, pen
     try {
       const saved = await onSave(values)
       if (saved) form.reset(saved)
-      setSuccess(successMessage)
+      setSuccess(typeof successMessage === 'function' ? successMessage(saved ?? values) : successMessage)
     } catch (error) {
       form.setError('root.server', { message: error instanceof Error ? error.message : 'Could not save. Try again.' })
     }

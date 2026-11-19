@@ -1,4 +1,5 @@
-import { createExecutionHistory, createHeaderMatchReader } from '../lib/execution-history'
+import { createExecutionHistory, createHeaderMatchReader, HIDDEN_FROM_VARIABLE } from '../lib/execution-history'
+import type { ObservedHeader } from '../lib/execution-history'
 import { ExecutionRecordSchema, HeaderLedgerSchema } from '../lib/execution-schemas'
 import type { HeaderOccurrence } from '../lib/execution-history'
 
@@ -35,11 +36,17 @@ export function observeExecutions(tabId: number) {
           reader.read(matches, ledger.data.entries)
           state()
         }
-      } else if (message?.type === 'request-observation' && message.generation === generation && typeof message.observationId === 'string' && typeof message.url === 'string' && typeof message.method === 'string') {
-        const headers = Array.isArray(message.headers) ? message.headers.flatMap((header: { name?: unknown; value?: unknown }) =>
-          typeof header.name === 'string' && typeof header.value === 'string' ? [{ key: header.name, value: header.value }] : []) : []
+      } else if (message?.type === 'request-observation' && message.generation === generation && typeof message.observationId === 'string' && typeof message.method === 'string') {
+        // The worker already removed values Overidify set from variables.
+        const headers = Array.isArray(message.headers) ? message.headers.flatMap((header: { key?: unknown; value?: unknown }): ObservedHeader[] =>
+          typeof header.key !== 'string' ? [] : typeof header.value === 'string' ? [{ key: header.key, value: header.value }]
+            : header.value && typeof header.value === 'object' && (header.value as { hidden?: unknown }).hidden === 'variable' ? [{ key: header.key, value: HIDDEN_FROM_VARIABLE }] : []) : undefined
         const stage = message.stage === 'onBeforeSendHeaders' ? 'before' : 'after'
-        history.observe({ id: message.observationId, url: message.url, method: message.method, [stage]: headers }, stage)
+        history.observe({ id: message.observationId, method: message.method, [stage]: headers,
+          ...(typeof message.url === 'string' ? { url: message.url } : {}),
+          ...(typeof message.urlOmitted === 'string' ? { urlOmitted: message.urlOmitted } : {}),
+          ...(typeof message.detailsHidden === 'string' ? { detailsHidden: message.detailsHidden } : {}),
+          ...(Number.isInteger(message.hiddenHeaders) && message.hiddenHeaders > 0 ? { hiddenHeaders: message.hiddenHeaders } : {}) }, stage)
       } else if (message?.type === 'notice' && typeof message.message === 'string') history.notice(message.message)
     })
     port.onDisconnect.addListener(() => {

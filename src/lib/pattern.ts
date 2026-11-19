@@ -1,27 +1,46 @@
+import { displayText, hasReferences, isTemplateEmpty, templatesEqual, trimTemplateEdges } from './templates.ts'
+import type { TemplateText } from './templates.ts'
+
 function escapeRegexSegment(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 export type WebsiteScope = string | string[]
+// Saved scopes can hold template domains; matching always uses resolved strings.
+export type TemplateWebsiteScope = TemplateText | TemplateText[]
 
-export function getDomainPatterns(scope: WebsiteScope): string[] {
+export function getDomainPatterns<Domain extends TemplateText>(scope: Domain | Domain[]): Domain[] {
   return Array.isArray(scope) ? scope : scope ? [scope] : []
 }
 
-export function normalizeWebsiteScope(scope: WebsiteScope): WebsiteScope {
-  const domains = [...new Set(getDomainPatterns(scope).map(getDomainPattern))]
+/** Literal domains keep today's normalization; a domain with a reference keeps its case so names stay case-sensitive. */
+export function normalizeDomain(domain: TemplateText): TemplateText {
+  return hasReferences(domain) ? trimTemplateEdges(domain) : getDomainPattern(displayText(domain))
+}
+
+export function normalizeWebsiteScope(scope: WebsiteScope): WebsiteScope
+export function normalizeWebsiteScope(scope: TemplateWebsiteScope): TemplateWebsiteScope
+export function normalizeWebsiteScope(scope: TemplateWebsiteScope): TemplateWebsiteScope {
+  const seen = new Set<string>()
+  const domains = getDomainPatterns(scope).map(normalizeDomain).filter(domain => {
+    const key = JSON.stringify(domain)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
   return domains.length === 1 ? domains[0] : domains
 }
 
-export function updateWebsiteScope(scope: WebsiteScope, pattern: string, editing: number | null): WebsiteScope {
-  if (!pattern.trim()) {
+export function updateWebsiteScope(scope: TemplateWebsiteScope, pattern: TemplateText, editing: number | null): TemplateWebsiteScope {
+  if (isTemplateEmpty(trimTemplateEdges(pattern))) {
     if (editing !== null) throw new Error('Enter a domain or remove it from the list.')
     return scope
   }
-  if (!isValidDomainPattern(pattern)) throw new Error('Use a website domain like localhost:4200, *.example.com, or *.')
+  // A domain containing a variable is checked once its value is filled in.
+  if (!hasReferences(pattern) && !isValidDomainPattern(displayText(pattern))) throw new Error('Use a website domain like localhost:4200, *.example.com, or *.')
   const domains = getDomainPatterns(scope)
-  const domain = getDomainPattern(pattern)
-  if (domains.some((existing, index) => index !== editing && getDomainPattern(existing) === domain)) {
+  const domain = normalizeDomain(pattern)
+  if (domains.some((existing, index) => index !== editing && templatesEqual(normalizeDomain(existing), domain))) {
     throw new Error('This domain is already in the list.')
   }
   return normalizeWebsiteScope(editing === null ? [...domains, domain] : domains.map((existing, index) => index === editing ? domain : existing))

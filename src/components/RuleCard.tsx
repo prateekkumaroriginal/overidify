@@ -8,6 +8,10 @@ import { RuleRowActions } from './RuleRowActions'
 import type { RuleRowActionHandlers } from './RuleRowActions'
 import { Badge } from './ui/badge'
 import { getDomainPatterns } from '../lib/pattern'
+import { displayText } from '../lib/templates'
+import type { RuleResolution } from '../lib/resolve-rules'
+import { TemplateTextView } from './TemplateText'
+import { RuleProblemBadge } from './RuleProblemBadge'
 
 type RuleCardProps = {
   rule: TransferRule
@@ -19,10 +23,12 @@ type RuleCardProps = {
   actions?: RuleRowActionHandlers
   websiteDetails?: string
   index: number
+  resolution?: RuleResolution
   children: ReactNode
 }
 
-export function RuleCard({ rule, href, onToggle, pending, openInTab, selection, actions, websiteDetails, index, children }: RuleCardProps) {
+export function RuleCard({ rule, href, onToggle, pending, openInTab, selection, actions, websiteDetails, index, resolution, children }: RuleCardProps) {
+  const name = displayText(rule.name)
   return (
     <li
       className={cn(
@@ -32,18 +38,19 @@ export function RuleCard({ rule, href, onToggle, pending, openInTab, selection, 
       style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
     >
       {selection ? (
-        <RuleSelectionCheckbox id={rule.id} name={rule.name} selection={selection}
+        <RuleSelectionCheckbox id={rule.id} name={name} selection={selection}
           className="after:absolute after:inset-0 after:rounded-lg after:content-['']" />
       ) : (
-        <a className="absolute inset-0 rounded-lg" href={href} aria-label={`Edit ${rule.name}`}
+        <a className="absolute inset-0 rounded-lg" href={href} aria-label={`Edit ${name}`}
           target={openInTab ? '_blank' : undefined} rel={openInTab ? 'noreferrer' : undefined} />
       )}
       <div inert={!!selection} className={cn('flex items-center', selection ? 'pointer-events-none' : 'relative z-10')}>
-        <ToggleSwitch checked={rule.enabled} label={`Enable ${rule.name}`} pending={pending} onChange={onToggle} />
+        <ToggleSwitch checked={rule.enabled} label={`Enable ${name}`} pending={pending} onChange={onToggle} />
       </div>
       <div className="pointer-events-none flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
-        <span className="min-w-0 text-xs font-semibold wrap-anywhere mobile:text-[11px]">{rule.name}</span>
-        {getDomainPatterns(rule.url).map(domain => <Badge key={domain} variant="domain">{domain}</Badge>)}
+        <RuleProblemBadge resolution={resolution} />
+        <TemplateTextView value={rule.name} className="min-w-0 text-xs font-semibold wrap-anywhere mobile:text-[11px]" />
+        {getDomainPatterns(rule.url).map((domain, position) => <Badge key={`${position}-${displayText(domain)}`} variant="domain"><TemplateTextView value={domain} /></Badge>)}
       </div>
       {!selection && <div className="pointer-events-none relative z-10 flex -translate-y-2 translate-x-2 items-center justify-self-end self-start">
         <RuleRowActions rule={rule} actions={actions} />

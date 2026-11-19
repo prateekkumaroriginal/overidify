@@ -89,11 +89,45 @@ Reload website tabs after installing, updating, or reloading the extension, and 
 
 The [Network Rules specification](network-rules/spec.md) covers further technical details and implementation decisions.
 
+## Variables
+
+Variables hold shared text values, such as auth tokens, on the **Variables** page in Settings. The [Variables specification](variables/spec.md) has the complete design.
+
+### Inserting references
+
+Rule names, website domains, header names and values, Switch option names, Network Rule request URLs, response bodies, and response header names and values can hold variable references. Method, status, server mode, toggles, and option selection keep their typed controls.
+
+Typing a second consecutive `{` in a template field opens a suggestion list of saved variable names; values never appear. Typing filters case-insensitively, ranking an exact match, then prefixes, then other matches. Up and Down move, Enter or a click confirms, and Escape closes the list while leaving the typed text. Typing `}` or any character other than a letter, digit, underscore, or leading space closes the list. While the list is open, its keys do not close the editor, add a website domain, or leave Select mode; Ctrl+Enter still saves. With no match, the list links to the Variables page in a new tab so the current draft is kept.
+
+A confirmed suggestion becomes a chip such as `{{AUTH_TOKEN}}`, shown in monospace on a violet tint wherever the rule appears. A chip for a missing variable uses the destructive color with a warning icon. The caret skips over a chip, and Backspace or Delete removes it whole. Undo and redo restore chips. A search-and-replace match inside a chip replaces the whole chip. Copy, cut, paste, and drag between Overidify fields keep chips; other sources insert literal text. Captured DevTools requests always fill literal text.
+
+Typed or pasted text that reads `{{NAME}}` is always literal. There is no escape syntax and no malformed-reference error.
+
+### Values and activation
+
+Values are inserted literally in one pass: no recursion, URL encoding, JSON escaping, or trimming. A value of ` abc` after `Bearer ` sends `Bearer  abc`. Literal parts of a field keep their existing trimming at the outer edges.
+
+A rule is active when it is enabled and every applicable field resolves and is valid with the current values: the name and every website domain, all Header Rule headers, the selected Switch option's name and headers, and a Network Rule's request URL, body, and response headers. Only the selected Switch option affects activation; a broken unselected option is marked but harmless until selected. A resolved header name must be an HTTP token, a resolved header value must be non-empty without line breaks, a resolved request URL must be a complete HTTP or HTTPS URL, and resolved response headers follow the usual response-header checks. An empty body is valid. If the response declares JSON and the body with current values is not valid JSON, the editor shows a warning and the rule stays active. Format and live JSON markers pause while the body contains variables.
+
+Variable problems never block Save and never change a rule's toggle. The rule stays inactive and runs again once the problem is fixed. Settings cards show **Inactive** for an enabled rule or **Variable problem** for a disabled one, with the reasons by field. Editors show issues inline. The popup lists matching rules with a short reason, and its footer counts enabled rules whose website domain cannot be resolved, because those rules match no website.
+
+A website domain containing a variable keeps its letter case when saved, so variable names stay case-sensitive. The filled-in domain is normalized and matched exactly like a typed domain, in every surface.
+
+### Managing variables
+
+The Variables page keeps a draft until **Save**; saved values stay in use until then. **Cancel** or leaving the page discards the draft. Values are masked as eight dots until revealed, and empty values show `Empty`. **Used by** counts the saved rules that reference each variable and lists the fields. **Referenced but missing** lists names that rules use without a saved variable, with **Create** to add one.
+
+Saving merges the draft with changes another window saved to other variables. A name already taken elsewhere fails the save without changes. Renaming rewrites references in every saved rule, including disabled rules, unselected options, and open editor drafts. Deleting a referenced variable asks for confirmation and keeps the references. A storage failure keeps the previous variables. A saved change that is not yet applied offers **Retry activation**.
+
+### Privacy boundaries
+
+Execution history records rule templates only. Header and Switch executions show `{{NAME}}` chips. Network executions keep the rule's request URL, response headers, and body as templates when they contain variables, and the request URL is omitted in that case. Request observations hide header values Overidify set from a variable (`Hidden: set from a variable`), omit headers whose names come from a variable, and omit call-server request URLs that come from a variable. While Overidify cannot yet establish which settings apply, such as right after an extension restart, affected request details are hidden until it can. Chrome's own Network panel and the DevTools Requests tab still show the browser's network log.
+
 ## Transferring rules
 
 Import, Export, and Select appear to the right of the rule-type tabs on the options page. Without selection mode, Export includes every saved rule in the active tab, regardless of search. Export on All produces a full backup across the three types. Select reveals list checkboxes; selections carry across the tabs and searches. In selection mode, Export (n) shows the selection count and is disabled until at least one rule is selected. Cancel or Escape clears the selection and leaves Select mode. The All checkbox selects the visible rules; checked and mixed checkboxes use violet.
 
-Exports use Overidify JSON format version 1 for single-domain rules and version 2 when any rule contains a domain list. The `url` field is a string for one domain or an array of strings for multiple domains. Both versions can be imported, while older extensions reject version 2. Exports preserve saved values, enabled states, relative order, and all Switch Rule options and the selected option. Rule and option identities are UUIDs.
+Exports use Overidify JSON format version 1 for single-domain rules, version 2 when any rule contains a domain list, and version 3 when any rule contains a variable reference. Variable values are never exported or read from an import; imported references bind to local variables with the same case-sensitive name, and the review lists used and missing variables. The `url` field is a string for one domain or an array of strings for multiple domains. Both versions can be imported, while older extensions reject version 2. Exports preserve saved values, enabled states, relative order, and all Switch Rule options and the selected option. Rule and option identities are UUIDs.
 
 Import always shows a review before applying changes. Same-UUID rules count as overlaps even when unchanged. Replace updates only overlaps in their existing positions; Add keeps existing rules and gives overlapping copies new UUIDs. Other imported rules are added. New rules and copies go after existing rules in their exported relative order, so later enabled rules can take priority.
 

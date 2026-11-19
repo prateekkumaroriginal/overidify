@@ -4,6 +4,19 @@ See [CONTEXT.md](CONTEXT.md) for rule types and import/export terminology.
 
 ## Language
 
+**Variable**:
+A named text value entered by the user and shared by rules in an Overidify installation.
+
+**Variable reference**:
+A variable chosen from the `{{` suggestion list and inserted into a rule field, shown as a chip such as `{{AUTH_TOKEN}}`. Text typed or pasted to look like `{{AUTH_TOKEN}}` is ordinary literal text.
+_Avoid_: Placeholder for typed text
+
+**Missing variable**:
+A variable reference whose name has no saved variable, for example after the variable is deleted. Creating a variable with that name repairs the reference.
+
+**Inactive rule**:
+An enabled rule that cannot run because of a variable problem, such as a missing variable or a field that is invalid once values are filled in. Its toggle stays on, and it runs again once the problem is fixed.
+
 **Rule copy**:
 An independent rule created from another rule's saved settings. Editing or deleting either rule does not change the other.
 

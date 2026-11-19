@@ -2,9 +2,21 @@ import { matchesPageDomain } from './pattern.ts'
 import { getEntryHeaders, getSelectedOption } from './request-header-rules.ts'
 import { HeaderLedgerSchema } from './execution-schemas.ts'
 import type { ExecutionRule, HeaderInstallation } from './execution-history.ts'
-import type { RequestHeaderRule } from './types'
+import type { ResolvedRequestHeaderRule } from './types'
+import { hasReferences } from './templates.ts'
 
 const SESSION_RULE_OFFSET = 1000
+
+/** An application-owned activation message. Browser errors can quote settings, including variable values. */
+export class HeaderActivationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'HeaderActivationError'
+  }
+}
+export function headerActivationMessage(error: unknown) {
+  return error instanceof HeaderActivationError ? error.message : 'The extension could not apply the header rules. Reload the extension and try again.'
+}
 
 export type PageTab = { id?: number; url?: string }
 
@@ -25,10 +37,12 @@ const RESOURCE_TYPES: chrome.declarativeNetRequest.ResourceType[] = [
   chrome.declarativeNetRequest.ResourceType.OTHER,
 ]
 
-type CompiledHeaderRule = { source: RequestHeaderRule; compiled: chrome.declarativeNetRequest.Rule }
+/** Resolved settings plus, when variables may be involved, the template snapshot recorded in history. */
+export type InstallableHeaderRule = ResolvedRequestHeaderRule & { execution?: ExecutionRule }
+type CompiledHeaderRule = { source: InstallableHeaderRule; compiled: chrome.declarativeNetRequest.Rule }
 
 function compileRequestHeaderRules(
-  rules: RequestHeaderRule[],
+  rules: InstallableHeaderRule[],
   tabs: PageTab[],
 ): CompiledHeaderRule[] {
   return [...rules]
@@ -59,11 +73,38 @@ function compileRequestHeaderRules(
     })
 }
 
-export function requestHeaderRulesToSessionRules(rules: RequestHeaderRule[], tabs: PageTab[]): chrome.declarativeNetRequest.Rule[] {
+export function requestHeaderRulesToSessionRules(rules: InstallableHeaderRule[], tabs: PageTab[]): chrome.declarativeNetRequest.Rule[] {
   return compileRequestHeaderRules(rules, tabs).map(entry => entry.compiled)
 }
 
-export async function syncRequestHeaderSessionRules(rules: RequestHeaderRule[], tabs: PageTab[]): Promise<void> {
+function snapshotOf(source: InstallableHeaderRule): ExecutionRule {
+  return source.execution ? structuredClone(source.execution) : { id: source.id, kind: source.kind, name: source.name, url: source.url,
+    headers: getEntryHeaders(source).map(header => ({ ...header })),
+    ...(source.kind === 'switch-rule' ? { option: getSelectedOption(source).name } : {}) }
+}
+
+/** Lowercased resolved header names Overidify sets from a variable: 'value' hides the value, 'drop' hides the header. */
+export type HeaderRedaction = Map<string, 'value' | 'drop'>
+/** Per tab; null means the installed configuration cannot be established. */
+export type HeaderRedactionByTab = Map<number, HeaderRedaction | null>
+export type HeaderSyncHooks = {
+  beforeInstall?: (previous: HeaderRedactionByTab, next: HeaderRedactionByTab) => void
+  afterInstall?: (ok: boolean) => void
+}
+
+function addRedaction(byTab: HeaderRedactionByTab, tabId: number, snapshot: ExecutionRule | undefined, installed: chrome.declarativeNetRequest.ModifyHeaderInfo[]) {
+  if (byTab.get(tabId) === null) return
+  if (!snapshot || snapshot.headers.length !== installed.length) { byTab.set(tabId, null); return }
+  const redaction = byTab.get(tabId) ?? new Map()
+  snapshot.headers.forEach((header, index) => {
+    const name = installed[index].header.toLowerCase()
+    if (hasReferences(header.key)) redaction.set(name, 'drop')
+    else if (hasReferences(header.value) && redaction.get(name) !== 'drop') redaction.set(name, 'value')
+  })
+  byTab.set(tabId, redaction)
+}
+
+export async function syncRequestHeaderSessionRules(rules: InstallableHeaderRule[], tabs: PageTab[], hooks: HeaderSyncHooks = {}): Promise<void> {
   const [dynamicRules, existingRules, stored] = await Promise.all([
     chrome.declarativeNetRequest.getDynamicRules(),
     chrome.declarativeNetRequest.getSessionRules(),
@@ -78,16 +119,17 @@ export async function syncRequestHeaderSessionRules(rules: RequestHeaderRule[], 
   const compiled = compileRequestHeaderRules(rules, tabs)
   const additions: chrome.declarativeNetRequest.Rule[] = []
   const active = new Set<number>()
+  const next: HeaderRedactionByTab = new Map()
   for (const { source, compiled: browserRule } of compiled) {
-    const snapshot: ExecutionRule = { id: source.id, kind: source.kind, name: source.name, url: source.url,
-      headers: getEntryHeaders(source).map(header => ({ ...header })),
-      ...(source.kind === 'switch-rule' ? { option: getSelectedOption(source).name } : {}) }
+    const snapshot = snapshotOf(source)
     for (const tabId of browserRule.condition.tabIds ?? []) {
       const condition = { ...browserRule.condition, tabIds: [tabId] }
-      const signature = JSON.stringify({ rule: snapshot, condition, action: browserRule.action, priority: browserRule.priority })
+      addRedaction(next, tabId, snapshot, browserRule.action.requestHeaders ?? [])
+      // Never sign resolved values: the template snapshot identifies the installed version.
+      const signature = JSON.stringify({ rule: snapshot, condition, priority: browserRule.priority })
       let installed = entries.find(entry => entry.signature === signature && existingRules.some(rule => rule.id === entry.id))
       if (!installed) {
-        if (ledger.next >= 2_147_483_647) throw new Error('Header rule IDs are exhausted. Restart Chrome to start a new session.')
+        if (ledger.next >= 2_147_483_647) throw new HeaderActivationError('Header rule IDs are exhausted. Restart Chrome to start a new session.')
         installed = { id: ++ledger.next, tabId, signature, rule: snapshot }
         entries.push(installed)
       }
@@ -106,16 +148,32 @@ export async function syncRequestHeaderSessionRules(rules: RequestHeaderRule[], 
     snapshotsRetained = false
   }
 
-  // Header changes use tab-scoped session rules exclusively.
-  if (dynamicRules.length) {
-    await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: dynamicRules.map((rule) => rule.id),
-    })
+  // Observations stay protected under both the installed and the next settings
+  // until the browser confirms the change. Installed rules without a retained
+  // snapshot have unknown provenance, so their tabs fail closed.
+  const previous: HeaderRedactionByTab = new Map()
+  const snapshots = new Map(ledger.entries.map(entry => [entry.id, entry.rule]))
+  for (const rule of existingRules) {
+    for (const tabId of rule.condition.tabIds ?? []) addRedaction(previous, tabId, snapshots.get(rule.id), rule.action.requestHeaders ?? [])
   }
-  await chrome.declarativeNetRequest.updateSessionRules({
-    removeRuleIds: existingRules.map((rule) => rule.id),
-    addRules: additions,
-  })
+  hooks.beforeInstall?.(previous, next)
+  try {
+    // Header changes use tab-scoped session rules exclusively.
+    if (dynamicRules.length) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: dynamicRules.map((rule) => rule.id),
+      })
+    }
+    await chrome.declarativeNetRequest.updateSessionRules({
+      removeRuleIds: existingRules.map((rule) => rule.id),
+      addRules: additions,
+    })
+  } catch {
+    hooks.afterInstall?.(false)
+    // Browser errors can quote the settings they rejected, including variable values.
+    throw new HeaderActivationError('The browser did not apply the header rules. Reload the extension and try again.')
+  }
+  hooks.afterInstall?.(true)
   for (const entry of entries) {
     if (active.has(entry.id)) delete entry.retiredAt
     else entry.retiredAt ??= time

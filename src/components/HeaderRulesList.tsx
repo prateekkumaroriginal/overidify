@@ -2,6 +2,7 @@ import type { HeaderRule } from '../lib/types'
 import { RuleCard } from './RuleCard'
 import type { RuleSelection } from './RuleSelection'
 import type { RuleRowActionHandlers } from './RuleRowActions'
+import type { RuleResolution } from '../lib/resolve-rules'
 
 type HeaderRulesListProps = {
   headerRules: HeaderRule[]
@@ -11,6 +12,7 @@ type HeaderRulesListProps = {
   openInTab?: boolean
   selection?: RuleSelection
   actions?: RuleRowActionHandlers
+  resolutions?: Map<string, RuleResolution>
 }
 
 export function HeaderRulesList({
@@ -21,6 +23,7 @@ export function HeaderRulesList({
   openInTab,
   selection,
   actions,
+  resolutions,
 }: HeaderRulesListProps) {
   return (
     <ul className="m-0 grid list-none gap-3.5 p-0">
@@ -34,6 +37,7 @@ export function HeaderRulesList({
           openInTab={openInTab}
           selection={selection}
           actions={actions}
+          resolution={resolutions?.get(headerRule.id)}
           onToggle={(enabled) => onToggle(headerRule, enabled)}
         >
           {headerRule.headers.length} header{headerRule.headers.length === 1 ? '' : 's'}

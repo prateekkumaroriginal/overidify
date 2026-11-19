@@ -1,7 +1,7 @@
 import { getDomainPatterns } from '../lib/pattern'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { Activity, Check, ChevronDown, ChevronRight, ChevronUp, CircleAlert, Copy, PanelLeftClose, PanelLeftOpen, Pause, Play, Search, Trash2, X } from 'lucide-react'
-import { EXECUTION_HISTORY_BYTES, type ExecutionRecord, type ExecutionSnapshot, type RequestObservation } from '../lib/execution-history'
+import { EXECUTION_HISTORY_BYTES, type ExecutionRecord, type ExecutionSnapshot, type ObservedHeader, type RequestObservation } from '../lib/execution-history'
 import type { ExecutionController } from './executions'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
@@ -18,6 +18,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../com
 import { Icon } from '../components/Icon'
 import { cn } from '../lib/utils'
 import { capturedCodeLines, decorateCapturedCode, findCapturedText, highlightCapturedJson, previewCapturedCode, type CapturedCodePart } from '../lib/captured-code'
+import { displayText, hasReferences, templateParts } from '../lib/templates'
+import type { TemplateText } from '../lib/templates'
+import { TemplateTextView } from '../components/TemplateText'
 
 const empty: ExecutionSnapshot = { records: [], observations: [], bytes: 0, removed: 0, paused: false, notice: '' }
 const getEmpty = () => empty
@@ -42,7 +45,18 @@ function Result({ record, explain = false }: { record: ExecutionRecord; explain?
 }
 
 function Headers({ headers }: { headers: ExecutionRecord['rule']['headers'] }) {
-  return <dl className="execution-headers">{headers.map((header, index) => <div key={index}><dt>{header.key}</dt><dd>{header.value || '(empty value)'}</dd></div>)}</dl>
+  return <dl className="execution-headers">{headers.map((header, index) => <div key={index}><dt><TemplateTextView value={header.key} /></dt><dd>{templateParts(header.value).length ? <TemplateTextView value={header.value} /> : '(empty value)'}</dd></div>)}</dl>
+}
+
+/** A configured body with references shows its template; values Overidify inserted are never recorded. */
+function TemplateBody({ value, label }: { value: TemplateText; label: string }) {
+  return <div className="execution-value"><div className="execution-value-bar"><span>{label}</span></div>
+    <pre className="execution-code" tabIndex={0} aria-label={label}><TemplateTextView value={value} /></pre>
+    <p className="execution-note px-4 pb-3">Shown as configured. Values from variables are not recorded.</p></div>
+}
+
+function ObservedValue({ value }: { value: ObservedHeader['value'] }) {
+  return typeof value === 'string' ? <>{value}</> : <span className="text-muted-foreground italic">Hidden: set from a variable</span>
 }
 
 function CapturedValue({ value, label, expandable = false }: { value: string; label: string; expandable?: boolean }) {
@@ -136,8 +150,8 @@ function ExecutionDetails({ record, observations, onClose }: { record: Execution
     <div className="flex shrink-0 items-start gap-3 px-5 pt-3 pb-2">
       <Tooltip><TooltipTrigger asChild><Button variant="ghost-muted" size="icon-sm" aria-label="Close execution inspector" onClick={onClose}><Icon icon={X} /></Button></TooltipTrigger><TooltipContent>Close execution inspector</TooltipContent></Tooltip>
       <div className="flex min-w-0 flex-1 flex-col gap-2">
-      <div className="flex items-baseline justify-between gap-3"><h2 ref={heading} tabIndex={-1} className="min-w-0 flex-1 text-base leading-relaxed font-semibold outline-none wrap-anywhere"><Tooltip><TooltipTrigger asChild><span tabIndex={0} className="rounded-sm focus-visible:outline-2 focus-visible:outline-ring">{record.rule.name || 'Unnamed rule'}</span></TooltipTrigger><TooltipContent className="max-w-[min(560px,calc(100vw-24px))] wrap-anywhere">{record.rule.name || 'Unnamed rule'}</TooltipContent></Tooltip></h2><Result record={record} explain /></div>
-      <div className="execution-detail-meta flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground"><RuleKind kind={record.rule.kind} />{record.rule.option && <><span className="execution-meta-dot" aria-hidden="true" /><span className="truncate">{record.rule.option}</span></>}<span className="execution-meta-dot" aria-hidden="true" /><time className="tabular-nums" dateTime={new Date(record.time).toISOString()}>{clockTime(record.time)}</time></div>
+      <div className="flex items-baseline justify-between gap-3"><h2 ref={heading} tabIndex={-1} className="min-w-0 flex-1 text-base leading-relaxed font-semibold outline-none wrap-anywhere"><Tooltip><TooltipTrigger asChild><span tabIndex={0} className="rounded-sm focus-visible:outline-2 focus-visible:outline-ring">{displayText(record.rule.name) ? <TemplateTextView value={record.rule.name} /> : 'Unnamed rule'}</span></TooltipTrigger><TooltipContent className="max-w-[min(560px,calc(100vw-24px))] wrap-anywhere">{displayText(record.rule.name) || 'Unnamed rule'}</TooltipContent></Tooltip></h2><Result record={record} explain /></div>
+      <div className="execution-detail-meta flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground"><RuleKind kind={record.rule.kind} />{record.rule.option !== undefined && <><span className="execution-meta-dot" aria-hidden="true" /><TemplateTextView value={record.rule.option} className="truncate" /></>}<span className="execution-meta-dot" aria-hidden="true" /><time className="tabular-nums" dateTime={new Date(record.time).toISOString()}>{clockTime(record.time)}</time></div>
       </div>
     </div>
       <div className="execution-detail-navigation"><TabsList variant="underline" className="w-auto shrink-0"><TabsTrigger value="changes">{record.rule.kind === 'network-rule' ? 'Changes' : 'Headers'}</TabsTrigger><TabsTrigger value="request">Request</TabsTrigger><TabsTrigger value="rule">Rule</TabsTrigger></TabsList></div>
@@ -151,14 +165,17 @@ function ExecutionDetails({ record, observations, onClose }: { record: Execution
             {record.result !== 'Failed' && <dl className="execution-fields"><dt>Returned status</dt><dd>{record.response?.status ?? 'Not captured'}</dd><dt>Origin server</dt><dd>{record.rule.mode === 'bypass' ? 'Bypassed' : 'Called before replacement'}</dd></dl>}
             {record.response && <>
               <details className="execution-response-headers" open={headersOpen} onToggle={event => setHeadersOpen(event.currentTarget.open)}><summary><Icon icon={Play} size={12} fill="currentColor" strokeWidth={0} /><span className="execution-response-label">Response headers</span></summary><div className="pt-3">{record.response.headers.length ? <Headers headers={record.response.headers} /> : <p className="execution-note">No configured response headers</p>}</div></details>
-              <section className="flex min-w-0 flex-col gap-3">{record.response.bodyOmitted ? <Alert><AlertDescription>{record.response.bodyOmitted}</AlertDescription></Alert> : record.response.body !== undefined ? <CapturedValue value={record.response.body} label="Response body" expandable /> : <p className="execution-note">Response body not captured</p>}</section>
+              <section className="flex min-w-0 flex-col gap-3">{record.response.bodyOmitted ? <Alert><AlertDescription>{record.response.bodyOmitted}</AlertDescription></Alert> : record.response.body !== undefined ? hasReferences(record.response.body) ? <TemplateBody value={record.response.body} label="Response body" /> : <CapturedValue value={displayText(record.response.body)} label="Response body" expandable /> : <p className="execution-note">Response body not captured</p>}</section>
             </>}
           </>}
         </div>
       </TabsContent>
       <TabsContent value="request" className="execution-content"><div className="flex flex-col gap-5">
         {record.request ? <>
-          <CapturedValue value={record.request.url} label="Request URL" />
+          {record.request.url !== undefined ? <CapturedValue value={record.request.url} label="Request URL" /> : <section className="execution-value"><div className="execution-value-bar"><h3>Request URL</h3></div><div className="flex flex-col gap-2 p-4">
+            <p className="execution-note">{record.request.urlOmitted ?? 'Request URL not captured.'}</p>
+            {record.rule.requestUrl !== undefined && <p className="execution-code">Rule request URL: <TemplateTextView value={record.rule.requestUrl} /></p>}
+          </div></section>}
           <dl className="execution-fields"><dt>Method</dt><dd>{record.request.method}</dd><dt>Type</dt><dd>{record.request.type ?? 'Not captured'}</dd><dt>Started</dt><dd>{calendarTime(record.startedAt)}</dd></dl>
         </> : <section className="execution-value"><div className="execution-value-bar"><h3>Request details unavailable</h3></div><div className="flex flex-col gap-4 p-4"><p className="execution-note">Chrome reported this rule match without a request reference.</p><dl className="execution-fields"><dt>Matched at</dt><dd>{calendarTime(record.time)}</dd></dl></div></section>}
         {record.source === 'chrome' && observations.length > 0 && <>
@@ -166,22 +183,28 @@ function ExecutionDetails({ record, observations, onClose }: { record: Execution
           <section className="flex min-w-0 flex-col gap-3"><h3 className="execution-section-title">Request observations</h3>
           <p className="execution-note">Other request observations from this tab. These are not linked to this match.</p>
           <div className="flex min-w-0 flex-col gap-2"><Label htmlFor="observed-request" className="sr-only">Separate request observations</Label><Select value={observationId ?? ''} onValueChange={setObservationId}><SelectTrigger id="observed-request" className="w-full min-w-0"><SelectValue placeholder="Choose an observed request" /></SelectTrigger><SelectContent><SelectGroup>
-            {observations.slice(-200).map(item => <SelectItem key={item.id} value={item.id}>{item.method} {item.url}</SelectItem>)}
+            {observations.slice(-200).map(item => <SelectItem key={item.id} value={item.id}>{item.method} {item.url ?? item.urlOmitted ?? 'URL not captured'}</SelectItem>)}
           </SelectGroup></SelectContent></Select></div>
           </section>
           {observation && <>
-            <p className="execution-code">{observation.method} {observation.url}</p>
+            <p className="execution-code">{observation.method} {observation.url ?? observation.urlOmitted ?? 'URL not captured'}</p>
+            {observation.detailsHidden && <p className="execution-note" role="status">{observation.detailsHidden}</p>}
+            {observation.hiddenHeaders && <p className="execution-note">{Math.max(observation.hiddenHeaders.before ?? 0, observation.hiddenHeaders.after ?? 0)} headers hidden: set from a variable</p>}
             <Table><TableHeader><TableRow interactive={false}><TableHead>Header</TableHead><TableHead>Before</TableHead><TableHead>Before send</TableHead></TableRow></TableHeader><TableBody>
               {[...new Set([...(observation.before ?? []), ...(observation.after ?? [])].map(header => header.key.toLowerCase()))].map(name => <TableRow key={name} interactive={false}>
                 <TableCell className="whitespace-normal wrap-anywhere"><code>{name}</code></TableCell>
-                {(['before', 'after'] as const).map(stage => <TableCell key={stage} className="whitespace-normal wrap-anywhere"><code>{observation[stage] === undefined ? 'Not captured' : observation[stage]!.filter(header => header.key.toLowerCase() === name).map(header => header.value).join('\n') || '(not in captured headers)'}</code></TableCell>)}
+                {(['before', 'after'] as const).map(stage => {
+                  const matches = observation[stage]?.filter(header => header.key.toLowerCase() === name) ?? []
+                  return <TableCell key={stage} className="whitespace-pre-wrap wrap-anywhere"><code>{observation[stage] === undefined ? 'Not captured' : matches.length
+                    ? matches.map((header, index) => <span key={index} className="block"><ObservedValue value={header.value} /></span>) : '(not in captured headers)'}</code></TableCell>
+                })}
               </TableRow>)}
             </TableBody></Table>
           </>}
         </>}
       </div></TabsContent>
       <TabsContent value="rule" className="execution-content"><div className="flex flex-col gap-5">
-        <section className="flex flex-col gap-3"><h3 className="execution-section-title">Match conditions</h3><dl className="execution-fields"><dt>Website</dt><dd>{getDomainPatterns(record.rule.url).join(', ')}</dd>{record.rule.requestUrl && <><dt>Request URL</dt><dd>{record.rule.requestUrl}</dd></>}{record.rule.method && <><dt>Method</dt><dd>{record.rule.method}</dd></>}</dl></section>
+        <section className="flex flex-col gap-3"><h3 className="execution-section-title">Match conditions</h3><dl className="execution-fields"><dt>Website</dt><dd>{getDomainPatterns(record.rule.url).map((domain, index) => <span key={index}>{index > 0 && ', '}<TemplateTextView value={domain} /></span>)}</dd>{record.rule.requestUrl !== undefined && <><dt>Request URL</dt><dd><TemplateTextView value={record.rule.requestUrl} /></dd></>}{record.rule.method && <><dt>Method</dt><dd>{record.rule.method}</dd></>}</dl></section>
         {record.rule.kind === 'network-rule' ? <section className="flex flex-col gap-3"><h3 className="execution-section-title">Response settings</h3><dl className="execution-fields"><dt>Origin server</dt><dd>{record.rule.mode === 'bypass' ? 'Bypassed' : 'Called before replacement'}</dd><dt>Status</dt><dd>{record.rule.status ?? 'Not captured'}</dd></dl></section> : <section className="flex flex-col gap-3"><h3 className="execution-section-title">Configured headers</h3><Headers headers={record.rule.headers} /></section>}
         <p className="execution-note">A snapshot from this execution. Later rule edits do not change these settings.</p>
         <details className="execution-snapshot"><summary>View full rule snapshot</summary><pre className="execution-code mt-3">{JSON.stringify(record.rule, null, 2)}</pre></details>
@@ -234,9 +257,9 @@ export function ExecutionsPanel({ controller }: { controller?: ExecutionControll
         {state.records.length ? <div className="flex flex-1 flex-col" role="group" aria-label="Execution activity">
           {state.records.length > visible.length && <Button variant="ghost" onClick={() => setShown(value => value + 200)}>Show earlier executions ({state.records.length - visible.length})</Button>}
           {visible.map(record => <Tooltip key={record.id}><TooltipTrigger asChild><Button variant="execution" size="execution" aria-pressed={record.id === selectedId} onClick={event => { selectedButton.current = event.currentTarget; listScrollTop.current = event.currentTarget.closest('.execution-list')?.scrollTop ?? 0; setSelectedId(record.id) }}>
-            <span className="flex min-w-0 flex-1 flex-col gap-1"><span className="execution-row-title truncate text-sm font-medium">{record.rule.name || 'Unnamed rule'}</span><span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground"><time className="shrink-0 tabular-nums" dateTime={new Date(record.time).toISOString()}>{clockTime(record.time)}</time><span className="execution-meta-dot" aria-hidden="true" /><span className="flex min-w-0 items-center gap-2"><RuleKind kind={record.rule.kind} />{record.rule.option && <><span className="execution-meta-dot" aria-hidden="true" /><span className="truncate">{record.rule.option}</span></>}</span></span></span>
+            <span className="flex min-w-0 flex-1 flex-col gap-1"><span className="execution-row-title truncate text-sm font-medium">{displayText(record.rule.name) ? <TemplateTextView value={record.rule.name} /> : 'Unnamed rule'}</span><span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground"><time className="shrink-0 tabular-nums" dateTime={new Date(record.time).toISOString()}>{clockTime(record.time)}</time><span className="execution-meta-dot" aria-hidden="true" /><span className="flex min-w-0 items-center gap-2"><RuleKind kind={record.rule.kind} />{record.rule.option !== undefined && <><span className="execution-meta-dot" aria-hidden="true" /><TemplateTextView value={record.rule.option} className="truncate" /></>}</span></span></span>
             <Result record={record} />
-          </Button></TooltipTrigger><TooltipContent className="flex max-w-[min(560px,calc(100vw-24px))] flex-col gap-1 wrap-anywhere"><span>{record.rule.name || 'Unnamed rule'}</span><span>{resultMeaning[record.result]}</span></TooltipContent></Tooltip>)}
+          </Button></TooltipTrigger><TooltipContent className="flex max-w-[min(560px,calc(100vw-24px))] flex-col gap-1 wrap-anywhere"><span>{displayText(record.rule.name) || 'Unnamed rule'}</span><span>{resultMeaning[record.result]}</span></TooltipContent></Tooltip>)}
         </div> : <Empty><EmptyHeader><EmptyMedia variant="icon"><Icon icon={Activity} /></EmptyMedia><EmptyTitle>No executions yet</EmptyTitle><EmptyDescription>Make a request on the inspected page that matches an enabled rule.</EmptyDescription></EmptyHeader></Empty>}
         {selectedId && !selected && <p className="execution-note border-t p-4" role="status">The selected execution was removed from history. Select another execution.</p>}
       </section>

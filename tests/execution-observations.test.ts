@@ -16,17 +16,22 @@ test('header observations pair each redirect and authentication leg separately',
   const packets: { type: string; observationId?: string; requestId?: string; stage?: string; url?: string }[] = []
   const port = { name: 'overidify-executions', sender: { id: 'extension', url: 'chrome-extension://extension/devtools.html' }, onMessage: event(), onDisconnect: event(), postMessage: (message: typeof packets[number]) => packets.push(message) }
   const runtime = { id: 'extension', getURL: () => 'chrome-extension://extension/', onConnect: event(), onMessage: event() }
-  const webRequest = { onBeforeSendHeaders: event(), onSendHeaders: event(), onBeforeRedirect: event(), onCompleted: event(), onErrorOccurred: event() }
+  const webRequest = { onBeforeRequest: event(), onBeforeSendHeaders: event(), onSendHeaders: event(), onBeforeRedirect: event(), onCompleted: event(), onErrorOccurred: event() }
   const source = readFileSync(new URL('../src/background/executions.ts', import.meta.url), 'utf8').replace(/^import .*\r?\n/gm, '').replace(/^export /gm, '')
   const code = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2023 } }).outputText
+  const { createObservationRedaction, emptyLayer, mergeLayers, redactObservation } = await import('../src/lib/observation-redaction.ts')
+  const observationRedaction = createObservationRedaction()
+  observationRedaction.headerTransition(new Map(), new Map())(true)
+  observationRedaction.initializeNetwork([])
   let sequence = 0
-  runInNewContext(code, { crypto: { randomUUID: () => `identity-${++sequence}` }, setTimeout: () => 1, clearTimeout() {},
+  runInNewContext(code, { observationRedaction, emptyLayer, mergeLayers, redactObservation, crypto: { randomUUID: () => `identity-${++sequence}` }, setTimeout: () => 1, clearTimeout() {},
     chrome: { runtime, webRequest, tabs: { sendMessage: async () => undefined }, storage: { session: { get: async () => ({ executionLastPoll: Date.now() }) } } } })
   runtime.onConnect.emit(port)
   port.onMessage.emit({ type: 'subscribe', tabId: 1, since: Date.now() })
   await new Promise(resolve => setImmediate(resolve))
   const leg = (url: string) => {
     const details = { requestId: 'same-browser-id', url, method: 'GET', requestHeaders: [], timeStamp: Date.now() }
+    webRequest.onBeforeRequest.emit(details)
     webRequest.onBeforeSendHeaders.emit(details)
     webRequest.onSendHeaders.emit(details)
   }

@@ -5,6 +5,8 @@ import { Alert, AlertDescription, AlertTitle } from './ui/alert'
 import { Button } from './ui/button'
 import { Icon } from './Icon'
 import { applyImport, reviewImport } from '../lib/rule-transfer'
+import { displayText } from '../lib/templates'
+import { getVariables } from '../lib/variables-storage'
 import type { ImportAction, ImportReview, RuleCollection } from '../lib/rule-transfer'
 import { activateImportedRules, getSavedRules, saveImportedRules } from '../lib/rule-transfer-storage'
 import type { TransferActivation } from '../lib/rule-transfer-storage'
@@ -30,8 +32,8 @@ export function ImportRulesDialog({ onSaved, onSuccess }: {
     setReview(null); setActivation(null); setError(''); setFileName(file.name)
     setBusy(true)
     try {
-      const [text, existing] = await Promise.all([file.text(), getSavedRules()])
-      setReview(reviewImport(text, existing))
+      const [text, existing, variables] = await Promise.all([file.text(), getSavedRules(), getVariables()])
+      setReview(reviewImport(text, existing, variables.map(variable => variable.name)))
     }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not read the file.') }
     finally { setBusy(false) }
@@ -73,7 +75,9 @@ export function ImportRulesDialog({ onSaved, onSuccess }: {
             {review.issues.length > 0 && <p>{review.issues.length} invalid</p>}
             {review.overlaps.length > 0 && <p>{review.overlaps.length} overlap{review.overlaps.length === 1 ? '' : 's'}</p>}
           </div>}
-          {review.overlaps.length > 0 && <div><h3 className="mb-2 font-medium">Already present</h3><ul className="list-disc pl-5 text-sm">{review.overlaps.map(rule => <li key={rule.id} className="break-words">{rule.name} · {'kind' in rule ? rule.kind === 'header-rule' ? 'Header Rule' : 'Switch Rule' : 'Network Rule'}</li>)}</ul></div>}
+          {review.variables.used.length > 0 && <p className="text-sm">Uses variables: {review.variables.used.join(', ')}</p>}
+          {review.variables.missing.length > 0 && <p className="text-sm">Missing variables: {review.variables.missing.join(', ')}. Rules using them stay inactive until you add them in <a className="underline" href="#/variables" onClick={() => setOpen(false)}>Variables</a>.</p>}
+          {review.overlaps.length > 0 && <div><h3 className="mb-2 font-medium">Already present</h3><ul className="list-disc pl-5 text-sm">{review.overlaps.map(rule => <li key={rule.id} className="break-words">{displayText(rule.name)} · {'kind' in rule ? rule.kind === 'header-rule' ? 'Header Rule' : 'Switch Rule' : 'Network Rule'}</li>)}</ul></div>}
           {review.issues.length > 0 && <Alert variant="destructive"><AlertTitle>Some rules cannot be imported</AlertTitle><AlertDescription><ul className="list-disc pl-5">{review.issues.map((issue, index) => <li key={index} className="break-words">{issue.name}: {issue.message}</li>)}</ul>{count > 0 ? <p>Import only the valid rules below, or cancel.</p> : <p>No valid rules remain. Choose another file.</p>}</AlertDescription></Alert>}
         </>}
         {activation && <Alert><AlertTitle>Rules saved; activation not confirmed</AlertTitle><AlertDescription>

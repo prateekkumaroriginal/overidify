@@ -1,4 +1,4 @@
-import type { NetworkRule } from '../lib/network-rules'
+import type { PageNetworkRule } from './interceptor'
 import { NetworkPageMessageSchema, NetworkRuntimeMessageSchema, NetworkSettingsResponseSchema } from '../lib/settings-messages'
 import type { NetworkApplied } from '../lib/settings-messages'
 
@@ -6,13 +6,13 @@ const bridgeWindow = window as Window & { __overidifyNetworkBridge?: boolean }
 if (!bridgeWindow.__overidifyNetworkBridge) {
   bridgeWindow.__overidifyNetworkBridge = true
   let pageReady = false
-  let entries: NetworkRule[] = []
+  let entries: PageNetworkRule[] = []
   let sequence = 0
   let recordingToken: string | null = null
   let recordingRevision = 0
   const pending = new Map<number, (result: NetworkApplied) => void>()
 
-  function apply(next: NetworkRule[], token = recordingToken): Promise<NetworkApplied> {
+  function apply(next: PageNetworkRule[], token = recordingToken): Promise<NetworkApplied> {
     entries = next
     recordingToken = token
     // Reporting must be enabled before config releases document-start calls.
@@ -68,6 +68,7 @@ if (!bridgeWindow.__overidifyNetworkBridge) {
     void apply(parsed.data.entries, parsed.data.recordingToken).then(sendResponse)
     return true
   })
+  // MAIN replies with ready. A script-disabled frame cannot consume a direct
+  // refresh and is configured through its parent instead.
   window.postMessage({ source: 'overidify-network-bridge', type: 'hello' }, '*')
-  void refresh()
 }

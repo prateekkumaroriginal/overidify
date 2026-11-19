@@ -1,5 +1,9 @@
-import { syncRequestHeaderSessionRules } from '../lib/dnr'
-import { getRequestHeaderRules, REQUEST_HEADER_STORAGE_KEY } from '../lib/request-header-storage'
+import { headerActivationMessage, syncRequestHeaderSessionRules } from '../lib/dnr'
+import { REQUEST_HEADER_STORAGE_KEY } from '../lib/request-header-storage'
+import { normalizeRequestHeaderRules } from '../lib/request-header-rules'
+import { normalizeVariables, variableValues, VARIABLES_STORAGE_KEY } from '../lib/variables'
+import { resolveRules } from '../lib/resolve-rules'
+import { observationRedaction } from './redaction'
 import './network'
 import './action-icon'
 import './executions'
@@ -7,11 +11,22 @@ import './executions'
 const pageUrls = new Map<number, string>()
 
 async function syncFromStorage(): Promise<void> {
-  const [rules, tabs] = await Promise.all([getRequestHeaderRules(), chrome.tabs.query({})])
-  await syncRequestHeaderSessionRules(rules, tabs.map((tab) => ({
+  const [stored, tabs] = await Promise.all([
+    chrome.storage.local.get([REQUEST_HEADER_STORAGE_KEY, VARIABLES_STORAGE_KEY]),
+    chrome.tabs.query({}),
+  ])
+  const rules = normalizeRequestHeaderRules(stored[REQUEST_HEADER_STORAGE_KEY])
+  const variables = normalizeVariables(stored[VARIABLES_STORAGE_KEY])
+  // Resolution is the only path from saved templates to installed header values.
+  const resolved = resolveRules({ requestHeaderRules: rules, networkRules: [] }, variableValues(variables))
+  let settle: ((ok: boolean) => void) | undefined
+  await syncRequestHeaderSessionRules(resolved.requestHeaderRules, tabs.map((tab) => ({
     id: tab.id,
     url: tab.id === undefined ? tab.url : pageUrls.get(tab.id) ?? tab.url,
-  })))
+  })), {
+    beforeInstall: (previous, next) => { settle = observationRedaction.headerTransition(previous, next) },
+    afterInstall: ok => settle?.(ok),
+  })
 }
 
 let syncing: Promise<void> | undefined
@@ -41,7 +56,8 @@ function queueSync(): Promise<void> {
 }
 
 function requestSync(): void {
-  void queueSync().catch((error) => console.error('Failed to sync page header rules.', error))
+  // Log only application-owned text; browser errors can quote variable values.
+  void queueSync().catch((error) => console.error('Failed to sync page header rules.', headerActivationMessage(error)))
 }
 
 function updatePage(tabId: number, url: string): void {
@@ -87,7 +103,7 @@ chrome.runtime.onStartup.addListener(() => {
 })
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== 'local' || !(REQUEST_HEADER_STORAGE_KEY in changes)) {
+  if (areaName !== 'local' || !(REQUEST_HEADER_STORAGE_KEY in changes || VARIABLES_STORAGE_KEY in changes)) {
     return
   }
 
@@ -100,7 +116,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     () => sendResponse({ ok: true }),
     (error: unknown) => sendResponse({
       ok: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: headerActivationMessage(error),
     }),
   )
   return true

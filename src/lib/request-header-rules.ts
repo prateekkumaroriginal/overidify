@@ -1,5 +1,6 @@
 import { normalizeWebsiteScope } from './pattern.ts'
-import { HeaderPairSchema } from './schema-fields.ts'
+import { isBlank, PersistedHeaderPairSchema } from './schema-fields.ts'
+import { trimTemplateEdges } from './templates.ts'
 import { PersistedRequestHeaderRuleSchema, PersistedSwitchRuleOptionSchema } from './persisted-request-header-schemas.ts'
 import type {
   RequestHeaderRule,
@@ -38,21 +39,22 @@ export function createSwitchRuleDraft(): SwitchRuleDraft {
   }
 }
 
-export function getSelectedOption(switchRule: SwitchRuleDraft): SwitchRuleOption {
+export function getSelectedOption<Option extends { id: string }>(switchRule: { options: Option[]; selectedOptionId: string }): Option {
   return switchRule.options.find((option) => option.id === switchRule.selectedOptionId) ?? switchRule.options[0]
 }
 
-export function getEntryHeaders(entry: RequestHeaderRule): HeaderPair[] {
+type HeaderSource<Pair> = { kind: 'header-rule'; headers: Pair[] } | { kind: 'switch-rule'; options: { id: string; headers: Pair[] }[]; selectedOptionId: string }
+export function getEntryHeaders<Pair>(entry: HeaderSource<Pair>): Pair[] {
   return entry.kind === 'header-rule' ? entry.headers : getSelectedOption(entry).headers
 }
 
 function copyHeaders(headers: HeaderPair[]): HeaderPair[] {
-  return headers.map((header) => ({ ...header }))
+  return structuredClone(headers)
 }
 
 export function headerRuleToDraft(rule: HeaderRule): HeaderRuleDraft {
   return {
-    name: rule.name,
+    name: structuredClone(rule.name),
     url: structuredClone(rule.url),
     enabled: rule.enabled,
     headers: copyHeaders(rule.headers),
@@ -61,27 +63,27 @@ export function headerRuleToDraft(rule: HeaderRule): HeaderRuleDraft {
 
 export function switchRuleToDraft(switchRule: SwitchRule): SwitchRuleDraft {
   return {
-    name: switchRule.name,
+    name: structuredClone(switchRule.name),
     url: structuredClone(switchRule.url),
     enabled: switchRule.enabled,
     selectedOptionId: switchRule.selectedOptionId,
-    options: switchRule.options.map((option) => ({ ...option, headers: copyHeaders(option.headers) })),
+    options: structuredClone(switchRule.options),
   }
 }
 
 export function sanitizeHeaders(headers: HeaderPair[]): HeaderPair[] {
   return headers
-    .map((header) => ({ key: header.key.trim(), value: header.value.trim() }))
-    .filter((header) => header.key || header.value)
+    .map((header) => ({ key: trimTemplateEdges(header.key), value: trimTemplateEdges(header.value) }))
+    .filter((header) => !isBlank(header.key) || !isBlank(header.value))
 }
 
 function normalizeHeaders(input: unknown): HeaderPair[] {
   if (!Array.isArray(input)) return []
   return input.flatMap((header: unknown) => {
-    const parsed = HeaderPairSchema.safeParse(header)
+    const parsed = PersistedHeaderPairSchema.safeParse(header)
     if (!parsed.success) return []
-    const key = parsed.data.key.trim(), value = parsed.data.value.trim()
-    return key && value ? [{ key, value }] : []
+    const key = trimTemplateEdges(parsed.data.key), value = trimTemplateEdges(parsed.data.value)
+    return !isBlank(key) && !isBlank(value) ? [{ key, value }] : []
   })
 }
 
@@ -93,7 +95,7 @@ function normalizeEntry(input: unknown, index: number): RequestHeaderRule[] {
   const url = typeof candidate.url === 'string' ? candidate.url.trim() || '*' : candidate.url
   const base = {
     id,
-    name: candidate.name.trim(),
+    name: trimTemplateEdges(candidate.name),
     url: normalizeWebsiteScope(url),
     enabled: candidate.enabled,
     order: candidate.order ?? index,
@@ -117,7 +119,7 @@ function normalizeEntry(input: unknown, index: number): RequestHeaderRule[] {
         usedIds.add(optionId)
         return {
           id: optionId,
-          name: option.name.trim() ? option.name.trim() : `Option ${optionIndex + 1}`,
+          name: isBlank(option.name) ? `Option ${optionIndex + 1}` : trimTemplateEdges(option.name),
           headers: normalizeHeaders(option.headers),
         }
       })

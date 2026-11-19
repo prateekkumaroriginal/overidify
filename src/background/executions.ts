@@ -1,5 +1,8 @@
 import { readHeaderInstallations } from '../lib/dnr'
 import { ExecutionRecordSchema } from '../lib/execution-schemas'
+import { emptyLayer, mergeLayers, redactObservation } from '../lib/observation-redaction'
+import type { RedactionLayer } from '../lib/observation-redaction'
+import { observationRedaction } from './redaction'
 
 type Subscriber = { port: chrome.runtime.Port; tabId: number; since: number; paused: boolean; generation: number }
 const subscribers = new Set<Subscriber>()
@@ -104,28 +107,51 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
 // Each send leg gets an observation identity, since redirects and auth retries
 // can reuse a browser request ID. The match-history API
 // has no shared request ID, so these events must never be joined by time alone.
+// Values Overidify inserted from variables are removed here, before anything
+// reaches DevTools. Chrome can select a header action before the first send
+// event. Keep protection from request start through redirects and auth retries.
 function observeTab(tabId: number) {
-  const requests = new Map<string, { token: string; id: string }>()
+  const protections = new Map<string, RedactionLayer>()
+  const legs = new Map<string, { token: string; id: string }>()
+  const unknown = emptyLayer({ unknownHeaders: true, unknownUrls: true })
   const filter = { urls: ['<all_urls>'], tabId }
   const removals: (() => void)[] = []
+  const started = (details: chrome.webRequest.OnBeforeRequestDetails) => {
+    const previous = protections.get(details.requestId)
+    const current = observationRedaction.protection(tabId)
+    protections.set(details.requestId, previous ? mergeLayers([previous, current]) : current)
+    return undefined
+  }
+  chrome.webRequest.onBeforeRequest.addListener(started, filter)
+  removals.push(() => chrome.webRequest.onBeforeRequest.removeListener(started))
   for (const stage of ['onBeforeSendHeaders', 'onSendHeaders'] as const) {
     const observe = (details: chrome.webRequest.OnBeforeSendHeadersDetails | chrome.webRequest.OnSendHeadersDetails) => {
       const token = tokens.get(tabId)
-      if (stage === 'onBeforeSendHeaders' && token && [...subscribers].some(item => item.tabId === tabId && !item.paused)) requests.set(details.requestId, { token, id: crypto.randomUUID() })
-      const observation = requests.get(details.requestId)
-      if (stage === 'onSendHeaders') requests.delete(details.requestId)
+      if (stage === 'onBeforeSendHeaders' && token && [...subscribers].some(item => item.tabId === tabId && !item.paused)) {
+        legs.set(details.requestId, { token, id: crypto.randomUUID() })
+      }
+      const observation = legs.get(details.requestId)
+      if (stage === 'onSendHeaders') legs.delete(details.requestId)
       if (!observation || observation.token !== token) return undefined
+      const requestProtection = protections.get(details.requestId) ?? unknown
+      const redacted = redactObservation(details.url, details.requestHeaders, mergeLayers([requestProtection, observationRedaction.protection(tabId)]))
       for (const subscriber of subscribers) if (subscriber.tabId === tabId && !subscriber.paused) {
-        send(subscriber, { type: 'request-observation', generation: subscriber.generation, stage, observationId: observation.id, requestId: details.requestId, url: details.url,
-          method: details.method, headers: details.requestHeaders, time: details.timeStamp })
+        send(subscriber, { type: 'request-observation', generation: subscriber.generation, stage, observationId: observation.id, requestId: details.requestId,
+          method: details.method, time: details.timeStamp, ...redacted })
       }
       return undefined
     }
     chrome.webRequest[stage].addListener(observe, filter, ['requestHeaders', 'extraHeaders'])
     removals.push(() => chrome.webRequest[stage].removeListener(observe))
   }
-  const finished = (details: { requestId: string }) => { requests.delete(details.requestId) }
-  for (const event of [chrome.webRequest.onCompleted, chrome.webRequest.onErrorOccurred, chrome.webRequest.onBeforeRedirect]) {
+  const redirected = (details: chrome.webRequest.OnBeforeRedirectDetails) => {
+    legs.delete(details.requestId)
+    if (!protections.has(details.requestId)) protections.set(details.requestId, unknown)
+  }
+  chrome.webRequest.onBeforeRedirect.addListener(redirected, filter)
+  removals.push(() => chrome.webRequest.onBeforeRedirect.removeListener(redirected))
+  const finished = (details: { requestId: string }) => { protections.delete(details.requestId); legs.delete(details.requestId) }
+  for (const event of [chrome.webRequest.onCompleted, chrome.webRequest.onErrorOccurred]) {
     event.addListener(finished, filter)
     removals.push(() => event.removeListener(finished))
   }

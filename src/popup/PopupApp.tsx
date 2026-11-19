@@ -1,5 +1,5 @@
-import { Search, Settings } from 'lucide-react'
-import { startTransition, useEffect, useState } from 'react'
+import { Search, Settings, TriangleAlert } from 'lucide-react'
+import { startTransition, useEffect, useMemo, useState } from 'react'
 
 import { BrandIcon, BuildLabel } from '../components/Brand'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
@@ -9,11 +9,16 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/toolti
 import { Icon } from '../components/Icon'
 import { SwitchRuleOptionSelect } from '../components/SwitchRuleOptionSelect'
 import { ToggleSwitch } from '../components/ToggleSwitch'
-import { getDomainPattern, matchesPageDomain } from '../lib/pattern'
+import { getDomainPattern } from '../lib/pattern'
 import { getRequestHeaderRules, updateRequestHeaderRules, subscribeToRequestHeaderRules } from '../lib/request-header-storage'
 import type { RequestHeaderRule } from '../lib/types'
-import { networkRulesForPage } from '../lib/network-rules'
 import type { NetworkRule } from '../lib/network-rules'
+import { matchesRuleWebsite, problemSummary, resolveRules } from '../lib/resolve-rules'
+import type { RuleResolution } from '../lib/resolve-rules'
+import { displayText } from '../lib/templates'
+import type { TemplateText } from '../lib/templates'
+import { TemplateTextView } from '../components/TemplateText'
+import { useVariableValues } from '../components/variables-context'
 import { getNetworkRules, updateNetworkRules, subscribeToNetworkRules } from '../lib/network-storage'
 
 const ruleTabs = [
@@ -31,12 +36,18 @@ async function getCurrentPageUrl(): Promise<string> {
   return tab?.url ?? ''
 }
 
-function PopupRuleName({ name }: { name: string }) {
+function PopupRuleName({ name, resolution }: { name: TemplateText; resolution?: RuleResolution }) {
+  const problem = resolution?.issues.length ? `${resolution.enabled ? 'Inactive' : 'Variable problem'}: ${problemSummary(resolution.issues)}` : ''
   return <Tooltip>
     <TooltipTrigger asChild>
-      <span tabIndex={0} className="min-w-0 flex-1 truncate text-xs">{name}</span>
+      <span tabIndex={0} className="flex min-w-0 flex-1 flex-col text-xs">
+        <TemplateTextView value={name} className="truncate" />
+        {problem && <span className="flex min-w-0 items-center gap-1 text-[11px] text-destructive">
+          <Icon icon={TriangleAlert} size={11} className="shrink-0" /><span className="truncate">{problem}</span>
+        </span>}
+      </span>
     </TooltipTrigger>
-    <TooltipContent className="max-w-[min(380px,calc(100vw-24px))] wrap-anywhere">{name}</TooltipContent>
+    <TooltipContent className="max-w-[min(380px,calc(100vw-24px))] wrap-anywhere">{displayText(name)}{problem && <><br />{problem}</>}</TooltipContent>
   </Tooltip>
 }
 
@@ -109,8 +120,12 @@ export function PopupApp() {
     }
   }
 
-  const pageRules = rules.filter((rule) => matchesPageDomain(rule.url, pageUrl))
-  const pageNetworkRules = networkRulesForPage(networkRules, pageUrl)
+  // The popup lists rules with the same resolution and matcher as every other surface.
+  const values = useVariableValues()
+  const resolutions = useMemo(() => resolveRules({ requestHeaderRules: rules, networkRules }, values).byId, [rules, networkRules, values])
+  const pageRules = rules.filter((rule) => matchesRuleWebsite(resolutions.get(rule.id), pageUrl))
+  const pageNetworkRules = networkRules.filter(rule => matchesRuleWebsite(resolutions.get(rule.id), pageUrl))
+  const unmatchable = [...rules, ...networkRules].filter(rule => rule.enabled && resolutions.get(rule.id)?.domains === null).length
 
   async function toggleNetworkRule(networkRule: NetworkRule, enabled: boolean) {
     setPending(true)
@@ -167,16 +182,17 @@ export function PopupApp() {
                         <ToggleSwitch
                           size="sm"
                           checked={rule.enabled}
-                          label={`Enable ${rule.name}`}
+                          label={`Enable ${displayText(rule.name)}`}
                           pending={pending}
                           onChange={(enabled) => {
                             void handleUpdate(rule, { enabled })
                           }}
                         />
-                        <PopupRuleName name={rule.name} />
+                        <PopupRuleName name={rule.name} resolution={resolutions.get(rule.id)} />
                         {rule.kind === 'switch-rule' && <SwitchRuleOptionSelect
                           size="sm"
                           switchRule={rule}
+                          resolution={resolutions.get(rule.id)}
                           pending={pending}
                           onChange={(selectedOptionId) => { void handleUpdate(rule, { selectedOptionId }) }}
                         />}
@@ -187,11 +203,11 @@ export function PopupApp() {
                         <ToggleSwitch
                           size="sm"
                           checked={networkRule.enabled}
-                          label={`Enable ${networkRule.name}`}
+                          label={`Enable ${displayText(networkRule.name)}`}
                           pending={pending}
                           onChange={enabled => { void toggleNetworkRule(networkRule, enabled) }}
                         />
-                        <PopupRuleName name={networkRule.name} />
+                        <PopupRuleName name={networkRule.name} resolution={resolutions.get(networkRule.id)} />
                       </li>
                     ))}
                   </ul>
@@ -209,6 +225,11 @@ export function PopupApp() {
         })}
       </Tabs>
       {notice && <p className="mt-3 text-[11px] text-muted-foreground" role="status">{notice}</p>}
+      {unmatchable > 0 && <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-destructive" role="status">
+        <Icon icon={TriangleAlert} size={12} />
+        <span>{unmatchable} {unmatchable === 1 ? "rule can't" : "rules can't"} run because of variable problems.</span>
+        <a className="text-foreground underline" href="options.html#/all" target="_blank" rel="noreferrer">Open Settings</a>
+      </p>}
     </main>
   )
 }

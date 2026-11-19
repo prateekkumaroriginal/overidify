@@ -1,4 +1,5 @@
 import { ActivationResultSchema } from './settings-messages.ts'
+import { copyName } from './rule-transfer.ts'
 import type { RuleCollection, TransferRule } from './rule-transfer.ts'
 import { getRequestHeaderRules, REQUEST_HEADER_STORAGE_KEY } from './request-header-storage.ts'
 import { getNetworkRules, NETWORK_STORAGE_KEY } from './network-storage.ts'
@@ -6,7 +7,7 @@ import { getNetworkRules, NETWORK_STORAGE_KEY } from './network-storage.ts'
 export type TransferActivation = { ok: boolean; reloadTabIds: number[]; error?: string }
 const isPreview = () => import.meta.env?.DEV && !globalThis.chrome?.storage?.local
 
-async function withRuleStorageLocks<T>(action: () => Promise<T>): Promise<T> {
+export async function withRuleStorageLocks<T>(action: () => Promise<T>): Promise<T> {
   return await navigator.locks.request(REQUEST_HEADER_STORAGE_KEY, async () =>
     await navigator.locks.request(NETWORK_STORAGE_KEY, action))
 }
@@ -25,11 +26,7 @@ export async function duplicateSavedRule(id: string) {
     const source = all.find(rule => rule.id === id)
     if (!source) throw new Error('This rule no longer exists. Refresh the list and try again.')
 
-    const base = source.name.trim().replace(/(?:\s+\(copy(?: \d+)?\))+$/i, '').trim() || 'Untitled rule'
-    const names = new Set(all.map(rule => rule.name.trim().toLowerCase()))
-    let number = 1
-    let name = `${base} (copy)`
-    while (names.has(name.toLowerCase())) name = `${base} (copy ${++number})`
+    const name = copyName(source.name, all.map(rule => rule.name))
     const copy: TransferRule = { ...structuredClone(source), id: crypto.randomUUID(), name, enabled: false }
     if ('kind' in copy && copy.kind === 'switch-rule') {
       const selected = copy.selectedOptionId

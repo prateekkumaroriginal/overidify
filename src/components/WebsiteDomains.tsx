@@ -1,44 +1,58 @@
 import { useId, useImperativeHandle, useRef, useState } from 'react'
-import type { ComponentProps, Ref } from 'react'
+import type { Ref } from 'react'
 import { CircleHelp, X } from 'lucide-react'
 import { getDomainPatterns, updateWebsiteScope } from '../lib/pattern'
-import type { WebsiteScope } from '../lib/pattern'
+import type { TemplateWebsiteScope } from '../lib/pattern'
+import { isBlank } from '../lib/schema-fields'
+import { displayText, renameTemplateReferences, templatesEqual } from '../lib/templates'
+import type { TemplateText } from '../lib/templates'
 import { commitWebsiteDomainDrafts, removeWebsiteDomain } from '../lib/website-domain-draft'
 import type { WebsiteDomainDraft } from '../lib/website-domain-draft'
 import { Button } from './ui/button'
 import { Field, FieldError, FieldLabel } from './ui/field'
-import { Input } from './ui/input'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 import { Icon } from './Icon'
+import { TemplateInput } from './TemplateInput'
+import type { TemplateInputHandle } from './TemplateInput'
+import { TemplateTextView } from './TemplateText'
+import { closeSuggestionsOnEscape } from './template-editor-view'
+import { useVariableRenames } from './variables-context'
 
 export type WebsiteDomainsHandle = { commit: () => boolean }
 
-export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, inputRef, error, disabled = false, ref }: {
-  value: WebsiteScope
-  onChange: (value: WebsiteScope) => void
+export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, inputRef, error, disabled = false, issues, ref }: {
+  value: TemplateWebsiteScope
+  onChange: (value: TemplateWebsiteScope) => void
   onBlur: () => void
   onPendingChange: (pending: boolean) => void
-  inputRef: (input: HTMLInputElement | null) => void
+  inputRef: (input: TemplateInputHandle | null) => void
   error?: string
   disabled?: boolean
+  /** Variable problems, by domain index. */
+  issues?: Map<number, string>
   ref: Ref<WebsiteDomainsHandle>
 }) {
   const id = useId()
-  const input = useRef<HTMLInputElement>(null)
-  const managerInput = useRef<HTMLInputElement>(null)
+  const input = useRef<TemplateInputHandle>(null)
+  const managerInput = useRef<TemplateInputHandle>(null)
   const domains = getDomainPatterns(value)
   const [open, setOpen] = useState(false)
   const [showSingleDomainManager, setShowSingleDomainManager] = useState(domains.length !== 1)
   // A null draft displays the saved singleton without submitting it as a new domain.
-  const [creationDraft, setCreationDraft] = useState<string | null>(domains.length === 1 ? null : '')
+  const [creationDraft, setCreationDraft] = useState<TemplateText | null>(domains.length === 1 ? null : '')
   const [managerDraft, setManagerDraft] = useState<WebsiteDomainDraft>({ text: '', editing: null })
   const [inputErrors, setInputErrors] = useState({ creation: '', manager: '' })
+  useVariableRenames(mapping => {
+    setCreationDraft(draft => draft === null ? null : renameTemplateReferences(draft, mapping))
+    setManagerDraft(draft => ({ ...draft, text: renameTemplateReferences(draft.text, mapping) }))
+  })
   const creationText = creationDraft ?? ''
   const creationValue = creationDraft ?? (domains.length === 1 ? domains[0] : '')
-  const creationPending = !!creationText.trim()
-  const managerPending = managerDraft.editing === null ? !!managerDraft.text.trim() : managerDraft.text !== domains[managerDraft.editing]
-  const creationMessage = inputErrors.creation || (!open ? error : undefined)
+  const creationPending = !isBlank(creationText)
+  const managerPending = managerDraft.editing === null ? !isBlank(managerDraft.text) : !templatesEqual(managerDraft.text, domains[managerDraft.editing])
+  const issueText = [...issues?.values() ?? []][0]
+  const creationMessage = inputErrors.creation || (!open ? error ?? issueText : undefined)
   const managerMessage = inputErrors.manager || error
   const showManage = domains.length > 1 || (domains.length === 1 && showSingleDomainManager) || !!managerDraft.text || managerDraft.editing !== null
 
@@ -83,28 +97,26 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
 
   const inputProps = (field: 'creation' | 'manager') => ({
     value: field === 'creation' ? creationValue : managerDraft.text,
-    placeholder: 'Type a URL or domain', autoComplete: 'off', spellCheck: false, disabled, onBlur,
-    'aria-invalid': !!(field === 'creation' ? creationMessage : managerMessage),
-    onChange: event => {
-      const next = event.target.value
+    placeholder: 'Type a URL or domain', disabled, onBlur,
+    invalid: !!(field === 'creation' ? creationMessage : managerMessage),
+    onChange: (next: TemplateText) => {
       if (field === 'creation') {
         setCreationDraft(next)
-        onPendingChange(!!next.trim() || managerPending)
+        onPendingChange(!isBlank(next) || managerPending)
       } else {
-        setManagerDraft({ ...managerDraft, text: next })
-        onPendingChange(creationPending || (managerDraft.editing === null ? !!next.trim() : next !== domains[managerDraft.editing]))
+        setManagerDraft(draft => ({ ...draft, text: next }))
+        onPendingChange(creationPending || (managerDraft.editing === null ? !isBlank(next) : !templatesEqual(next, domains[managerDraft.editing])))
       }
       setInputErrors(current => ({ ...current, [field]: '' }))
     },
-    onKeyDown: event => {
-      if (event.nativeEvent.isComposing) return
-      if (event.key === 'Enter' && !event.ctrlKey && !event.metaKey) { event.preventDefault(); commitInput(field) }
-      if (event.key === 'Escape' && field === 'creation' && !event.defaultPrevented && creationText) {
-        event.preventDefault(); event.stopPropagation()
-        setCreationDraft(''); setInputErrors(current => ({ ...current, creation: '' })); onPendingChange(managerPending)
-      }
+    // An open suggestion list consumes Enter and Escape before these run.
+    onEnter: () => { commitInput(field); return true },
+    onEscape: () => {
+      if (field !== 'creation' || isBlank(creationText)) return false
+      setCreationDraft(''); setInputErrors(current => ({ ...current, creation: '' })); onPendingChange(managerPending)
+      return true
     },
-  } satisfies ComponentProps<typeof Input>)
+  })
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -131,7 +143,7 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
           {showManage && <SheetTrigger asChild><Button variant="domain" size="inline" className="py-0" type="button" disabled={disabled}
             aria-label={domains.length ? `Manage website domains (${domains.length})` : 'Manage website domains'}>Manage{domains.length > 0 && ` ${domains.length}`}</Button></SheetTrigger>}
         </div>
-        <Input {...inputProps('creation')} id={id} ref={node => { input.current = node; inputRef(node) }}
+        <TemplateInput {...inputProps('creation')} id={id} aria-label="Website domains" ref={node => { input.current = node; inputRef(node) }}
           aria-describedby={creationMessage ? `${id}-error` : undefined} />
         {creationMessage && <FieldError id={`${id}-error`} className="text-[11px]">{creationMessage}</FieldError>}
       </Field>
@@ -142,6 +154,8 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
         event.preventDefault(); input.current?.focus()
       }} onEscapeKeyDown={event => {
         event.stopPropagation()
+        // Escape closes an open suggestion list before it closes this sheet.
+        if (closeSuggestionsOnEscape(event)) event.preventDefault()
       }}>
         <SheetHeader className="shrink-0"><SheetTitle>Website domains</SheetTitle></SheetHeader>
         <Field className="shrink-0 gap-2" data-invalid={!!managerMessage} data-disabled={disabled}>
@@ -149,20 +163,20 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
             <FieldLabel htmlFor={`${id}-manager`} className="text-[11px] font-semibold">Add or edit a domain</FieldLabel>
             {domains.length > 0 && <span className="text-[11px] text-muted-foreground">{domains.length} {domains.length === 1 ? 'domain' : 'domains'}</span>}
           </div>
-          <Input {...inputProps('manager')} id={`${id}-manager`} ref={managerInput}
+          <TemplateInput {...inputProps('manager')} id={`${id}-manager`} aria-label="Add or edit a domain" ref={managerInput}
             aria-describedby={managerMessage ? `${id}-manager-error` : undefined} />
           {managerMessage && <FieldError id={`${id}-manager-error`} className="text-[11px]">{managerMessage}</FieldError>}
         </Field>
         <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain" aria-label="Website domains">
-        {domains.map((domain, index) => <li key={`${index}-${domain}`} className="flex min-w-0 items-center justify-between gap-3">
-          <Button variant="domain" size="inline" className="min-w-0 justify-start" type="button" disabled={disabled} aria-label={`Edit domain ${domain}`}
+        {domains.map((domain, index) => <li key={`${index}-${displayText(domain)}`} className="flex min-w-0 items-center justify-between gap-3">
+          <Button variant="domain" size="inline" className="min-w-0 justify-start" type="button" disabled={disabled} aria-label={`Edit domain ${displayText(domain)}`}
             aria-pressed={managerDraft.editing === index} onClick={() => {
               setManagerDraft({ text: domain, editing: index }); setInputErrors(current => ({ ...current, manager: '' })); onPendingChange(creationPending)
               managerInput.current?.focus()
               // Select after React has placed the chosen domain in the input.
               requestAnimationFrame(() => managerInput.current?.select())
-            }}>{domain}</Button>
-          <Button variant="ghost-muted" size="icon-sm" type="button" disabled={disabled} aria-label={`Remove domain ${domain}`} onClick={() => {
+            }}><TemplateTextView value={domain} />{issues?.has(index) && <span className="sr-only"> (variable problem)</span>}</Button>
+          <Button variant="ghost-muted" size="icon-sm" type="button" disabled={disabled} aria-label={`Remove domain ${displayText(domain)}`} onClick={() => {
             const next = removeWebsiteDomain(value, index, managerDraft)
             onChange(next.value)
             setManagerDraft({ text: next.text, editing: next.editing })

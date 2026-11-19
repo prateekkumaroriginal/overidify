@@ -4,6 +4,7 @@ import { HeaderRuleDraftSchema, SwitchRuleDraftSchema } from '../src/lib/request
 import { NetworkRuleDraftSchema } from '../src/lib/network-schemas.ts'
 import { createHeaderRuleDraft, createSwitchRuleDraft } from '../src/lib/request-header-rules.ts'
 import { createNetworkRuleDraft, normalizeNetworkRules } from '../src/lib/network-rules.ts'
+import { resolveRules } from '../src/lib/resolve-rules.ts'
 import { NetworkBridgeMessageSchema, NetworkPageMessageSchema, NetworkRuntimeMessageSchema, NetworkSettingsResponseSchema, ActivationResultSchema } from '../src/lib/settings-messages.ts'
 
 test('draft schemas preserve response text and distinguish request and response header validation', () => {
@@ -37,7 +38,10 @@ test('persisted invalid Network Rules stay editable and disabled without losing 
   const corrupted = normalizeNetworkRules([{ ...draft, status: NaN }, { ...draft, status: Infinity }, ...entries])
   assert.equal(corrupted[0].enabled, false)
   assert.equal(corrupted[1].enabled, false)
-  assert.equal(NetworkSettingsResponseSchema.safeParse({ entries: corrupted }).success, true)
+  // Pages receive only resolved active rules, so disabled corrupted entries never reach them.
+  const active = resolveRules({ requestHeaderRules: [], networkRules: corrupted }, new Map()).networkRules
+  assert.deepEqual(active.map(entry => entry.id), ['00000000-0000-4000-8000-000000000019'])
+  assert.equal(NetworkSettingsResponseSchema.safeParse({ entries: active }).success, true)
 })
 
 test('settings protocols reject malformed payloads instead of trusting TypeScript casts', () => {

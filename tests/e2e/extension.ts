@@ -11,7 +11,8 @@ import type { NetworkRule } from '../../src/lib/network-rules.ts'
 type Server = { origin: string; hits: { url: string; headers: IncomingHttpHeaders; method: string }[] }
 type Extension = { context: BrowserContext; settings: Page; id: string; profile: string }
 type Fixtures = {
-  server: Server; extension: Extension; site: Page; networkRule: NetworkRule
+  // The fixture rule holds literal text only.
+  server: Server; extension: Extension; site: Page; networkRule: NetworkRule & { name: string; requestUrl: string; body: string }
   seed: (entries: NetworkRule[]) => Promise<{ ok: boolean; reloadTabIds?: number[] }>
 }
 
