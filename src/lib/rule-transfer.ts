@@ -11,7 +11,7 @@ export type ImportReview = { rules: RuleCollection; issues: ImportIssue[]; overl
 export type ImportAction = 'replace' | 'add'
 
 const EnvelopeSchema = z.object({
-  format: z.literal('overidify'), version: z.literal(1),
+  format: z.literal('overidify'), version: z.union([z.literal(1), z.literal(2)]),
   requestHeaderRules: z.array(z.unknown()), networkRules: z.array(z.unknown()),
 })
 export function ruleType(rule: TransferRule): 'header-rule' | 'switch-rule' | 'network-rule' {
@@ -19,7 +19,8 @@ export function ruleType(rule: TransferRule): 'header-rule' | 'switch-rule' | 'n
 }
 
 export function exportRules(rules: RuleCollection): string {
-  return JSON.stringify({ format: 'overidify', version: 1, ...rules }, null, 2)
+  const version = [...rules.requestHeaderRules, ...rules.networkRules].some(rule => Array.isArray(rule.url)) ? 2 : 1
+  return JSON.stringify({ format: 'overidify', version, ...rules }, null, 2)
 }
 
 export function reviewImport(text: string, existing: RuleCollection): ImportReview {

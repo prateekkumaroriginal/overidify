@@ -4,7 +4,9 @@ See the [README](../README.md) for installation and a first example.
 
 ## Website domains
 
-Header Rules, Switch Rules, Network Rules, and the popup use the same website matching logic. The domain identifies the top-level website in the address bar. Requests from embedded frames use that website's scope too.
+Header Rules, Switch Rules, Network Rules, and the popup use the same website matching logic. Each rule accepts one or more website domain patterns and applies when any pattern matches. The domains identify the top-level website in the address bar. Requests from embedded frames use that website's scope too.
+
+In every editor, type a URL or domain under **Website domains** and press Enter to add it to the list below. Click a listed domain to select its text in the input and highlight it in the list, then press Enter to update it in place. Unselected domains use only link color. The × removes a domain immediately, without a confirmation or success message. Escape cancels the current domain edit. Clearing an existing domain's input blocks Enter and Save until you enter a replacement, cancel the edit, or remove the domain with ×. Saving includes pending input and requires at least one valid domain. Equivalent domains are not added twice. New rules start with an empty domain list; add `*` explicitly to match all websites.
 
 All paths on a matching website are included. A Header Rule with domain `localhost:4200` applies to requests made by `http://localhost:4200/messages`, including requests to a separate host such as `https://api.example.com`.
 
@@ -91,7 +93,7 @@ The [Network Rules specification](network-rules/spec.md) covers further technica
 
 Import, Export, and Select appear to the right of the rule-type tabs on the options page. Without selection mode, Export includes every saved rule in the active tab, regardless of search. Export on All produces a full backup across the three types. Select reveals list checkboxes; selections carry across the tabs and searches. In selection mode, Export (n) shows the selection count and is disabled until at least one rule is selected. Cancel or Escape clears the selection and leaves Select mode. The All checkbox selects the visible rules; checked and mixed checkboxes use violet.
 
-Exports use Overidify JSON format version 1. They preserve saved values, enabled states, relative order, and all Switch Rule options and the selected option. Rule and option identities are UUIDs.
+Exports use Overidify JSON format version 1 for single-domain rules and version 2 when any rule contains a domain list. The `url` field is a string for one domain or an array of strings for multiple domains. Both versions can be imported, while older extensions reject version 2. Exports preserve saved values, enabled states, relative order, and all Switch Rule options and the selected option. Rule and option identities are UUIDs.
 
 Import always shows a review before applying changes. Same-UUID rules count as overlaps even when unchanged. Replace updates only overlaps in their existing positions; Add keeps existing rules and gives overlapping copies new UUIDs. Other imported rules are added. New rules and copies go after existing rules in their exported relative order, so later enabled rules can take priority.
 

@@ -17,7 +17,7 @@ function firstError(value: unknown): string {
   return ''
 }
 
-export function useEditorForm<Values extends FieldValues>({ schema, initial, pending, returnRoute, onSave, successMessage = '', onInvalid }: {
+export function useEditorForm<Values extends FieldValues>({ schema, initial, pending, returnRoute, onSave, successMessage = '', onInvalid, beforeSubmit }: {
   schema: $ZodType<Values, Values>
   initial: () => Values
   pending: boolean
@@ -25,9 +25,11 @@ export function useEditorForm<Values extends FieldValues>({ schema, initial, pen
   onSave: (values: Values) => Promise<Values | void>
   successMessage?: string
   onInvalid?: (errors: FieldErrors<Values>) => void
+  beforeSubmit?: () => boolean
 }) {
   const [defaults] = useState(initial)
   const [success, setSuccess] = useState('')
+  const [pendingInput, setPendingInput] = useState(false)
   const form = useForm<Values>({
     defaultValues: defaults as DefaultValues<Values>,
     resolver: zodResolver(schema, undefined, { mode: 'sync' }),
@@ -47,5 +49,9 @@ export function useEditorForm<Values extends FieldValues>({ schema, initial, pen
     }
   }, errors => { setSuccess(''); onInvalid?.(errors) })
   return { form, formRef, busy, success, error: firstError(form.formState.errors), clearStatus,
-    onSubmit: (event: SubmitEvent<HTMLFormElement>) => { void submit(event) } }
+    unsaved: form.formState.isDirty || pendingInput, setPendingInput,
+    onSubmit: (event: SubmitEvent<HTMLFormElement>) => {
+      if (beforeSubmit?.() === false) { event.preventDefault(); return }
+      void submit(event)
+    } }
 }

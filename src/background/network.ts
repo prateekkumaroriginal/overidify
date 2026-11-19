@@ -1,6 +1,6 @@
 import { getNetworkRules, NETWORK_STORAGE_KEY } from '../lib/network-storage'
 import { networkRulesForPage, normalizeNetworkRules } from '../lib/network-rules'
-import { matchesPageDomain } from '../lib/pattern'
+import { getDomainPatterns, matchesPageDomain } from '../lib/pattern'
 import { NetworkActiveTabsSchema, NetworkBridgeFramesSchema, NetworkAppliedSchema, NetworkRuntimeMessageSchema } from '../lib/settings-messages'
 import { recordingTokenForTab } from './executions'
 
@@ -116,7 +116,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local' || !(NETWORK_STORAGE_KEY in changes)) return
   // oldValue also recovers possible stale activation after a worker restart.
   for (const entry of normalizeNetworkRules(changes[NETWORK_STORAGE_KEY].oldValue)) {
-    if (entry.enabled) previousPatterns.add(entry.url)
+    if (entry.enabled) for (const domain of getDomainPatterns(entry.url)) previousPatterns.add(domain)
   }
   requestSync()
 })

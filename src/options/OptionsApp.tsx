@@ -10,6 +10,7 @@ import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from '@/comp
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { startTransition, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
+import { normalizeWebsiteScope } from '../lib/pattern'
 import { Brand } from '../components/Brand'
 import { Icon } from '../components/Icon'
 import { HeaderRuleEditor } from '../components/HeaderRuleEditor'
@@ -101,7 +102,7 @@ export function OptionsApp() {
   async function handleSaveNetworkRule(draft: NetworkRuleDraft, id?: string) {
     const entry: NetworkRule = {
       ...draft, id: id ?? createRuleId(), order: 0,
-      name: draft.name.trim(), url: draft.url.trim(), requestUrl: draft.requestUrl.trim(),
+      name: draft.name.trim(), url: normalizeWebsiteScope(draft.url), requestUrl: draft.requestUrl.trim(),
       headers: cleanResponseHeaders(draft.headers),
     }
     await persistNetworkRules(rules => id
@@ -115,7 +116,7 @@ export function OptionsApp() {
     setError('')
     try {
       const result = await saveCapturedNetworkRuleDraft(draftId, {
-        ...draft, name: draft.name.trim(), url: draft.url.trim(), requestUrl: draft.requestUrl.trim(),
+        ...draft, name: draft.name.trim(), url: normalizeWebsiteScope(draft.url), requestUrl: draft.requestUrl.trim(),
         headers: cleanResponseHeaders(draft.headers),
       })
       setNetworkNotice(result.reloadTabIds.length
@@ -165,7 +166,7 @@ export function OptionsApp() {
       kind: 'header-rule',
       id: ruleId ?? createRuleId(),
       name: draft.name.trim(),
-      url: draft.url.trim(),
+      url: normalizeWebsiteScope(draft.url),
       enabled: draft.enabled,
       headers: sanitizeHeaders(draft.headers),
       order: 0,
@@ -179,7 +180,7 @@ export function OptionsApp() {
       kind: 'switch-rule',
       id: switchRuleId ?? createRuleId(),
       name: draft.name.trim(),
-      url: draft.url.trim(),
+      url: normalizeWebsiteScope(draft.url),
       enabled: draft.enabled,
       options: draft.options.map((option) => ({
         ...option, name: option.name.trim(), headers: sanitizeHeaders(option.headers),

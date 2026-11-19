@@ -52,7 +52,7 @@ test('Replace keeps existing slots while Add creates independent copies and appe
 
 test('rejects broken files and non-UUID identities while preserving differently identified lookalikes', () => {
   assert.throws(() => reviewImport('{', empty), /JSON/)
-  assert.throws(() => reviewImport(JSON.stringify({ format: 'overidify', version: 2, ...empty }), empty), /version/)
+  assert.throws(() => reviewImport(JSON.stringify({ format: 'overidify', version: 99, ...empty }), empty), /version/)
   const invalid = reviewImport(exportRules({ requestHeaderRules: [{ ...header, id: 'old-id' }], networkRules: [] }), empty)
   assert.equal(invalid.rules.requestHeaderRules.length, 0)
   assert.equal(invalid.issues.length, 1)

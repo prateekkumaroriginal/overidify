@@ -83,14 +83,14 @@ If saving succeeds but activation is not confirmed, report that the rules were s
 
 These defaults complete routine details that were not separate interview decisions:
 
-- Use a format identifier and integer version in the JSON envelope. Start with version 1 and reject unsupported versions.
+- Use a format identifier and integer version in the JSON envelope. Accept versions 1 and 2 and reject unsupported versions. Export version 2 when a rule has a domain list, otherwise retain version 1.
 - Keep Header Rules and Switch Rules together in their existing shared order, and Network Rules in their own ordered collection.
 - Give the download a descriptive `.json` filename. Export only saved rule data; browser tab IDs and transient activation state are not export contents.
 - In selection mode, provide a select-all checkbox for the visible rules in the current type. Keep selections through searches. Clear selections when the user exits selection mode.
 - Treat a UUID collision with an existing rule of a different type as invalid. Require option UUIDs to be unique within a Switch Rule and its selected-option reference to identify one of its options.
 - Disable tab export when that type contains no rules. Disable mutation controls while an import is being applied to prevent repeated submissions in the same UI.
 
-The envelope is `{ "format": "overidify", "version": 1, "requestHeaderRules": [], "networkRules": [] }`. Header Rules and Switch Rules share `requestHeaderRules`; Network Rules use `networkRules`. UUID validation canonicalizes letter casing so the same identity cannot evade overlap detection or break selected-option references.
+The envelope is `{ "format": "overidify", "version": 1, "requestHeaderRules": [], "networkRules": [] }`, with `version: 2` for domain-list exports. A rule's `url` is a string for one website or an array of strings for multiple websites. Import requires a nonempty scope with every pattern valid. Version 2 prevents older extensions from partially importing a multi-domain backup. Header Rules and Switch Rules share `requestHeaderRules`; Network Rules use `networkRules`. UUID validation canonicalizes letter casing so the same identity cannot evade overlap detection or break selected-option references.
 
 ## Scope exclusions
 

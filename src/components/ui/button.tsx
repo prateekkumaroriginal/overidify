@@ -23,6 +23,7 @@ const buttonVariants = cva(
         execution: "w-full justify-start rounded-none border-0 border-b border-border/60 bg-transparent text-left font-normal hover:bg-foreground/4 aria-pressed:bg-action/12 aria-pressed:hover:bg-action/12 aria-pressed:shadow-[inset_3px_0_var(--action)]",
         quiet: "gap-1.5 rounded-md border-0 bg-transparent text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground",
         link: "gap-0 rounded-none border-0 bg-transparent font-normal text-foreground underline underline-offset-[3px]",
+        domain: "gap-0 rounded-[4px] border-0 bg-transparent text-left text-[11px] font-normal text-domain-tag whitespace-normal wrap-anywhere hover:bg-transparent aria-pressed:bg-domain-tag/15",
       },
       size: {
         default: "h-[30px] min-h-[30px] px-3.5 py-0 [&_svg]:size-4",

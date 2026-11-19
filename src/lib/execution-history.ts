@@ -1,7 +1,7 @@
 import type { HeaderPair } from './types.ts'
 
 export type ExecutionRule = {
-  id: string; kind: 'header-rule' | 'switch-rule' | 'network-rule'; name: string; url: string; headers: HeaderPair[]
+  id: string; kind: 'header-rule' | 'switch-rule' | 'network-rule'; name: string; url: string | string[]; headers: HeaderPair[]
   option?: string; requestUrl?: string; method?: string; mode?: string; status?: number; body?: string; bodyOmitted?: string
 }
 export type ExecutionRecord = {

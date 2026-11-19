@@ -1,4 +1,4 @@
-import { getDomainPattern } from './pattern.ts'
+import { normalizeWebsiteScope } from './pattern.ts'
 import { HeaderPairSchema } from './schema-fields.ts'
 import { PersistedRequestHeaderRuleSchema, PersistedSwitchRuleOptionSchema } from './persisted-request-header-schemas.ts'
 import type {
@@ -53,7 +53,7 @@ function copyHeaders(headers: HeaderPair[]): HeaderPair[] {
 export function headerRuleToDraft(rule: HeaderRule): HeaderRuleDraft {
   return {
     name: rule.name,
-    url: rule.url,
+    url: structuredClone(rule.url),
     enabled: rule.enabled,
     headers: copyHeaders(rule.headers),
   }
@@ -62,7 +62,7 @@ export function headerRuleToDraft(rule: HeaderRule): HeaderRuleDraft {
 export function switchRuleToDraft(switchRule: SwitchRule): SwitchRuleDraft {
   return {
     name: switchRule.name,
-    url: switchRule.url,
+    url: structuredClone(switchRule.url),
     enabled: switchRule.enabled,
     selectedOptionId: switchRule.selectedOptionId,
     options: switchRule.options.map((option) => ({ ...option, headers: copyHeaders(option.headers) })),
@@ -90,11 +90,11 @@ function normalizeEntry(input: unknown, index: number): RequestHeaderRule[] {
   if (!parsed.success) return []
   const candidate = parsed.data
   const id = candidate.id
-  const url = candidate.url.trim() || '*'
+  const url = typeof candidate.url === 'string' ? candidate.url.trim() || '*' : candidate.url
   const base = {
     id,
     name: candidate.name.trim(),
-    url: getDomainPattern(url) || url,
+    url: normalizeWebsiteScope(url),
     enabled: candidate.enabled,
     order: candidate.order ?? index,
   }
