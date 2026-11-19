@@ -67,6 +67,8 @@ export default function ResponseBodyEditor({ value, onChange, onBlur, disabled, 
   const deferredBody = useDeferredValue(body)
   const analysis = useMemo(() => analyzeResponseBody(deferredBody), [deferredBody])
   const hasVariables = body.includes(TOKEN_CHAR)
+  // Checked once per filled-in body, within the same size limit as the editor's own JSON checks.
+  const resolvedInvalid = useMemo(() => resolvedBody !== undefined && resolvedBody.length <= 1_000_000 && !isJsonText(resolvedBody), [resolvedBody])
   const current = deferredBody === body
   const [expanded, setExpanded] = useState(false)
   const [error, setError] = useState('')
@@ -117,7 +119,7 @@ export default function ResponseBodyEditor({ value, onChange, onBlur, disabled, 
       {!current ? 'Checking JSON…' : hasVariables && analysis.error ? 'Format is unavailable where variables replace JSON keys or structure. Editing and saving remain available.'
         : isJson || !analysis.error ? analysis.reason : 'Format needs valid JSON. This response can still be edited and saved as text.'}
     </p>}
-    {current && isJson && resolvedBody !== undefined && !isJsonText(resolvedBody) &&
+    {current && isJson && resolvedInvalid &&
       <p className="text-xs text-muted-foreground" role="status">With the current variable values, the body is not valid JSON. You can still save it.</p>}
     {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
   </div>

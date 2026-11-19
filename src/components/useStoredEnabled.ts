@@ -11,8 +11,12 @@ type WithEnabled = FieldValues & { enabled: boolean }
 export function useStoredEnabled<Values extends WithEnabled>(form: UseFormReturn<Values>, stored: boolean | undefined) {
   const field = 'enabled' as Path<Values>
   useEffect(() => {
-    if (stored === undefined || form.getValues(field) !== form.formState.defaultValues?.enabled) return
+    if (stored === undefined || stored === form.formState.defaultValues?.enabled) return
+    const value = form.getValues(field)
+    const pending = value !== form.formState.defaultValues?.enabled
     form.resetField(field, { defaultValue: stored as PathValue<Values, Path<Values>> })
+    // A choice the user made that still differs from the stored state stays in the draft.
+    if (pending && value !== stored) form.setValue(field, value, { shouldDirty: true })
   }, [stored, form, field])
   return (draft: Values) => draft.enabled !== form.formState.defaultValues?.enabled
 }

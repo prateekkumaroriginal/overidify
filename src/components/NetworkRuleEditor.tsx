@@ -1,4 +1,4 @@
-import { lazy, Suspense, useRef } from 'react'
+import { lazy, Suspense, useMemo, useRef } from 'react'
 import { Plus, X } from 'lucide-react'
 import { Controller, useFieldArray, useWatch } from 'react-hook-form'
 import { NetworkRuleDraftSchema } from '../lib/network-schemas'
@@ -55,10 +55,11 @@ export function NetworkRuleEditor({ networkRule, initialDraft, pending, onSave, 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'headers' })
   const [method, status, headers, body] = useWatch({ control: form.control, name: ['method', 'status', 'headers', 'body'] })
   // JSON checks use the values the page will receive.
-  const index = indexVariables(useVariables() ?? [])
+  const variables = useVariables()
+  const index = useMemo(() => indexVariables(variables ?? []), [variables])
   const filled = (value: TemplateText) => { const result = resolveTemplate(value, index); return result.ok ? result.value : displayText(value) }
   const isJson = isJsonResponse(headers.map(header => ({ key: filled(header.key), value: filled(header.value) })))
-  const resolvedBody = hasTokens(body) ? resolveTemplate(body, index) : null
+  const resolvedBody = useMemo(() => hasTokens(body) ? resolveTemplate(body, index) : null, [body, index])
   const noBody = method === 'HEAD' || [204, 205, 304].includes(status)
   const draft = useWatch({ control: form.control }) as NetworkRuleDraft
   const { problems } = useDraftCheck({ kind: 'network-rule', value: draft })
