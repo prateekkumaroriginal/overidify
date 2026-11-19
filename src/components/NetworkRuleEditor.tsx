@@ -48,7 +48,7 @@ export function NetworkRuleEditor({ networkRule, initialDraft, pending, onSave, 
     beforeSubmit: () => domainsRef.current?.commit() ?? true,
     pending, returnRoute: '/network-rules',
     onSave: async draft => {
-      const enabled = await onSave(draft, enabledChanged(draft))
+      const enabled = await onSave(draft, storedEnabled.enabledChanged())
       if (draft.enabled && enabled === false) toast.warning('Network rule saved turned off', { description: TURNED_OFF_SAVED })
     },
   })
@@ -59,11 +59,12 @@ export function NetworkRuleEditor({ networkRule, initialDraft, pending, onSave, 
   const index = useMemo(() => indexVariables(variables ?? []), [variables])
   const filled = (value: TemplateText) => { const result = resolveTemplate(value, index); return result.ok ? result.value : displayText(value) }
   const isJson = isJsonResponse(headers.map(header => ({ key: filled(header.key), value: filled(header.value) })))
-  const resolvedBody = useMemo(() => hasTokens(body) ? resolveTemplate(body, index) : null, [body, index])
+  // Only JSON responses get the filled-in body check.
+  const resolvedBody = useMemo(() => isJson && hasTokens(body) ? resolveTemplate(body, index) : null, [isJson, body, index])
   const noBody = method === 'HEAD' || [204, 205, 304].includes(status)
   const draft = useWatch({ control: form.control }) as NetworkRuleDraft
   const { problems } = useDraftCheck({ kind: 'network-rule', value: draft })
-  const enabledChanged = useStoredEnabled(form, networkRule?.enabled)
+  const storedEnabled = useStoredEnabled(form, networkRule?.enabled)
 
   return (
     <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="network-editor-title">
@@ -103,7 +104,7 @@ export function NetworkRuleEditor({ networkRule, initialDraft, pending, onSave, 
                 </Select>
               )} />
             </div>
-            <div className="mt-5 flex items-center justify-between border-t pt-4"><span className="text-[11px] font-semibold">Enabled</span><Controller control={form.control} name="enabled" render={({ field }) => <ToggleSwitch checked={field.value && !problems.length} disabled={!!problems.length} label="Network rule enabled" onChange={field.onChange} />} /></div>
+            <div className="mt-5 flex items-center justify-between border-t pt-4"><span className="text-[11px] font-semibold">Enabled</span><Controller control={form.control} name="enabled" render={({ field }) => <ToggleSwitch checked={field.value && !problems.length} disabled={!!problems.length} label="Network rule enabled" onChange={enabled => { storedEnabled.choose(enabled); field.onChange(enabled) }} />} /></div>
           </div>
           <div className={panelClass}>
             <div className="mb-5 flex flex-wrap items-center justify-between gap-4"><h2 className="text-[13px] font-bold">Mock response</h2><label className="flex items-center gap-3 text-[11px] font-semibold">Status code<Input className="w-24 font-sans" type="number" min={200} max={599} step={1} required {...form.register('status', { valueAsNumber: true })} /></label></div>

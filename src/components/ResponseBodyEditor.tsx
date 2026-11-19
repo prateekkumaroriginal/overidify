@@ -68,7 +68,9 @@ export default function ResponseBodyEditor({ value, onChange, onBlur, disabled, 
   const analysis = useMemo(() => analyzeResponseBody(deferredBody), [deferredBody])
   const hasVariables = body.includes(TOKEN_CHAR)
   // Checked once per filled-in body, within the same size limit as the editor's own JSON checks.
-  const resolvedInvalid = useMemo(() => resolvedBody !== undefined && resolvedBody.length <= 1_000_000 && !isJsonText(resolvedBody), [resolvedBody])
+  const deferredResolved = useDeferredValue(resolvedBody)
+  const resolvedInvalid = useMemo(() => isJson && deferredResolved !== undefined && deferredResolved.length <= 1_000_000 && !isJsonText(deferredResolved),
+    [isJson, deferredResolved])
   const current = deferredBody === body
   const [expanded, setExpanded] = useState(false)
   const [error, setError] = useState('')

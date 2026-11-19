@@ -36,7 +36,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
     beforeSubmit: () => domainsRef.current?.commit() ?? true,
     pending, returnRoute: '/header-rules', successMessage: 'Header rule saved.',
     onSave: async draft => {
-      const saved = await onSave(draft, enabledChanged(draft))
+      const saved = await onSave(draft, storedEnabled.enabledChanged())
       if (draft.enabled && !saved.enabled) toast.warning('Header rule saved turned off', { description: TURNED_OFF_SAVED })
       return headerRuleToDraft(saved)
     },
@@ -44,7 +44,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
   const { fields, append, remove, replace } = useFieldArray({ control: form.control, name: 'headers' })
   const draft = useWatch({ control: form.control }) as HeaderRuleDraft
   const { problems } = useDraftCheck({ kind: 'header-rule', value: draft })
-  const enabledChanged = useStoredEnabled(form, headerRule?.enabled)
+  const storedEnabled = useStoredEnabled(form, headerRule?.enabled)
   const saveState = { tone: error ? 'error' : 'success', message: error || success }
 
   return (
@@ -78,7 +78,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
             </div>
             <div className="flex items-center justify-between gap-5 border-t py-[17px]">
               <span className="text-[11px] font-semibold">Enabled</span>
-              <Controller control={form.control} name="enabled" render={({ field }) => <ToggleSwitch checked={field.value && !problems.length} disabled={!!problems.length} label="Header rule enabled" onChange={field.onChange} />} />
+              <Controller control={form.control} name="enabled" render={({ field }) => <ToggleSwitch checked={field.value && !problems.length} disabled={!!problems.length} label="Header rule enabled" onChange={enabled => { storedEnabled.choose(enabled); field.onChange(enabled) }} />} />
             </div>
           </div>
           <div className="mb-5 rounded-lg border bg-card shadow-panel px-7 pt-[25px] mobile:px-[17px] mobile:pt-5">

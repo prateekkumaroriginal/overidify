@@ -45,7 +45,7 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
     beforeSubmit: () => domainsRef.current?.commit() ?? true,
     pending, returnRoute: '/switch-rules', successMessage: 'Switch rule saved.',
     onSave: async draft => {
-      const saved = await onSave(draft, enabledChanged(draft))
+      const saved = await onSave(draft, storedEnabled.enabledChanged())
       setDeletedOption(null)
       if (draft.enabled && !saved.enabled) toast.warning('Switch rule saved turned off', { description: TURNED_OFF_SAVED })
       return switchRuleToDraft(saved)
@@ -60,7 +60,7 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
   const options = form.getValues('options')
   const draft = useWatch({ control: form.control }) as SwitchRuleDraft
   const { problems, optionProblems } = useDraftCheck({ kind: 'switch-rule', value: draft })
-  const enabledChanged = useStoredEnabled(form, switchRule?.enabled)
+  const storedEnabled = useStoredEnabled(form, switchRule?.enabled)
   const [editingId, setEditingId] = useState(() => form.getValues('selectedOptionId'))
   const [deletedOption, setDeletedOption] = useState<DeletedOption | null>(null)
   const optionNameInput = useRef<HTMLInputElement>(null)
@@ -120,7 +120,7 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
               </div>
               <div className="flex items-center justify-between gap-5 border-t py-[17px]">
                 <span className="text-[11px] font-semibold">Enabled</span>
-                <Controller control={form.control} name="enabled" render={({ field }) => <ToggleSwitch checked={field.value && !problems.length} disabled={!!problems.length} label="Switch rule enabled" onChange={enabled => { field.onChange(enabled); clearStatus() }} />} />
+                <Controller control={form.control} name="enabled" render={({ field }) => <ToggleSwitch checked={field.value && !problems.length} disabled={!!problems.length} label="Switch rule enabled" onChange={enabled => { storedEnabled.choose(enabled); field.onChange(enabled); clearStatus() }} />} />
               </div>
             </div>
             <div className="mb-5 rounded-lg border bg-card shadow-panel px-7 pt-[25px] mobile:px-[17px] mobile:pt-5 pb-6 mobile:pb-5">
