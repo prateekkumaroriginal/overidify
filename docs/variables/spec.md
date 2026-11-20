@@ -6,7 +6,7 @@ Variables let a value such as `STAGE_AUTH_TOKEN` be stored once and used in any 
 
 | Topic | Decision |
 | --- | --- |
-| Where variables live | One global list on a **Variables** page, opened from the settings icon’s side panel. No environments. |
+| Where variables live | One global list on a **Variables** page, opened from the side panel behind the sliders icon in the Settings header. No environments. |
 | Columns | Name, Value, Usage (count of rule fields, with a `?` tooltip), Secret (switch), Delete. |
 | Fields that accept variables | Every rule text field except rule and option names. |
 | Creating a reference | Only by picking from the `{{` suggestions, or by **Create** in them. |

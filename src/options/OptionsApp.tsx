@@ -1,4 +1,4 @@
-import { ArrowRight, Braces, ListChecks, Plus, Search, Settings, Upload } from 'lucide-react'
+import { ArrowRight, Braces, ListChecks, Plus, Search, SlidersHorizontal, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
@@ -515,18 +515,16 @@ function SettingsMenu({ isVariables }: { isVariables: boolean }) {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button type="button" variant="quiet" size="icon-lg" aria-label="Open settings menu"><Icon icon={Settings} /></Button>
+        <Button type="button" variant="quiet" size="icon-lg" aria-label="Open settings menu"><Icon icon={SlidersHorizontal} /></Button>
       </SheetTrigger>
       <SheetContent className="max-w-[320px]">
         <SheetHeader><SheetTitle>Settings</SheetTitle><DialogDescription className="sr-only">Go to other settings pages.</DialogDescription></SheetHeader>
         <nav aria-label="Settings pages">
           <DialogClose asChild>
-            <Button asChild variant="outline" size="choice" className="w-full justify-between">
-              <a href="#/variables" aria-current={isVariables ? 'page' : undefined}>
-                <span className="flex items-center gap-3"><Icon icon={Braces} />Variables</span>
-                <Icon icon={ArrowRight} data-icon="inline-end" />
-              </a>
-            </Button>
+            <a href="#/variables" aria-current={isVariables ? 'page' : undefined}
+              className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground no-underline transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[current=page]:bg-accent aria-[current=page]:text-foreground [&_svg]:size-4">
+              <Icon icon={Braces} />Variables
+            </a>
           </DialogClose>
         </nav>
       </SheetContent>
