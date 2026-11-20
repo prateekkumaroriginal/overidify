@@ -48,7 +48,7 @@ Open the extension popup on a website to toggle matching rules or choose a Switc
 
 ### Variables
 
-Store a value such as a stage token once and use it in any rule field. Open **Variables** at the top of Settings, click **New variable**, and save `STAGE_AUTH_TOKEN` with its value. Turn on **Secret** to mask the value in Overidify.
+Store a value such as a stage token once and use it in any rule field. In Settings, click the sliders icon in the top-right corner and choose **Variables**. Click **New variable** and save `STAGE_AUTH_TOKEN` with its value. Turn on **Secret** to mask the value in Overidify.
 
 In a header value, website domain, request URL, response header, or response body, type `{{` to open the list of variables. Keep typing to search, then press Enter, press Tab, or click a name. The field shows `{{STAGE_AUTH_TOKEN}}` in color, and requests get the current value. Anything you don't pick from the list stays plain text, including `{{STAGE_AUTH_TOKEN}}` typed or pasted by hand. When no variable matches, **Create** adds one without leaving the rule.
 

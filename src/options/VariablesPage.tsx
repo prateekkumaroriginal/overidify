@@ -149,7 +149,7 @@ export function VariablesPage({ requestHeaderRules, networkRules }: { requestHea
   const term = nameKey(query.trim())
   const visible = term ? rows.filter(row => nameKey(row.name).includes(term)) : rows
 
-  return <TooltipProvider delayDuration={250}><section className="mx-auto max-w-[960px] animate-rise-in" aria-labelledby="variables-title">
+  return <TooltipProvider delayDuration={250}><section className="animate-rise-in" aria-labelledby="variables-title">
     <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div className="flex min-w-0 flex-col gap-1.5">
         <div className="flex items-center gap-3">

@@ -1,4 +1,4 @@
-import { ArrowRight, ListChecks, Plus, Search, Upload } from 'lucide-react'
+import { ArrowRight, Braces, ListChecks, Plus, Search, SlidersHorizontal, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
@@ -41,7 +41,7 @@ import type { TemplateText } from '../lib/templates'
 import { getDomainPatterns } from '../lib/pattern'
 import { useVariables } from '../components/variables-context'
 import { VariablesPage } from './VariablesPage'
-import { cn } from '../lib/utils'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet'
 
 const searchText = (...values: TemplateText[]) => values.map(value => displayText(value)).join(' ')
 
@@ -248,13 +248,7 @@ export function OptionsApp() {
   return (
     <div className="mx-auto max-w-[1240px] px-16 min-[1440px]:max-w-[1280px] min-[1440px]:px-[90px] tablet:px-9 mobile:px-5">
       <header className="flex h-[78px] items-center justify-between gap-5 border-b tablet:h-[72px]"><Brand />
-        <nav aria-label="Settings" className="flex items-center gap-1">
-          {[{ label: 'Rules', href: '#/all', current: !isVariables }, { label: 'Variables', href: '#/variables', current: isVariables }].map(item => (
-            <Button key={item.label} asChild variant="quiet" className={cn(item.current && 'bg-accent text-foreground')}>
-              <a href={item.href} aria-current={item.current ? 'page' : undefined}>{item.label}</a>
-            </Button>
-          ))}
-        </nav>
+        <SettingsMenu isVariables={isVariables} />
       </header>
       <main className="pt-[34px] pb-[50px] min-[1440px]:pt-10 tablet:pt-10 mobile:pt-[31px]">
         {error && <p className="mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 border-destructive/40 bg-destructive/10 text-destructive" role="alert">{error}</p>}
@@ -514,6 +508,27 @@ function NewRuleButton({ className }: { className?: string }) {
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function SettingsMenu({ isVariables }: { isVariables: boolean }) {
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button type="button" variant="quiet" size="icon-lg" aria-label="Open settings menu"><Icon icon={SlidersHorizontal} /></Button>
+      </SheetTrigger>
+      <SheetContent className="max-w-[320px]">
+        <SheetHeader><SheetTitle>Settings</SheetTitle><DialogDescription className="sr-only">Go to other settings pages.</DialogDescription></SheetHeader>
+        <nav aria-label="Settings pages">
+          <DialogClose asChild>
+            <a href="#/variables" aria-current={isVariables ? 'page' : undefined}
+              className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground no-underline transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[current=page]:bg-accent aria-[current=page]:text-foreground [&_svg]:size-4">
+              <Icon icon={Braces} />Variables
+            </a>
+          </DialogClose>
+        </nav>
+      </SheetContent>
+    </Sheet>
   )
 }
 
