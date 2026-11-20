@@ -429,11 +429,10 @@ body:has(.devtools-app) { margin: 0; }
 }
 
 /* Variables: a linked variable reads as {{NAME}} in color. Literal text that reads {{NAME}} keeps the normal text color. */
-:root { --variable: #b388ff; --variable-brace: #e879f9; }
+:root { --variable: #b388ff; }
 .variable-token { color: var(--variable); white-space: nowrap; cursor: default; }
-.variable-brace { color: var(--variable-brace); font-weight: 600; }
+.variable-brace { font-weight: 600; }
 .variable-token[data-missing='true'] { color: var(--destructive); text-decoration: wavy underline; text-underline-offset: 3px; }
-.variable-token[data-missing='true'] .variable-brace { color: inherit; }
 .template-display { overflow-wrap: anywhere; }
 
 .template-field .cm-editor {
