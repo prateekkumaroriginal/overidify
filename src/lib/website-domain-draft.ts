@@ -1,9 +1,11 @@
 import { getDomainPatterns, normalizeWebsiteScope, updateWebsiteScope } from './pattern.ts'
 import type { WebsiteScope } from './pattern.ts'
+import { isBlankTemplate, templatesEqual } from './templates.ts'
+import type { TemplateText } from './templates.ts'
 
-export type WebsiteDomainDraft = { text: string; editing: number | null }
+export type WebsiteDomainDraft = { text: TemplateText; editing: number | null }
 
-export function commitWebsiteDomainDrafts(value: WebsiteScope, creation: string, manager: WebsiteDomainDraft):
+export function commitWebsiteDomainDrafts(value: WebsiteScope, creation: TemplateText, manager: WebsiteDomainDraft):
   | { ok: true; value: WebsiteScope }
   | { ok: false; field: 'creation' | 'manager'; message: string } {
   let field: 'creation' | 'manager' = 'manager'
@@ -27,6 +29,6 @@ export function removeWebsiteDomain(value: WebsiteScope, index: number, draft: W
   }
   return {
     value: normalizeWebsiteScope(remaining), text, editing,
-    pending: editing === null ? !!text.trim() : text !== remaining[editing],
+    pending: editing === null ? !isBlankTemplate(text) : !templatesEqual(text, remaining[editing]),
   }
 }

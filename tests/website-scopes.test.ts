@@ -43,6 +43,7 @@ test('a domain list matches any member once, retaining wildcard, port and websit
 test('Header, Switch, Network and popup website eligibility agree for overlapping multi-domain scopes', async () => {
   Object.assign(globalThis, { chrome: { declarativeNetRequest: { ResourceType: {} } } })
   const { requestHeaderRulesToSessionRules } = await import('../src/lib/dnr.ts')
+  const { resolveRules } = await import('../src/lib/rule-resolution.ts')
   const scope = ['app.example.com', '*.example.com', 'localhost:4200']
   const tabs = [
     { id: 1, url: 'https://app.example.com/' }, { id: 2, url: 'http://localhost:4200/page' },
@@ -50,14 +51,16 @@ test('Header, Switch, Network and popup website eligibility agree for overlappin
     { id: 5, url: network.requestUrl },
   ]
   const rules = [{ ...header, url: scope }, { ...switchRule, url: scope }]
-  const compiled = requestHeaderRulesToSessionRules(rules, tabs)
+  // Every surface matches websites with the rules' variables filled in.
+  const resolved = resolveRules({ requestHeaderRules: rules, networkRules: [{ ...network, url: scope }] }, [])
+  const compiled = requestHeaderRulesToSessionRules(resolved.requestHeaderRules, tabs)
   assert.equal(compiled.length, 2)
   assert.deepEqual(compiled.map(rule => rule.condition.tabIds), [[1, 2, 3], [1, 2, 3]])
   assert.ok(compiled[1].priority! > compiled[0].priority!)
   for (const tab of tabs) {
     const popupRules = rules.filter(rule => matchesPageDomain(rule.url, tab.url))
     assert.equal(popupRules.length, tab.id <= 3 ? 2 : 0)
-    assert.equal(networkRulesForPage([{ ...network, url: scope }], tab.url).length, tab.id <= 3 ? 1 : 0)
+    assert.equal(networkRulesForPage(resolved.networkRules, tab.url).length, tab.id <= 3 ? 1 : 0)
   }
 })
 

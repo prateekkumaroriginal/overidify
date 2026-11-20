@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { matchesPageDomain } from '../src/lib/pattern.ts'
 import type { RequestHeaderRule } from '../src/lib/types.ts'
+import type { PageTab } from '../src/lib/dnr.ts'
 
 Object.assign(globalThis, {
   chrome: {
@@ -15,6 +16,13 @@ Object.assign(globalThis, {
     },
   },
 })
+
+const dnr = await import('../src/lib/dnr.ts')
+const { resolveRules } = await import('../src/lib/rule-resolution.ts')
+// The worker compiles rules after variables are filled in.
+const resolved = (rules: RequestHeaderRule[]) => resolveRules({ requestHeaderRules: rules, networkRules: [] }, []).requestHeaderRules
+const requestHeaderRulesToSessionRules = (rules: RequestHeaderRule[], tabs: PageTab[]) => dnr.requestHeaderRulesToSessionRules(resolved(rules), tabs)
+const syncRequestHeaderSessionRules = (rules: RequestHeaderRule[], tabs: PageTab[]) => dnr.syncRequestHeaderSessionRules(resolved(rules), tabs)
 
 test('installed rule versions keep their original Header and Switch snapshots after edits and navigation', async () => {
   let stored: Record<string, unknown> = {}
@@ -61,7 +69,6 @@ test('snapshot quota pressure does not prevent header installation or assign a f
   Object.assign(chrome.storage.session, { get: async () => ({}), set: async () => undefined })
 })
 
-const { requestHeaderRulesToSessionRules, syncRequestHeaderSessionRules } = await import('../src/lib/dnr.ts')
 
 const localhostRule: RequestHeaderRule = {
   kind: 'header-rule', id: '00000000-0000-4000-8000-00000000000f', name: 'up50', url: 'localhost:4200', order: 0, enabled: true,

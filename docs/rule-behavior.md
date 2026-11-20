@@ -19,7 +19,17 @@ Domain patterns accept:
 
 Host matching ignores case. Include a port to match only that port. A complete website URL such as `http://localhost:4200/messages` is normalized to `localhost:4200`; paths, query strings, and fragments do not narrow the website scope. URL patterns such as `*://app.example.com/*` are normalized to `app.example.com`.
 
-## Request headers
+## Variables
+
+Variables live in one global list on the **Variables** page. A name uses letters, numbers, and `_`, starts with a letter or `_`, and is unique ignoring case. **Usage** counts the rule fields that use each variable. A secret value is masked on the page, in suggestions, and in hovers. Storage is not encrypted.
+
+Every rule field except rule and option names can hold variables: website domains, header names and values, the request URL, response header names and values, and the response body. Typing `{{` opens the suggestions. Typing filters them by name. Enter, Tab, or a click inserts the variable, and Escape, clicking away, a space, or `}` leaves the typed text as plain text. Text typed or pasted by hand never becomes a variable, even when it reads `{{NAME}}`. Copying a field gives `{{NAME}}` text; pasting it back stays plain text. Backspace removes a variable in one step.
+
+A variable is linked to the variable you picked, so renaming it keeps every rule working. If that variable is deleted, a variable later created with the same name takes its place. Values are inserted as typed, in one pass, without trimming or escaping.
+
+Website matching uses domains with their variables filled in, so Header Rules, Switch Rules, Network Rules, and the popup keep matching the same websites. A rule that can't run, because a variable is missing or a filled-in value is invalid, is saved turned off. Its switch stays locked until the problem is fixed, and it does not turn itself back on. A Switch Rule counts only its selected option. Deleting or changing variables on the Variables page asks before turning rules off. Execution history shows variables as `{{NAME}}`, not their values.
+
+
 
 Header Rules apply one header set. Switch Rules apply only the selected option's header set. A Switch Rule with one option has no option dropdown.
 
@@ -93,7 +103,7 @@ The [Network Rules specification](network-rules/spec.md) covers further technica
 
 Import, Export, and Select appear to the right of the rule-type tabs on the options page. Without selection mode, Export includes every saved rule in the active tab, regardless of search. Export on All produces a full backup across the three types. Select reveals list checkboxes; selections carry across the tabs and searches. In selection mode, Export (n) shows the selection count and is disabled until at least one rule is selected. Cancel or Escape clears the selection and leaves Select mode. The All checkbox selects the visible rules; checked and mixed checkboxes use violet.
 
-Exports use Overidify JSON format version 1 for single-domain rules and version 2 when any rule contains a domain list. The `url` field is a string for one domain or an array of strings for multiple domains. Both versions can be imported, while older extensions reject version 2. Exports preserve saved values, enabled states, relative order, and all Switch Rule options and the selected option. Rule and option identities are UUIDs.
+Exports use Overidify JSON format version 1 for single-domain rules and version 2 when any rule contains a domain list. Files with variables use version 3 and store each variable by name, as `{ "variable": "NAME" }`, never with its value. Import links those names to your variables, ignoring case. Rules that use a missing variable are imported turned off, and the review lists the missing names. The `url` field is a string for one domain or an array of strings for multiple domains. Both versions can be imported, while older extensions reject version 2. Exports preserve saved values, enabled states, relative order, and all Switch Rule options and the selected option. Rule and option identities are UUIDs.
 
 Import always shows a review before applying changes. Same-UUID rules count as overlaps even when unchanged. Replace updates only overlaps in their existing positions; Add keeps existing rules and gives overlapping copies new UUIDs. Other imported rules are added. New rules and copies go after existing rules in their exported relative order, so later enabled rules can take priority.
 

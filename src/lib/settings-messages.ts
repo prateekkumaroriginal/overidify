@@ -1,8 +1,9 @@
 import * as z from 'zod/mini'
-import { NetworkRuleSchema } from './network-schemas.ts'
+import { ResolvedNetworkRuleSchema } from './network-schemas.ts'
 import { ExecutionRecordSchema } from './execution-schemas.ts'
 
-const entries = z.array(NetworkRuleSchema)
+// Pages receive Network Rules with variables filled in.
+const entries = z.array(ResolvedNetworkRuleSchema)
 const id = z.int().check(z.minimum(0))
 export const NetworkActiveTabsSchema = z.array(id)
 export const NetworkBridgeFramesSchema = z.array(z.object({ tabId: id,

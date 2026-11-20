@@ -1,5 +1,9 @@
 import { applyEdits, createScanner, format, parseTree, printParseErrorCode } from 'jsonc-parser'
-import type { ParseError } from 'jsonc-parser'
+import type { Edit, ParseError } from 'jsonc-parser'
+
+// A variable in the body counts as one JSON value character, so positions and formatting stay exact.
+const VARIABLE_CHAR = /\uE000/g
+const asJson = (body: string) => body.replace(VARIABLE_CHAR, '0')
 
 export type BodyAnalysis = {
   available: boolean
@@ -8,7 +12,8 @@ export type BodyAnalysis = {
 }
 const limitedReason = 'Format is unavailable for bodies over 1 MB or with very deep nesting. Editing and saving remain available.'
 
-export function analyzeResponseBody(body: string): BodyAnalysis {
+export function analyzeResponseBody(source: string): BodyAnalysis {
+  const body = asJson(source)
   if (body.length > 1_000_000 || new TextEncoder().encode(body).length > 1_000_000) return { available: false, reason: limitedReason }
   const scanner = createScanner(body, true)
   let depth = 0
@@ -34,9 +39,13 @@ export function analyzeResponseBody(body: string): BodyAnalysis {
   return { available: true, reason: null }
 }
 
-export function formatResponseBody(body: string): string {
+/** Whitespace-only edits, so variables, duplicate keys, and numeric tokens are preserved. */
+export function formatEdits(body: string): Edit[] {
   const analysis = analyzeResponseBody(body)
   if (!analysis.available) throw new Error(analysis.reason!)
-  // Apply whitespace edits to the source, preserving duplicate keys and numeric tokens.
-  return applyEdits(body, format(body, undefined, { insertSpaces: true, tabSize: 2, eol: '\n' }))
+  return format(asJson(body), undefined, { insertSpaces: true, tabSize: 2, eol: '\n' })
+}
+
+export function formatResponseBody(body: string): string {
+  return applyEdits(body, formatEdits(body))
 }

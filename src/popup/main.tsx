@@ -4,11 +4,14 @@ import { createRoot } from 'react-dom/client'
 import '../styles.css'
 import { PopupApp } from './PopupApp'
 import { TooltipProvider } from '../components/ui/tooltip'
+import { VariablesProvider } from '../components/VariablesProvider'
 
 createRoot(document.getElementById('app')!).render(
   <StrictMode>
-    <TooltipProvider delayDuration={350}>
-      <PopupApp />
-    </TooltipProvider>
+    <VariablesProvider>
+      <TooltipProvider delayDuration={350}>
+        <PopupApp />
+      </TooltipProvider>
+    </VariablesProvider>
   </StrictMode>,
 )

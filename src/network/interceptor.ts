@@ -1,5 +1,5 @@
 import { selectNetworkRule } from '../lib/network-rules'
-import type { NetworkRule } from '../lib/network-rules'
+import type { ResolvedNetworkRule as NetworkRule } from '../lib/network-rules'
 import { EXECUTION_HISTORY_BYTES } from '../lib/execution-history'
 import type { ExecutionRecord } from '../lib/execution-history'
 
@@ -24,8 +24,10 @@ export function installNetworkInterceptors(page: PageWindow, timers: Pick<PageWi
       reported = true
       try {
         const record: ExecutionRecord = { id, startedAt, time: startedAt, source: 'interceptor', result: error === undefined ? 'Mocked' : 'Failed',
-          rule: { id: entry.id, kind: 'network-rule', name: entry.name, url: entry.url, headers: entry.headers.map(header => ({ ...header })),
-            requestUrl: entry.requestUrl, method: entry.method, mode: entry.mode, status: entry.status, body: entry.body }, request: { url, method, type } }
+          // The rule snapshot shows variables as {{NAME}}, never their values.
+          rule: { id: entry.id, kind: 'network-rule', name: entry.name, url: entry.display?.url ?? entry.url,
+            headers: (entry.display?.headers ?? entry.headers).map(header => ({ ...header })), requestUrl: entry.display?.requestUrl ?? entry.requestUrl,
+            method: entry.method, mode: entry.mode, status: entry.status, body: entry.display?.body ?? entry.body }, request: { url, method, type } }
         if (error === undefined) {
           const headers = responseHeaders ?? new page.Headers(entry.headers.map(({ key, value }) => [key, value]))
           record.response = { status: entry.status, headers: [...headers].map(([key, value]) => ({ key, value })), body: nullBody(method, entry.status) ? '' : entry.body }

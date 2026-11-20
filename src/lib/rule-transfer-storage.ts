@@ -2,11 +2,13 @@ import { ActivationResultSchema } from './settings-messages.ts'
 import type { RuleCollection, TransferRule } from './rule-transfer.ts'
 import { getRequestHeaderRules, REQUEST_HEADER_STORAGE_KEY } from './request-header-storage.ts'
 import { getNetworkRules, NETWORK_STORAGE_KEY } from './network-storage.ts'
+import { prepareRulesForSave } from './rule-resolution.ts'
+import { getVariables, writeStorage } from './variables-storage.ts'
 
 export type TransferActivation = { ok: boolean; reloadTabIds: number[]; error?: string }
 const isPreview = () => import.meta.env?.DEV && !globalThis.chrome?.storage?.local
 
-async function withRuleStorageLocks<T>(action: () => Promise<T>): Promise<T> {
+export async function withRuleStorageLocks<T>(action: () => Promise<T>): Promise<T> {
   return await navigator.locks.request(REQUEST_HEADER_STORAGE_KEY, async () =>
     await navigator.locks.request(NETWORK_STORAGE_KEY, action))
 }
@@ -47,8 +49,7 @@ export async function duplicateSavedRule(id: string) {
       networkRules: networkRules.flatMap(rule => rule.id === id ? [rule, copy] : [rule]).map((rule, order) => ({ ...rule, order })),
     }
     copy.order = source.order + 1
-    await persistRules(rules)
-    return { rules, copy }
+    return { rules: await persistRules(rules), copy }
   })
   return { ...saved, activation: await activateImportedRules() }
 }
@@ -69,9 +70,10 @@ export async function activateImportedRules(): Promise<TransferActivation> {
   return { ok: errors.length === 0, reloadTabIds: [...reloadTabIds], error: errors.length ? errors.join(' ') : undefined }
 }
 
-export async function saveImportedRules(rules: RuleCollection): Promise<TransferActivation> {
-  await withRuleStorageLocks(() => persistRules(rules))
-  return activateImportedRules()
+/** Saves an import. `rules` are the rules as saved, with rules that can't run turned off. */
+export async function saveImportedRules(input: RuleCollection): Promise<TransferActivation & { rules: RuleCollection }> {
+  const rules = await withRuleStorageLocks(() => persistRules(input))
+  return { ...await activateImportedRules(), rules }
 }
 
 export async function persistRuleDeletion(selectedIds: ReadonlySet<string>) {
@@ -95,22 +97,15 @@ export async function deleteSavedRules(selectedIds: ReadonlySet<string>) {
   return { ...result, activation }
 }
 
-async function persistRules(rules: RuleCollection): Promise<void> {
-  if (isPreview()) {
-    const keys = ['requestHeaderRules', 'networkRules'] as const
-    const previous = keys.map(key => localStorage.getItem(key))
-    try {
-      for (const key of keys) localStorage.setItem(key, JSON.stringify(rules[key]))
-    } catch (error) {
-      keys.forEach((key, index) => {
-        if (previous[index] === null) localStorage.removeItem(key)
-        else localStorage.setItem(key, previous[index]!)
-      })
-      throw error
-    }
-    for (const event of ['request-header-rules-updated', 'network-rules-updated']) window.dispatchEvent(new Event(event))
-  } else {
-    // One write keeps the two rule collections together; activation is a separate result.
-    await chrome.storage.local.set(rules)
+/** Returns the rules as saved, after rules that can't run are turned off. */
+async function persistRules(input: RuleCollection): Promise<RuleCollection> {
+  // Imported, copied, and remaining rules that cannot run with the saved variables are saved turned off.
+  const variables = await getVariables()
+  const rules = {
+    requestHeaderRules: prepareRulesForSave(input.requestHeaderRules, variables).rules,
+    networkRules: prepareRulesForSave(input.networkRules, variables).rules,
   }
+  // One write keeps the two rule collections together; activation is a separate result.
+  await writeStorage(rules)
+  return rules
 }

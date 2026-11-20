@@ -1,4 +1,4 @@
-import type { NetworkRule } from '../lib/network-rules'
+import type { ResolvedNetworkRule as NetworkRule } from '../lib/network-rules'
 import { NetworkPageMessageSchema, NetworkRuntimeMessageSchema, NetworkSettingsResponseSchema } from '../lib/settings-messages'
 import type { NetworkApplied } from '../lib/settings-messages'
 

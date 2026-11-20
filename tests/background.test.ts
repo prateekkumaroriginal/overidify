@@ -21,6 +21,7 @@ const resourceTypes = Object.fromEntries([
 ].map((type) => [type, type.toLowerCase()]))
 Object.assign(globalThis, { chrome: { declarativeNetRequest: { ResourceType: resourceTypes } } })
 const { requestHeaderRulesToSessionRules } = await import('../src/lib/dnr.ts')
+const { resolveRules } = await import('../src/lib/rule-resolution.ts')
 
 // Run the actual worker with isolated Chrome events and storage adapters.
 const source = readFileSync(new URL('../src/background/index.ts', import.meta.url), 'utf8')
@@ -49,8 +50,11 @@ function harness(initialTabs: PageTab[]) {
     chrome: api,
     console: { error: (...args: unknown[]) => errors.push(args) },
     REQUEST_HEADER_STORAGE_KEY: 'requestHeaderRules',
+    VARIABLES_STORAGE_KEY: 'variables',
     getRequestHeaderRules: async () => entries,
-    syncRequestHeaderSessionRules: async (rules: RequestHeaderRule[], pages: PageTab[]) => {
+    getVariables: async () => [],
+    resolveRules,
+    syncRequestHeaderSessionRules: async (rules: Parameters<typeof requestHeaderRulesToSessionRules>[0], pages: PageTab[]) => {
       applied = JSON.parse(JSON.stringify(requestHeaderRulesToSessionRules(rules, pages)))
     },
   })

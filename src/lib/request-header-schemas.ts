@@ -1,5 +1,5 @@
 import * as z from 'zod/mini'
-import { EntryShape, HeaderPairSchema, requiredName, RuleIdSchema, WebsiteSchema } from './schema-fields.ts'
+import { EntryShape, HeaderPairSchema, isBlank, requiredName, RuleIdSchema, WebsiteSchema } from './schema-fields.ts'
 
 export const HeaderRuleSchema = z.object({ ...EntryShape, kind: z.literal('header-rule'), headers: z.array(HeaderPairSchema) })
 export const SwitchRuleOptionSchema = z.object({ id: RuleIdSchema, name: z.string(), headers: z.array(HeaderPairSchema) })
@@ -8,10 +8,10 @@ export const SwitchRuleSchema = z.object({
 })
 export const RequestHeaderRuleSchema = z.discriminatedUnion('kind', [HeaderRuleSchema, SwitchRuleSchema])
 const RequestHeadersSchema = z.array(HeaderPairSchema).check(
-  z.refine(headers => headers.some(header => header.key.trim() || header.value.trim()), { message: 'Add at least one header pair.' }),
+  z.refine(headers => headers.some(header => !isBlank(header.key) || !isBlank(header.value)), { message: 'Add at least one header pair.' }),
   z.superRefine((headers, context) => {
     headers.forEach((header, index) => {
-      const key = header.key.trim(), value = header.value.trim()
+      const key = !isBlank(header.key), value = !isBlank(header.value)
       if ((key || value) && (!key || !value)) context.addIssue({
         code: 'custom', path: [index, key ? 'value' : 'key'], message: 'Each header pair needs a name and a value.',
       })

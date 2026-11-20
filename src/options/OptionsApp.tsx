@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { startTransition, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { startTransition, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
 import { normalizeWebsiteScope } from '../lib/pattern'
 import { Brand } from '../components/Brand'
@@ -34,6 +34,16 @@ import { TooltipProvider } from '../components/ui/tooltip'
 import { downloadRules } from '../lib/rule-download'
 import { getSavedRules } from '../lib/rule-transfer-storage'
 import type { RuleCollection } from '../lib/rule-transfer'
+import { resolveRules } from '../lib/rule-resolution'
+import type { RuleCheck } from '../lib/rule-resolution'
+import { displayText, trimTemplate } from '../lib/templates'
+import type { TemplateText } from '../lib/templates'
+import { getDomainPatterns } from '../lib/pattern'
+import { useVariables } from '../components/variables-context'
+import { VariablesPage } from './VariablesPage'
+import { cn } from '../lib/utils'
+
+const searchText = (...values: TemplateText[]) => values.map(value => displayText(value)).join(' ')
 
 function readRoute() {
   return window.location.hash.slice(1) || '/all'
@@ -96,19 +106,23 @@ export function OptionsApp() {
       setNetworkNotice(result.reloadTabIds.length
         ? 'Settings saved. Reload matching website tabs to activate the latest network rules.'
         : '')
+      return result.entries
     } finally { setPending(false) }
   }
 
-  async function handleSaveNetworkRule(draft: NetworkRuleDraft, id?: string) {
+  async function handleSaveNetworkRule(draft: NetworkRuleDraft, id?: string, enabledChanged = true) {
     const entry: NetworkRule = {
       ...draft, id: id ?? createRuleId(), order: 0,
-      name: draft.name.trim(), url: normalizeWebsiteScope(draft.url), requestUrl: draft.requestUrl.trim(),
+      name: draft.name.trim(), url: normalizeWebsiteScope(draft.url), requestUrl: trimTemplate(draft.requestUrl),
       headers: cleanResponseHeaders(draft.headers),
     }
-    await persistNetworkRules(rules => id
-      ? rules.map(item => item.id === id ? { ...entry, order: item.order } : item)
+    const saved = await persistNetworkRules(rules => id
+      // Without a toggle change, keep the stored state: another page may have turned the rule off.
+      ? rules.map(item => item.id === id ? { ...entry, order: item.order, enabled: enabledChanged ? entry.enabled : item.enabled } : item)
       : [...rules, { ...entry, order: rules.length }])
     window.location.hash = '/network-rules'
+    // A rule that can't run with the current variables is saved turned off.
+    return saved.find(item => item.id === entry.id)?.enabled ?? entry.enabled
   }
 
   async function handleSaveCapturedNetworkRule(draftId: string, draft: NetworkRuleDraft) {
@@ -116,7 +130,7 @@ export function OptionsApp() {
     setError('')
     try {
       const result = await saveCapturedNetworkRuleDraft(draftId, {
-        ...draft, name: draft.name.trim(), url: normalizeWebsiteScope(draft.url), requestUrl: draft.requestUrl.trim(),
+        ...draft, name: draft.name.trim(), url: normalizeWebsiteScope(draft.url), requestUrl: trimTemplate(draft.requestUrl),
         headers: cleanResponseHeaders(draft.headers),
       })
       setNetworkNotice(result.reloadTabIds.length
@@ -142,26 +156,29 @@ export function OptionsApp() {
     setPending(true)
     setError('')
     try {
-      await updateRequestHeaderRules(update)
+      return await updateRequestHeaderRules(update)
     } finally {
       setPending(false)
     }
   }
 
-  async function persistEntry(entry: RequestHeaderRule, existingId?: string) {
-    await persistEntries(rules => existingId
+  /** Returns the rule as saved. A rule that can't run with the current variables is saved turned off. */
+  async function persistEntry<Rule extends RequestHeaderRule>(entry: Rule, existingId?: string, enabledChanged = true): Promise<Rule> {
+    const saved = await persistEntries(rules => existingId
       ? rules.map(current => {
         if (current.id !== existingId) return current
-        const next = { ...entry, order: current.order }
+        // Without a toggle change, keep the stored state: another page may have turned the rule off.
+        const next = { ...entry, order: current.order, enabled: enabledChanged ? entry.enabled : current.enabled }
         return next.kind === 'switch-rule' && current.kind === 'switch-rule' && next.options.some(option => option.id === current.selectedOptionId)
           ? { ...next, selectedOptionId: current.selectedOptionId }
           : next
       })
       : [...rules, { ...entry, order: rules.length }])
     window.location.hash = entry.kind === 'switch-rule' ? '/switch-rules' : '/header-rules'
+    return (saved.find(rule => rule.id === entry.id) as Rule | undefined) ?? entry
   }
 
-  async function handleSaveHeaderRule(draft: HeaderRuleDraft, ruleId?: string): Promise<HeaderRule> {
+  async function handleSaveHeaderRule(draft: HeaderRuleDraft, ruleId?: string, enabledChanged = true): Promise<HeaderRule> {
     const rule: HeaderRule = {
       kind: 'header-rule',
       id: ruleId ?? createRuleId(),
@@ -171,11 +188,10 @@ export function OptionsApp() {
       headers: sanitizeHeaders(draft.headers),
       order: 0,
     }
-    await persistEntry(rule, ruleId)
-    return rule
+    return persistEntry(rule, ruleId, enabledChanged)
   }
 
-  async function handleSaveSwitchRule(draft: SwitchRuleDraft, switchRuleId?: string): Promise<SwitchRule> {
+  async function handleSaveSwitchRule(draft: SwitchRuleDraft, switchRuleId?: string, enabledChanged = true): Promise<SwitchRule> {
     const switchRule: SwitchRule = {
       kind: 'switch-rule',
       id: switchRuleId ?? createRuleId(),
@@ -188,8 +204,7 @@ export function OptionsApp() {
       selectedOptionId: draft.selectedOptionId,
       order: 0,
     }
-    await persistEntry(switchRule, switchRuleId)
-    return switchRule
+    return persistEntry(switchRule, switchRuleId, enabledChanged)
   }
 
   async function handleDelete(entry: RequestHeaderRule) {
@@ -225,21 +240,36 @@ export function OptionsApp() {
     ? new URLSearchParams(route.slice(route.indexOf('?') + 1)).get('draft')
     : null
   const isHome = route === '/all' || route === '/header-rules' || route === '/switch-rules' || route === '/network-rules'
+  const isVariables = route === '/variables'
+  const variables = useVariables()
+  // Null while variables load, so no rule is marked with a problem it does not have.
+  const checks = useMemo(() => variables && resolveRules({ requestHeaderRules: entries, networkRules }, variables).checks, [entries, networkRules, variables])
 
   return (
     <div className="mx-auto max-w-[1240px] px-16 min-[1440px]:max-w-[1280px] min-[1440px]:px-[90px] tablet:px-9 mobile:px-5">
-      <header className="flex h-[78px] items-center justify-between gap-5 border-b tablet:h-[72px]"><Brand /></header>
+      <header className="flex h-[78px] items-center justify-between gap-5 border-b tablet:h-[72px]"><Brand />
+        <nav aria-label="Settings" className="flex items-center gap-1">
+          {[{ label: 'Rules', href: '#/all', current: !isVariables }, { label: 'Variables', href: '#/variables', current: isVariables }].map(item => (
+            <Button key={item.label} asChild variant="quiet" className={cn(item.current && 'bg-accent text-foreground')}>
+              <a href={item.href} aria-current={item.current ? 'page' : undefined}>{item.label}</a>
+            </Button>
+          ))}
+        </nav>
+      </header>
       <main className="pt-[34px] pb-[50px] min-[1440px]:pt-10 tablet:pt-10 mobile:pt-[31px]">
         {error && <p className="mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 border-destructive/40 bg-destructive/10 text-destructive" role="alert">{error}</p>}
         {networkNotice && (route === '/all' || route === '/network-rules') && <p className="mb-5 text-xs text-muted-foreground" role="status">{networkNotice}</p>}
         {loading ? (
           <div className="flex min-h-[300px] items-center justify-center gap-2.5 text-xs text-muted-foreground" role="status"><span className="size-[7px] animate-loading-pulse rounded-full bg-primary" /> Loading...</div>
-        ) : loadFailed ? null : isHome ? (
+        ) : loadFailed ? null : isVariables ? (
+          <VariablesPage requestHeaderRules={entries} networkRules={networkRules} />
+        ) : isHome ? (
           <Workspace
             entries={entries}
             networkRules={networkRules}
             view={route === '/all' ? 'all' : route === '/network-rules' ? 'network-rule' : route === '/switch-rules' ? 'switch-rule' : 'header-rule'}
             pending={pending}
+            checks={checks ?? undefined}
             onImported={rules => { setEntries(rules.requestHeaderRules); setNetworkRules(rules.networkRules) }}
             onToggle={(entry, enabled) => { void handleToggle(entry, enabled) }}
             onSelectOption={(switchRule, optionId) => { void handleSelectOption(switchRule, optionId) }}
@@ -250,14 +280,14 @@ export function OptionsApp() {
             onSave={draft => handleSaveCapturedNetworkRule(capturedDraftId, draft)} />
         ) : route === '/network-rules/new' || selectedNetworkRule ? (
           <NetworkRuleEditor key={route} networkRule={selectedNetworkRule} pending={pending}
-            onSave={draft => handleSaveNetworkRule(draft, selectedNetworkRule?.id)}
+            onSave={(draft, enabledChanged) => handleSaveNetworkRule(draft, selectedNetworkRule?.id, enabledChanged)}
             onDelete={selectedNetworkRule ? () => { void handleDeleteNetworkRule(selectedNetworkRule) } : undefined} />
         ) : route === '/header-rules/new' || selected?.kind === 'header-rule' ? (
           <HeaderRuleEditor
             key={route}
             headerRule={selected?.kind === 'header-rule' ? selected : undefined}
             pending={pending}
-            onSave={(draft) => handleSaveHeaderRule(draft, selected?.id)}
+            onSave={(draft, enabledChanged) => handleSaveHeaderRule(draft, selected?.id, enabledChanged)}
             onDelete={selected ? () => { void handleDelete(selected) } : undefined}
           />
         ) : route === '/switch-rules/new' || selected?.kind === 'switch-rule' ? (
@@ -265,7 +295,7 @@ export function OptionsApp() {
             key={route}
             switchRule={selected?.kind === 'switch-rule' ? selected : undefined}
             pending={pending}
-            onSave={(draft) => handleSaveSwitchRule(draft, selected?.id)}
+            onSave={(draft, enabledChanged) => handleSaveSwitchRule(draft, selected?.id, enabledChanged)}
             onDelete={selected ? () => { void handleDelete(selected) } : undefined}
           />
         ) : (
@@ -285,9 +315,10 @@ type WorkspaceProps = {
   onSelectOption: (switchRule: SwitchRule, optionId: string) => void
   onToggleNetworkRule: (networkRule: NetworkRule, enabled: boolean) => void
   onImported: (rules: RuleCollection) => void
+  checks?: ReadonlyMap<string, RuleCheck>
 }
 
-function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOption, onToggleNetworkRule, onImported }: WorkspaceProps) {
+function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOption, onToggleNetworkRule, onImported, checks }: WorkspaceProps) {
   const [queries, setQueries] = useState({ all: '', 'header-rule': '', 'switch-rule': '', 'network-rule': '' })
   const [selecting, setSelecting] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
@@ -315,12 +346,13 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
   const group = entries.filter((entry) => isAll || entry.kind === view)
   const visible = group.filter((entry) => {
     const term = query.trim().toLowerCase()
+    // Search matches variables by name, never by value.
     const options = entry.kind === 'switch-rule'
-      ? entry.options.map((option) => `${option.name} ${option.headers.map((header) => header.key).join(' ')}`).join(' ')
-      : getEntryHeaders(entry).map((header) => header.key).join(' ')
-    return !term || `${entry.name} ${entry.url} ${options}`.toLowerCase().includes(term)
+      ? entry.options.map((option) => `${option.name} ${searchText(...option.headers.map((header) => header.key))}`).join(' ')
+      : searchText(...getEntryHeaders(entry).map((header) => header.key))
+    return !term || `${entry.name} ${searchText(...getDomainPatterns(entry.url))} ${options}`.toLowerCase().includes(term)
   })
-  const visibleNetworkRules = networkRules.filter(entry => !query.trim() || `${entry.name} ${entry.url} ${entry.requestUrl} ${entry.method}`.toLowerCase().includes(query.trim().toLowerCase()))
+  const visibleNetworkRules = networkRules.filter(entry => !query.trim() || `${entry.name} ${searchText(...getDomainPatterns(entry.url), entry.requestUrl)} ${entry.method}`.toLowerCase().includes(query.trim().toLowerCase()))
   const groupCount = isAll ? entries.length + networkRules.length : isNetwork ? networkRules.length : group.length
   const visibleCount = isAll ? visible.length + visibleNetworkRules.length : isNetwork ? visibleNetworkRules.length : visible.length
   const visibleHeaderRules: HeaderRule[] = []
@@ -422,19 +454,19 @@ function Workspace({ entries, networkRules, view, pending, onToggle, onSelectOpt
             isAll ? (
               <>
                 <RuleSection title="Header Rules" count={visibleHeaderRules.length}>
-                  <HeaderRulesList headerRules={visibleHeaderRules} pending={pending} headerRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} selection={selection} actions={actions} />
+                  <HeaderRulesList headerRules={visibleHeaderRules} pending={pending} headerRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} selection={selection} actions={actions} checks={checks} />
                 </RuleSection>
                 <RuleSection title="Switch Rules" count={visibleSwitchRules.length}>
-                  <SwitchRulesList switchRules={visibleSwitchRules} pending={pending} switchRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} onSelectOption={onSelectOption} selection={selection} actions={actions} />
+                  <SwitchRulesList switchRules={visibleSwitchRules} pending={pending} switchRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} onSelectOption={onSelectOption} selection={selection} actions={actions} checks={checks} />
                 </RuleSection>
                 <RuleSection title="Network Rules" count={visibleNetworkRules.length}>
-                  <NetworkRulesList networkRules={visibleNetworkRules} pending={pending} onToggle={onToggleNetworkRule} selection={selection} actions={actions} />
+                  <NetworkRulesList networkRules={visibleNetworkRules} pending={pending} onToggle={onToggleNetworkRule} selection={selection} actions={actions} checks={checks} />
                 </RuleSection>
               </>
-            ) : isNetwork ? <NetworkRulesList networkRules={visibleNetworkRules} pending={pending} onToggle={onToggleNetworkRule} selection={selection} actions={actions} /> : isSwitchRules ? (
-              <SwitchRulesList switchRules={visibleSwitchRules} pending={pending} switchRuleHref={(switchRule) => `#${entryRoute(switchRule)}`} onToggle={onToggle} onSelectOption={onSelectOption} selection={selection} actions={actions} />
+            ) : isNetwork ? <NetworkRulesList networkRules={visibleNetworkRules} pending={pending} onToggle={onToggleNetworkRule} selection={selection} actions={actions} checks={checks} /> : isSwitchRules ? (
+              <SwitchRulesList switchRules={visibleSwitchRules} pending={pending} switchRuleHref={(switchRule) => `#${entryRoute(switchRule)}`} onToggle={onToggle} onSelectOption={onSelectOption} selection={selection} actions={actions} checks={checks} />
             ) : (
-              <HeaderRulesList headerRules={visibleHeaderRules} pending={pending} headerRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} selection={selection} actions={actions} />
+              <HeaderRulesList headerRules={visibleHeaderRules} pending={pending} headerRuleHref={(rule) => `#${entryRoute(rule)}`} onToggle={onToggle} selection={selection} actions={actions} checks={checks} />
             )
           ) : (
             <Empty className="min-h-[320px] border">

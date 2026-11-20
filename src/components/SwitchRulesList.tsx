@@ -1,6 +1,7 @@
 import type { SwitchRule } from '../lib/types'
 import { SwitchRuleOptionSelect } from './SwitchRuleOptionSelect'
 import { RuleCard } from './RuleCard'
+import type { RuleCheck } from '../lib/rule-resolution'
 import type { RuleSelection } from './RuleSelection'
 import type { RuleRowActionHandlers } from './RuleRowActions'
 
@@ -12,14 +13,15 @@ type SwitchRulesListProps = {
   selection?: RuleSelection
   pending?: boolean
   actions?: RuleRowActionHandlers
+  checks?: ReadonlyMap<string, RuleCheck>
 }
 
-export function SwitchRulesList({ switchRules, switchRuleHref, onToggle, onSelectOption, pending, selection, actions }: SwitchRulesListProps) {
+export function SwitchRulesList({ switchRules, switchRuleHref, onToggle, onSelectOption, pending, selection, actions, checks }: SwitchRulesListProps) {
   return (
     <ul className="m-0 grid list-none gap-3.5 p-0">
       {switchRules.map((rule, index) => (
         <RuleCard key={rule.id} rule={rule} href={switchRuleHref(rule)} index={index}
-          pending={pending} selection={selection} actions={actions} onToggle={(enabled) => onToggle(rule, enabled)}>
+          pending={pending} selection={selection} actions={actions} check={checks?.get(rule.id)} onToggle={(enabled) => onToggle(rule, enabled)}>
           <SwitchRuleOptionSelect switchRule={rule} pending={pending} className="mt-1.5"
             onChange={(optionId) => onSelectOption(rule, optionId)} />
         </RuleCard>

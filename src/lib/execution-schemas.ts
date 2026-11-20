@@ -1,5 +1,5 @@
 import * as z from 'zod/mini'
-import { HeaderPairSchema, WebsiteScopeSchema } from './schema-fields.ts'
+import { PlainHeaderPairSchema as HeaderPairSchema, PlainWebsiteScopeSchema as WebsiteScopeSchema } from './schema-fields.ts'
 
 export const ExecutionRuleSchema = z.object({
   id: z.string(), kind: z.enum(['header-rule', 'switch-rule', 'network-rule']), name: z.string(), url: WebsiteScopeSchema,

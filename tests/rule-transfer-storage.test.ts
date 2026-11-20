@@ -77,7 +77,7 @@ test('failed saving keeps the previous setup, while failed activation can retry 
   const imported: RuleCollection = { requestHeaderRules: [{ id: crypto.randomUUID(), kind: 'header-rule', name: 'Imported',
     url: '*', enabled: true, order: 0, headers: [{ key: 'Authorization', value: 'secret' }] }], networkRules: [] }
   Object.assign(globalThis, { chrome: {
-    storage: { local: { set: async (rules: RuleCollection) => {
+    storage: { local: { get: async () => ({}), set: async (rules: RuleCollection) => {
       writes++
       if (storageFailure) throw new Error('Storage quota exceeded')
       stored = structuredClone(rules)
@@ -112,7 +112,7 @@ test('a synchronous activation error is reported as saved rather than encouragin
   const previousChrome = globalThis.chrome
   let stored: RuleCollection | undefined
   const imported: RuleCollection = { requestHeaderRules: [], networkRules: [] }
-  Object.assign(globalThis, { chrome: { storage: { local: { set: async (rules: RuleCollection) => { stored = rules } } },
+  Object.assign(globalThis, { chrome: { storage: { local: { get: async () => ({}), set: async (rules: RuleCollection) => { stored = rules } } },
     runtime: { sendMessage: () => { throw new Error('Extension context invalidated') } } } })
   try {
     const result = await saveImportedRules(imported)

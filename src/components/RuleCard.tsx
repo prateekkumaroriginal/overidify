@@ -8,6 +8,10 @@ import { RuleRowActions } from './RuleRowActions'
 import type { RuleRowActionHandlers } from './RuleRowActions'
 import { Badge } from './ui/badge'
 import { getDomainPatterns } from '../lib/pattern'
+import { displayText } from '../lib/templates'
+import type { RuleCheck } from '../lib/rule-resolution'
+import { TemplateDisplay } from './TemplateDisplay'
+import { RuleProblemBadge } from './RuleProblemBadge'
 
 type RuleCardProps = {
   rule: TransferRule
@@ -19,10 +23,13 @@ type RuleCardProps = {
   actions?: RuleRowActionHandlers
   websiteDetails?: string
   index: number
+  /** Variable problems. A rule with problems is off and can't be turned on until they are fixed. */
+  check?: RuleCheck
   children: ReactNode
 }
 
-export function RuleCard({ rule, href, onToggle, pending, openInTab, selection, actions, websiteDetails, index, children }: RuleCardProps) {
+export function RuleCard({ rule, href, onToggle, pending, openInTab, selection, actions, websiteDetails, index, check, children }: RuleCardProps) {
+  const blocked = !!check?.problems.length
   return (
     <li
       className={cn(
@@ -39,11 +46,12 @@ export function RuleCard({ rule, href, onToggle, pending, openInTab, selection, 
           target={openInTab ? '_blank' : undefined} rel={openInTab ? 'noreferrer' : undefined} />
       )}
       <div inert={!!selection} className={cn('flex items-center', selection ? 'pointer-events-none' : 'relative z-10')}>
-        <ToggleSwitch checked={rule.enabled} label={`Enable ${rule.name}`} pending={pending} onChange={onToggle} />
+        <ToggleSwitch checked={rule.enabled} label={`Enable ${rule.name}`} pending={pending} disabled={blocked && !rule.enabled} onChange={onToggle} />
       </div>
       <div className="pointer-events-none flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+        <RuleProblemBadge check={check} />
         <span className="min-w-0 text-xs font-semibold wrap-anywhere mobile:text-[11px]">{rule.name}</span>
-        {getDomainPatterns(rule.url).map(domain => <Badge key={domain} variant="domain">{domain}</Badge>)}
+        {getDomainPatterns(rule.url).map((domain, position) => <Badge key={`${position}-${displayText(domain)}`} variant="domain"><TemplateDisplay value={domain} /></Badge>)}
       </div>
       {!selection && <div className="pointer-events-none relative z-10 flex -translate-y-2 translate-x-2 items-center justify-self-end self-start">
         <RuleRowActions rule={rule} actions={actions} />

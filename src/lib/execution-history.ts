@@ -1,4 +1,4 @@
-import type { HeaderPair } from './types.ts'
+import type { PlainHeaderPair as HeaderPair } from './types.ts'
 
 export type ExecutionRule = {
   id: string; kind: 'header-rule' | 'switch-rule' | 'network-rule'; name: string; url: string | string[]; headers: HeaderPair[]

@@ -1,6 +1,8 @@
 import type { RequestHeaderRule } from './types'
 import { normalizeRequestHeaderRules } from './request-header-rules.ts'
 import { ActivationResultSchema } from './settings-messages.ts'
+import { prepareRulesForSave } from './rule-resolution.ts'
+import { getVariables } from './variables-storage.ts'
 
 export const REQUEST_HEADER_STORAGE_KEY = 'requestHeaderRules'
 
@@ -27,7 +29,8 @@ export async function getRequestHeaderRules(): Promise<RequestHeaderRule[]> {
 }
 
 async function saveRequestHeaderRules(rules: RequestHeaderRule[]): Promise<RequestHeaderRule[]> {
-  const normalized = normalizeRequestHeaderRules(rules)
+  // A rule that cannot run with the saved variables is saved turned off.
+  const normalized = prepareRulesForSave(normalizeRequestHeaderRules(rules), await getVariables()).rules
   if (isBrowserPreview()) {
     localStorage.setItem(REQUEST_HEADER_STORAGE_KEY, JSON.stringify(normalized))
     window.dispatchEvent(new Event('request-header-rules-updated'))

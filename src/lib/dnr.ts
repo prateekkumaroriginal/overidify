@@ -1,8 +1,7 @@
 import { matchesPageDomain } from './pattern.ts'
-import { getEntryHeaders, getSelectedOption } from './request-header-rules.ts'
 import { HeaderLedgerSchema } from './execution-schemas.ts'
 import type { ExecutionRule, HeaderInstallation } from './execution-history.ts'
-import type { RequestHeaderRule } from './types'
+import type { ResolvedRequestHeaderRule } from './types'
 
 const SESSION_RULE_OFFSET = 1000
 
@@ -25,15 +24,16 @@ const RESOURCE_TYPES: chrome.declarativeNetRequest.ResourceType[] = [
   chrome.declarativeNetRequest.ResourceType.OTHER,
 ]
 
-type CompiledHeaderRule = { source: RequestHeaderRule; compiled: chrome.declarativeNetRequest.Rule }
+type CompiledHeaderRule = { source: ResolvedRequestHeaderRule; compiled: chrome.declarativeNetRequest.Rule }
 
+/** Rules arrive with variables filled in; only enabled rules that can run are installed. */
 function compileRequestHeaderRules(
-  rules: RequestHeaderRule[],
+  rules: ResolvedRequestHeaderRule[],
   tabs: PageTab[],
 ): CompiledHeaderRule[] {
   return [...rules]
     .sort((left, right) => left.order - right.order)
-    .filter((rule) => rule.enabled && getEntryHeaders(rule).length > 0)
+    .filter((rule) => rule.enabled && rule.headers.length > 0)
     .flatMap<CompiledHeaderRule>((rule, index) => {
       const tabIds = tabs
         .filter((tab) => tab.id !== undefined && tab.id >= 0 && matchesPageDomain(rule.url, tab.url ?? ''))
@@ -44,7 +44,7 @@ function compileRequestHeaderRules(
         priority: SESSION_RULE_OFFSET + index,
         action: {
           type: 'modifyHeaders',
-          requestHeaders: getEntryHeaders(rule).map((header) => ({
+          requestHeaders: rule.headers.map((header) => ({
             header: header.key,
             operation: 'set',
             value: header.value,
@@ -59,11 +59,11 @@ function compileRequestHeaderRules(
     })
 }
 
-export function requestHeaderRulesToSessionRules(rules: RequestHeaderRule[], tabs: PageTab[]): chrome.declarativeNetRequest.Rule[] {
+export function requestHeaderRulesToSessionRules(rules: ResolvedRequestHeaderRule[], tabs: PageTab[]): chrome.declarativeNetRequest.Rule[] {
   return compileRequestHeaderRules(rules, tabs).map(entry => entry.compiled)
 }
 
-export async function syncRequestHeaderSessionRules(rules: RequestHeaderRule[], tabs: PageTab[]): Promise<void> {
+export async function syncRequestHeaderSessionRules(rules: ResolvedRequestHeaderRule[], tabs: PageTab[]): Promise<void> {
   const [dynamicRules, existingRules, stored] = await Promise.all([
     chrome.declarativeNetRequest.getDynamicRules(),
     chrome.declarativeNetRequest.getSessionRules(),
@@ -79,9 +79,10 @@ export async function syncRequestHeaderSessionRules(rules: RequestHeaderRule[], 
   const additions: chrome.declarativeNetRequest.Rule[] = []
   const active = new Set<number>()
   for (const { source, compiled: browserRule } of compiled) {
-    const snapshot: ExecutionRule = { id: source.id, kind: source.kind, name: source.name, url: source.url,
-      headers: getEntryHeaders(source).map(header => ({ ...header })),
-      ...(source.kind === 'switch-rule' ? { option: getSelectedOption(source).name } : {}) }
+    // History shows variables as {{NAME}}, never their values.
+    const snapshot: ExecutionRule = { id: source.id, kind: source.kind, name: source.name, url: source.display.url,
+      headers: source.display.headers.map(header => ({ ...header })),
+      ...(source.option !== undefined ? { option: source.option } : {}) }
     for (const tabId of browserRule.condition.tabIds ?? []) {
       const condition = { ...browserRule.condition, tabIds: [tabId] }
       const signature = JSON.stringify({ rule: snapshot, condition, action: browserRule.action, priority: browserRule.priority })
