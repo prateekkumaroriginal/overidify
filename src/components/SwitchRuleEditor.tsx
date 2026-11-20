@@ -103,7 +103,7 @@ export function SwitchRuleEditor({ switchRule, pending, onSave, onDelete }: Swit
 
   return (
     <FormProvider {...form}>
-      <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="editor-title">
+      <section className="animate-rise-in" aria-labelledby="editor-title">
         <RuleEditorHeader kind="switch" editing={!!switchRule} ruleName={switchRule?.name} busy={busy} onDelete={onDelete} unsaved={unsaved}
           onExport={() => { if (switchRule) downloadRules({ requestHeaderRules: [switchRule], networkRules: [] }, 'switch-rule') }} />
         <form ref={formRef} onSubmit={onSubmit} onChange={clearStatus}>

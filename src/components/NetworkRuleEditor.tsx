@@ -67,7 +67,7 @@ export function NetworkRuleEditor({ networkRule, initialDraft, pending, onSave, 
   const storedEnabled = useStoredEnabled(form, networkRule?.enabled)
 
   return (
-    <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="network-editor-title">
+    <section className="animate-rise-in" aria-labelledby="network-editor-title">
       <RuleEditorHeader kind="network" editing={!!networkRule} ruleName={networkRule?.name} busy={busy} titleId="network-editor-title" onDelete={onDelete} unsaved={unsaved}
         onExport={() => { if (networkRule) downloadRules({ requestHeaderRules: [], networkRules: [networkRule] }, 'network-rule') }} />
       <form ref={formRef} onSubmit={onSubmit}>

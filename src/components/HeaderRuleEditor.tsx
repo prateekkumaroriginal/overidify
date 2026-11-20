@@ -48,7 +48,7 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
   const saveState = { tone: error ? 'error' : 'success', message: error || success }
 
   return (
-    <section className="mx-auto max-w-[840px] animate-rise-in" aria-labelledby="editor-title">
+    <section className="animate-rise-in" aria-labelledby="editor-title">
       <RuleEditorHeader kind="header" editing={!!headerRule} ruleName={headerRule?.name} busy={busy} onDelete={onDelete} unsaved={unsaved}
         onExport={() => { if (headerRule) downloadRules({ requestHeaderRules: [headerRule], networkRules: [] }, 'header-rule') }} />
       <form
