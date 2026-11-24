@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { test } from 'node:test'
 import { installMcpHost, uninstallMcpHost } from '../mcp-host/install.ts'
 
@@ -73,5 +74,16 @@ test('Windows install registers the manifest path for each supported browser', (
     ])
     assert.ok(registry.every(([, value]) => value === result.manifests[0]))
     assert.match(readFileSync(result.wrapper, 'utf8'), /^@echo off\r\n"\/opt\/node's\/bin\/node" ".*host\.mjs" %\*\r\n$/)
+  } finally { cleanup() }
+})
+
+test('setup runs when started through a symlinked folder', { skip: process.platform === 'win32' }, () => {
+  const { home, cleanup } = setup()
+  try {
+    const link = join(home, 'Downloads')
+    symlinkSync(resolve('mcp-host'), link)
+    const output = execFileSync(process.execPath, ['--experimental-strip-types', join(link, 'install.ts'), '--uninstall'],
+      { env: { ...process.env, HOME: home }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+    assert.match(output, /Removed the Overidify MCP helper/)
   } finally { cleanup() }
 })

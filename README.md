@@ -86,7 +86,7 @@ To let your agent do the rest, click **Copy prompt and download setup file** and
 
    On Windows, run `node "$HOME\Downloads\overidify-mcp-setup.mjs"` in PowerShell. Use a different path if your browser saved the file elsewhere. Download and run it again after updating Overidify.
 
-   It registers the helper for the Chrome, Chromium, Edge, Brave, and Vivaldi profiles it finds. For a browser started with `--user-data-dir`, add `--browser-dir <that folder>`. To remove the helper, run the file with `--uninstall`.
+   It registers the helper for the Chrome, Chromium, Edge, Brave, and Vivaldi profiles it finds. For a browser started with `--user-data-dir`, add `--browser-dir <that folder>`. To remove the helper, run the file with `--uninstall`, adding the same `--browser-dir` options you used to install it.
 3. Wait for the status to change to **Running at** `http://127.0.0.1:47821/mcp`. Overidify checks again every few seconds while the Agents page is open.
 4. Choose your agent and copy the configuration shown:
    - **Claude Code:** a `claude mcp add` command for all your projects.

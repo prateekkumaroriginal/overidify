@@ -4,10 +4,10 @@
 // The copy in the extension folder needs the extension ID instead:
 //   node mcp/install.mjs <extension-id>... [--browser-dir <dir>]... [--uninstall]
 import { execFileSync } from 'node:child_process'
-import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import { MCP_HOST_NAME, readMcpEmbeddedSetup } from '../src/lib/mcp-protocol.ts'
 
 export type InstallOptions = {
@@ -124,7 +124,11 @@ function main(argv: string[]) {
   console.log('Return to Overidify settings and click Retry.')
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+// Node loads the entry module from its real path, so compare real paths. A symlinked Downloads folder still runs setup.
+const isEntry = (path: string | undefined) => {
+  try { return !!path && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(resolve(path)) } catch { return false }
+}
+if (isEntry(process.argv[1])) {
   try { main(process.argv.slice(2)) } catch (error) {
     console.error(error instanceof Error ? error.message : String(error))
     process.exitCode = 1
