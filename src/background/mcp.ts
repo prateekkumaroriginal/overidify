@@ -5,6 +5,7 @@ import { getMcpSettings, MCP_SETTINGS_KEY, MCP_STATUS_KEY } from '../lib/mcp-set
 import type { McpStatus } from '../lib/mcp-settings'
 import { getSavedRules, updateSavedRules } from '../lib/rule-transfer-storage'
 import { getVariables } from '../lib/variables-storage'
+import { writeVariables } from '../lib/variables-page-storage'
 import type { TransferActivation } from '../lib/rule-transfer-storage'
 
 const SETUP_HINT = 'Download and run the setup file shown on this page. Overidify connects automatically while this page is open.'
@@ -12,7 +13,7 @@ const SETUP_HINT = 'Download and run the setup file shown on this page. Overidif
 export function startMcpBridge(activate: () => Promise<TransferActivation>): void {
   let host: chrome.runtime.Port | null = null
   let queue: Promise<void> = Promise.resolve()
-  const deps = { readRules: getSavedRules, readVariables: getVariables, updateRules: updateSavedRules, activate }
+  const deps = { readRules: getSavedRules, readVariables: getVariables, updateRules: updateSavedRules, writeVariables, activate }
 
   const setStatus = (status: McpStatus) => chrome.storage.session.set({ [MCP_STATUS_KEY]: status })
 

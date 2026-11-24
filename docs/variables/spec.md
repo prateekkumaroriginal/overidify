@@ -15,6 +15,7 @@ Variables let a value such as `STAGE_AUTH_TOKEN` be stored once and used in any 
 | Missing or invalid variable | The rule is turned off and its switch is locked until fixed. It never turns itself back on. |
 | Exports | References by name, `{ "variable": "NAME" }`, in format version 3. No values and no option to include them. |
 | Popup | Uses filled-in domains for matching and shows why a rule is off. It does not manage variables. |
+| Agents (MCP) | Read and write `{{NAME}}` in rule fields, and manage variables through the Variables page's save. Secret values are never returned. Agents can't add a secret to a rule or turn Secret off. Turning rules off needs `turnOffRules` with the IDs of the rules the user approved. |
 
 ## Storage
 

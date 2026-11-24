@@ -13,8 +13,9 @@ import type { McpToolDefinition, McpToolResult } from './mcp-protocol.ts'
 import { checkRule, mapRuleTemplates, ruleTemplateFields } from './rule-resolution.ts'
 import { displayText, fromSegments, isValidVariableName, templateTokens, trimTemplate } from './templates.ts'
 import type { TemplateSegment, TemplateText } from './templates.ts'
-import { findVariable, indexVariables, nameKey, tokenName } from './variables.ts'
+import { findVariable, indexVariables, nameKey, sortVariables, tokenName } from './variables.ts'
 import type { Variable, VariableIndex } from './variables.ts'
+import type { VariablesSaveResult } from './variables-page-storage.ts'
 
 export type McpToolDeps = {
   readRules: () => Promise<RuleCollection>
@@ -22,6 +23,8 @@ export type McpToolDeps = {
   /** Saves the updated rules and returns them as saved, after rules that can't run are turned off. */
   updateRules: <T>(update: (rules: RuleCollection, variables: Variable[]) => { rules: RuleCollection; result: T }) => Promise<{ result: T; rules: RuleCollection; variables: Variable[] }>
   activate: () => Promise<TransferActivation>
+  /** The Variables page's save: rules the change turns off are saved in the same write, only once confirmed. Does not activate. */
+  writeVariables: (input: { draft: (stored: Variable[], rules: RuleCollection) => Variable[]; confirmedTurnOff?: string[] }) => Promise<VariablesSaveResult>
 }
 
 export const MCP_INSTRUCTIONS = `Overidify is a Chrome extension that changes requests made by matching websites.
@@ -29,7 +32,7 @@ export const MCP_INSTRUCTIONS = `Overidify is a Chrome extension that changes re
 - Switch Rules hold named header options; only the selected option applies.
 - Network Rules return a mock response for one API request URL and method.
 Every rule has a website domain list (for example localhost:4200, app.example.com, *.example.com, or * for all websites). A rule applies to requests made from browser tabs whose address-bar URL matches any listed domain, including requests to other API hosts. When several enabled rules set the same header or mock the same request, the later rule wins.
-Text fields can use variables saved in Overidify Settings. A variable appears as {{NAME}}; its value is never shown. Writing {{NAME}} for a saved variable's name uses that variable; any other text stays literal. Secret variables can stay in rules that already use them but can't be added to others. A rule that can't run with the saved variables is turned off and lists its problems.
+Text fields can use variables, managed with the variable tools. A variable appears in rules as {{NAME}}. Secret variables' values are never shown to agents. Writing {{NAME}} for a saved variable's name uses that variable; any other text stays literal. Secret variables can stay in rules that already use them but can't be added to others. A rule that can't run with the saved variables is turned off and lists its problems.
 Changes are saved and applied immediately in the browser.`
 
 const text = (description: string) => z.string().check(z.describe(description))
@@ -89,6 +92,27 @@ const UpdateInput = z.strictObject({
 })
 const DeleteInput = z.strictObject({ ids: z.array(RuleId).check(z.describe('IDs of the rules to delete permanently.')) })
 
+const VariableName = text('Variable name, such as STAGE_AUTH_TOKEN: letters, numbers, and _, starting with a letter or _. Names are unique ignoring case.')
+const VariableValue = text('Value filled in wherever the variable is used. Inserted exactly, without trimming.')
+const TurnOffRules = z.optional(z.array(z.string()).check(z.describe(
+  'IDs of the rules the user agreed to turn off, as listed by a refused call. A change that would turn off any other rule is refused again. Ask the user before passing it.')))
+const ListVariablesInput = z.strictObject({})
+const CreateVariableInput = z.strictObject({
+  name: VariableName, value: VariableValue,
+  secret: z._default(z.boolean().check(z.describe('Masks the value in Overidify and hides it from agents. Agents cannot add secret variables to rules or turn Secret off.')), false),
+})
+const UpdateVariableInput = z.strictObject({
+  name: text('Current name of the variable.'),
+  newName: z.optional(VariableName.check(z.describe('New name. Rules that use the variable follow the rename.'))),
+  value: z.optional(VariableValue),
+  secret: z.optional(z.boolean().check(z.describe('true hides the value. Agents cannot turn Secret off.'))),
+  turnOffRules: TurnOffRules,
+})
+const DeleteVariablesInput = z.strictObject({
+  names: z.array(text('Variable name.')).check(z.describe('Names of the variables to delete permanently.')),
+  turnOffRules: TurnOffRules,
+})
+
 const RUN = {
   list_rules: { input: ListInput, run: listRules },
   get_rule: { input: GetInput, run: getRule },
@@ -97,6 +121,10 @@ const RUN = {
   create_network_rule: { input: CreateNetworkInput, run: createNetworkRule },
   update_rule: { input: UpdateInput, run: updateRule },
   delete_rules: { input: DeleteInput, run: deleteRules },
+  list_variables: { input: ListVariablesInput, run: listVariables },
+  create_variable: { input: CreateVariableInput, run: createVariable },
+  update_variable: { input: UpdateVariableInput, run: updateVariable },
+  delete_variables: { input: DeleteVariablesInput, run: deleteVariables },
 } as const
 type ToolName = keyof typeof RUN
 
@@ -115,6 +143,14 @@ const DESCRIPTIONS: Record<ToolName, Omit<McpToolDefinition, 'name' | 'inputSche
     description: 'Change fields of a saved rule. Omitted fields keep their saved values. Use enabled to turn a rule on or off and selectedOption to switch a Switch Rule.' },
   delete_rules: { title: 'Delete rules', annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     description: 'Permanently delete saved rules by ID.' },
+  list_variables: { title: 'List variables', annotations: { readOnlyHint: true },
+    description: 'List saved variables with the rules that use them. Secret values are omitted.' },
+  create_variable: { title: 'Create variable', annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    description: 'Save a variable that rule fields can use as {{NAME}}.' },
+  update_variable: { title: 'Update variable', annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+    description: 'Rename a variable, change its value, or mark it secret. Rules that use it update immediately.' },
+  delete_variables: { title: 'Delete variables', annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+    description: 'Permanently delete variables by name. Rules that need them to run are turned off, once the user confirms.' },
 }
 
 export const MCP_TOOLS: McpToolDefinition[] = (Object.keys(RUN) as ToolName[]).map(name => {
@@ -283,18 +319,22 @@ async function save(deps: McpToolDeps, update: (rules: RuleCollection, index: Va
   const index = indexVariables(saved.variables)
   const id = saved.result.rule?.id
   const rule = id === undefined ? undefined : allRules(saved.rules).find(rule => rule.id === id)
-  const activation = await deps.activate().catch((error: unknown) => ({
-    ok: false, reloadTabIds: [], error: error instanceof Error ? error.message : String(error),
-  }))
   return {
     ...rule ? { rule: viewRule(rule, true, index) } : {},
     ...saved.result.result,
-    activation: activation.ok
-      ? activation.reloadTabIds.length
-        ? { applied: true, note: `Saved. Reload ${activation.reloadTabIds.length} matching website tab(s) to apply the latest Network Rules.` }
-        : { applied: true }
-      : { applied: false, note: `Saved, but Overidify did not confirm the change is active. ${activation.error ?? ''}`.trim() },
+    activation: await activate(deps),
   }
+}
+
+async function activate(deps: McpToolDeps) {
+  const activation = await deps.activate().catch((error: unknown) => ({
+    ok: false, reloadTabIds: [], error: error instanceof Error ? error.message : String(error),
+  }))
+  return activation.ok
+    ? activation.reloadTabIds.length
+      ? { applied: true, note: `Saved. Reload ${activation.reloadTabIds.length} matching website tab(s) to apply the latest Network Rules.` }
+      : { applied: true }
+    : { applied: false, note: `Saved, but Overidify did not confirm the change is active. ${activation.error ?? ''}`.trim() }
 }
 
 function createRequestHeaderRule(deps: McpToolDeps, draft: (index: VariableIndex) => Omit<HeaderRule, 'order'> | Omit<SwitchRule, 'order'>) {
@@ -388,4 +428,89 @@ async function deleteRules({ ids }: z.infer<typeof DeleteInput>, deps: McpToolDe
       result: { deleted, ...notFound.length ? { notFound } : {} },
     }
   })
+}
+
+type RuleRef = { id: string; name: string; type: string }
+const ruleRef = (rule: TransferRule): RuleRef => ({ id: rule.id, name: rule.name, type: TYPE_LABEL[ruleType(rule)] })
+
+function viewVariable(variable: Variable, rules: RuleCollection, index: VariableIndex) {
+  const usedBy = allRules(rules).filter(rule => ruleTemplateFields(rule).flatMap(templateTokens)
+    .some(token => findVariable(token, index)?.id === variable.id)).map(ruleRef)
+  return { name: variable.name, secret: variable.secret, ...variable.secret ? {} : { value: variable.value }, usedBy }
+}
+
+function findVariableByName(variables: Variable[], name: string): Variable {
+  const variable = variables.find(variable => nameKey(variable.name) === nameKey(name.trim()))
+  if (!variable) throw new ToolError(`No variable is named ${name}. Use list_variables to find current names.`)
+  return variable
+}
+
+/**
+ * Rules whose references would newly resolve to a secret. A rename or a new secret can take a name
+ * that a rule references but can't resolve, which would add the secret to that rule.
+ */
+function newSecretLinks(rules: RuleCollection, before: Variable[], after: Variable[]): string[] {
+  const [was, now] = [indexVariables(before), indexVariables(after)]
+  return allRules(rules).flatMap(rule => ruleTemplateFields(rule).flatMap(templateTokens).flatMap(token => {
+    const variable = findVariable(token, now)
+    return variable?.secret && findVariable(token, was)?.id !== variable.id ? [`"${rule.name}" would use ${variable.name}`] : []
+  }))
+}
+
+async function listVariables(_input: z.infer<typeof ListVariablesInput>, deps: McpToolDeps) {
+  const [rules, variables] = await Promise.all([deps.readRules(), deps.readVariables()])
+  const index = indexVariables(variables)
+  return { variables: sortVariables(variables).map(variable => viewVariable(variable, rules, index)) }
+}
+
+/**
+ * Applies `change` to the saved list through the Variables page's save, then reports the saved variable and turned-off rules.
+ * `change` runs inside the storage locks on the current variables, so its Secret checks can't act on a stale copy.
+ */
+async function changeVariables(deps: McpToolDeps, change: (variables: Variable[]) => { draft: Variable[]; id?: string }, turnOffRules: string[] = []) {
+  let id: string | undefined
+  const draft = (stored: Variable[], rules: RuleCollection) => {
+    const next = change(stored)
+    const links = [...new Set(newSecretLinks(rules, stored, next.draft))]
+    if (links.length) throw new ToolError(`Nothing was saved. Agents can't add secret variables to rules: ${links.join(', ')}.`)
+    id = next.id
+    return next.draft
+  }
+  const saved = await deps.writeVariables({ draft, confirmedTurnOff: turnOffRules })
+  if (saved.status === 'invalid') throw new ToolError(`name: ${[...new Set(Object.values(saved.errors))].join(' ')}`)
+  if (saved.status === 'confirm') {
+    const rules = saved.turnedOff.map(rule => `"${rule.name}" (${TYPE_LABEL[rule.type]}, ${rule.id})`).join(', ')
+    throw new ToolError(`Nothing was saved. This change would turn off ${saved.turnedOff.length} rule(s) that could no longer run: ${rules}. Ask the user, then repeat the call with turnOffRules: ${JSON.stringify(saved.turnedOff.map(rule => rule.id))}.`)
+  }
+  const variable = id === undefined ? undefined : saved.variables.find(variable => variable.id === id)
+  return {
+    ...variable ? { variable: viewVariable(variable, saved.rules, indexVariables(saved.variables)) } : {},
+    ...saved.turnedOff.length ? { turnedOff: saved.turnedOff.map(rule => ({ id: rule.id, name: rule.name, type: TYPE_LABEL[rule.type] })) } : {},
+    activation: await activate(deps),
+  }
+}
+
+async function createVariable(input: z.infer<typeof CreateVariableInput>, deps: McpToolDeps) {
+  const id = createRuleId()
+  return changeVariables(deps, variables => ({ draft: [...variables, { id, name: input.name.trim(), value: input.value, secret: input.secret }], id }))
+}
+
+async function updateVariable(input: z.infer<typeof UpdateVariableInput>, deps: McpToolDeps) {
+  return changeVariables(deps, variables => {
+    const current = findVariableByName(variables, input.name)
+    if (current.secret && input.secret === false) throw new ToolError(`secret: Agents can't turn Secret off. Ask the user to change ${current.name} in Overidify Settings.`)
+    const next = { ...current, name: input.newName?.trim() ?? current.name, value: input.value ?? current.value, secret: input.secret ?? current.secret }
+    return { draft: variables.map(variable => variable.id === current.id ? next : variable), id: current.id }
+  }, input.turnOffRules)
+}
+
+async function deleteVariables({ names, turnOffRules }: z.infer<typeof DeleteVariablesInput>, deps: McpToolDeps) {
+  if (!names.length) throw new ToolError('names: List at least one variable name.')
+  let deleted: string[] = []
+  const result = await changeVariables(deps, variables => {
+    const remove = new Set(names.map(name => findVariableByName(variables, name).id))
+    deleted = variables.filter(variable => remove.has(variable.id)).map(variable => variable.name)
+    return { draft: variables.filter(variable => !remove.has(variable.id)) }
+  }, turnOffRules)
+  return { deleted, ...result }
 }
