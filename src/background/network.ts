@@ -77,7 +77,8 @@ async function updateTab(tab: chrome.tabs.Tab, priorPatterns: string[], rules: R
 
 let syncing: Promise<number[]> | undefined
 let requested = false
-function sync(): Promise<number[]> {
+// Returns the tabs that need a reload to apply the latest Network Rules.
+export function syncNetworkRules(): Promise<number[]> {
   requested = true
   if (syncing) return syncing
   syncing = (async () => {
@@ -99,7 +100,7 @@ function sync(): Promise<number[]> {
   })()
   return syncing
 }
-const requestSync = () => { void sync().catch(error => console.error('Failed to update Network Rules.', error)) }
+const requestSync = () => { void syncNetworkRules().catch(error => console.error('Failed to update Network Rules.', error)) }
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   const parsed = NetworkRuntimeMessageSchema.safeParse(message)
@@ -122,7 +123,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     return true
   }
   if (parsed.data.type === 'sync-network-rules') {
-    void sync().then(reloadTabIds => respond({ ok: true, reloadTabIds }), error => respond({ ok: false, error: String(error) }))
+    void syncNetworkRules().then(reloadTabIds => respond({ ok: true, reloadTabIds }), error => respond({ ok: false, error: String(error) }))
     return true
   }
 })

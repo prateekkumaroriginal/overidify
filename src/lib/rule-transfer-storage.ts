@@ -4,6 +4,7 @@ import { getRequestHeaderRules, REQUEST_HEADER_STORAGE_KEY } from './request-hea
 import { getNetworkRules, NETWORK_STORAGE_KEY } from './network-storage.ts'
 import { prepareRulesForSave } from './rule-resolution.ts'
 import { getVariables, writeStorage } from './variables-storage.ts'
+import type { Variable } from './variables.ts'
 
 export type TransferActivation = { ok: boolean; reloadTabIds: number[]; error?: string }
 const isPreview = () => import.meta.env?.DEV && !globalThis.chrome?.storage?.local
@@ -17,6 +18,18 @@ export async function getSavedRules(): Promise<RuleCollection> {
   return withRuleStorageLocks(async () => {
     const [requestHeaderRules, networkRules] = await Promise.all([getRequestHeaderRules(), getNetworkRules()])
     return { requestHeaderRules, networkRules }
+  })
+}
+
+/**
+ * Reads and replaces both collections under the shared locks. `update` also receives the saved variables.
+ * Returns the rules as saved, after rules that can't run are turned off. Callers activate separately.
+ */
+export async function updateSavedRules<T>(update: (rules: RuleCollection, variables: Variable[]) => { rules: RuleCollection; result: T }): Promise<{ result: T; rules: RuleCollection; variables: Variable[] }> {
+  return withRuleStorageLocks(async () => {
+    const [requestHeaderRules, networkRules, variables] = await Promise.all([getRequestHeaderRules(), getNetworkRules(), getVariables()])
+    const next = update({ requestHeaderRules, networkRules }, variables)
+    return { result: next.result, rules: await persistRules(next.rules, variables), variables }
   })
 }
 
@@ -98,9 +111,9 @@ export async function deleteSavedRules(selectedIds: ReadonlySet<string>) {
 }
 
 /** Returns the rules as saved, after rules that can't run are turned off. */
-async function persistRules(input: RuleCollection): Promise<RuleCollection> {
+async function persistRules(input: RuleCollection, saved?: Variable[]): Promise<RuleCollection> {
   // Imported, copied, and remaining rules that cannot run with the saved variables are saved turned off.
-  const variables = await getVariables()
+  const variables = saved ?? await getVariables()
   const rules = {
     requestHeaderRules: prepareRulesForSave(input.requestHeaderRules, variables).rules,
     networkRules: prepareRulesForSave(input.networkRules, variables).rules,

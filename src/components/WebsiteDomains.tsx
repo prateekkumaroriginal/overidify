@@ -137,7 +137,7 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
           aria-describedby={creationMessage ? `${id}-error` : undefined} />
         {creationMessage && <FieldError id={`${id}-error`} className="text-[11px]">{creationMessage}</FieldError>}
       </Field>
-      <SheetContent aria-describedby={undefined} onOpenAutoFocus={event => {
+      <SheetContent className="w-full max-w-[440px] sm:max-w-[440px]" aria-describedby={undefined} onOpenAutoFocus={event => {
         event.preventDefault(); managerInput.current?.focus()
         if (managerDraft.editing !== null) managerInput.current?.select()
       }} onCloseAutoFocus={event => {
@@ -148,7 +148,7 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
         if (closeSuggestionsOnEscape(event)) event.preventDefault()
       }}>
         <SheetHeader className="shrink-0"><SheetTitle>Website domains</SheetTitle></SheetHeader>
-        <Field className="shrink-0 gap-2" data-invalid={!!managerMessage} data-disabled={disabled}>
+        <Field className="shrink-0 gap-2 px-6" data-invalid={!!managerMessage} data-disabled={disabled}>
           <div className="flex items-center justify-between gap-3">
             <FieldLabel htmlFor={`${id}-manager`} className="text-[11px] font-semibold">Add or edit a domain</FieldLabel>
             {domains.length > 0 && <span className="text-[11px] text-muted-foreground">{domains.length} {domains.length === 1 ? 'domain' : 'domains'}</span>}
@@ -157,7 +157,7 @@ export function WebsiteDomains({ value, onChange, onBlur, onPendingChange, input
             aria-describedby={managerMessage ? `${id}-manager-error` : undefined} />
           {managerMessage && <FieldError id={`${id}-manager-error`} className="text-[11px]">{managerMessage}</FieldError>}
         </Field>
-        <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain" aria-label="Website domains">
+        <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain px-6 pb-6" aria-label="Website domains">
         {domains.map((domain, index) => <li key={`${index}-${displayText(domain)}`} className="flex min-w-0 items-center justify-between gap-3">
           <Button variant="domain" size="inline" className="min-w-0 justify-start" type="button" disabled={disabled} aria-label={`Edit domain ${displayText(domain)}`}
             aria-pressed={managerDraft.editing === index} onClick={() => {

@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { fileURLToPath, URL } from 'node:url'
 import { build, defineConfig } from 'vite'
+import type { Plugin } from 'vite'
 
 import { createManifest } from './manifest.config'
 import { getBuildIdentity } from './build/identity.ts'
@@ -37,6 +38,30 @@ function networkPageBundle(): CrxPlugin {
   }
 }
 
+// The MCP helper runs in Node outside the browser. Ship it with the extension so
+// the setup command can register it from the folder loaded in Chrome.
+function mcpHostBundle(): Plugin {
+  return {
+    name: 'overidify-mcp-host-bundle',
+    apply: 'build',
+    async generateBundle() {
+      for (const [entry, fileName] of [['main.ts', 'mcp/host.mjs'], ['install.ts', 'mcp/install.mjs']]) {
+        const result = await build({
+          configFile: false, publicDir: false, logLevel: 'error',
+          build: {
+            write: false, target: 'node20', ssr: fileURLToPath(new URL(`./mcp-host/${entry}`, import.meta.url)),
+            rollupOptions: { output: { format: 'es' } },
+          },
+        })
+        const outputs = Array.isArray(result) ? result : [result]
+        const chunk = outputs.flatMap(output => 'output' in output ? output.output : []).find(file => file.type === 'chunk')
+        if (!chunk || chunk.type !== 'chunk') throw new Error(`MCP helper bundle ${entry} was not generated.`)
+        this.emitFile({ type: 'asset', fileName, source: chunk.code })
+      }
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => {
   const identity = getBuildIdentity(mode, fileURLToPath(new URL('.', import.meta.url)))
   return {
@@ -60,7 +85,7 @@ export default defineConfig(({ mode }) => {
           },
         },
       },
-      crx({ manifest: createManifest(identity) }), networkPageBundle(), favicon(identity.iconRoot),
+      crx({ manifest: createManifest(identity) }), networkPageBundle(), mcpHostBundle(), favicon(identity.iconRoot),
     ],
     resolve: {
       alias: {

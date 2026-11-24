@@ -1,4 +1,4 @@
-import { ArrowRight, Braces, ListChecks, Plus, Search, SlidersHorizontal, Upload } from 'lucide-react'
+import { ArrowRight, Bot, Braces, ListChecks, Plus, Search, SlidersHorizontal, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
@@ -20,6 +20,7 @@ import { SwitchRulesList } from '../components/SwitchRulesList'
 import { NetworkRuleEditor } from '../components/NetworkRuleEditor'
 import { NetworkRulesList } from '../components/NetworkRulesList'
 import { CapturedNetworkRuleEditor } from './CapturedNetworkRuleEditor'
+import { McpSettings } from './McpSettings'
 import { saveCapturedNetworkRuleDraft } from '../lib/network-rule-drafts'
 import { cleanResponseHeaders } from '../lib/network-rules'
 import type { NetworkRule, NetworkRuleDraft } from '../lib/network-rules'
@@ -41,7 +42,7 @@ import type { TemplateText } from '../lib/templates'
 import { getDomainPatterns } from '../lib/pattern'
 import { useVariables } from '../components/variables-context'
 import { VariablesPage } from './VariablesPage'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet'
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet'
 
 const searchText = (...values: TemplateText[]) => values.map(value => displayText(value)).join(' ')
 
@@ -248,13 +249,15 @@ export function OptionsApp() {
   return (
     <div className="mx-auto max-w-[1240px] px-16 min-[1440px]:max-w-[1280px] min-[1440px]:px-[90px] tablet:px-9 mobile:px-5">
       <header className="flex h-[78px] items-center justify-between gap-5 border-b tablet:h-[72px]"><Brand />
-        <SettingsMenu isVariables={isVariables} />
+        <SettingsMenu route={route} />
       </header>
       <main className="pt-[34px] pb-[50px] min-[1440px]:pt-10 tablet:pt-10 mobile:pt-[31px]">
         {error && <p className="mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-xs [&_svg]:size-4 border-destructive/40 bg-destructive/10 text-destructive" role="alert">{error}</p>}
         {networkNotice && (route === '/all' || route === '/network-rules') && <p className="mb-5 text-xs text-muted-foreground" role="status">{networkNotice}</p>}
         {loading ? (
           <div className="flex min-h-[300px] items-center justify-center gap-2.5 text-xs text-muted-foreground" role="status"><span className="size-[7px] animate-loading-pulse rounded-full bg-primary" /> Loading...</div>
+        ) : route === '/mcp' ? (
+          globalThis.chrome?.storage?.local ? <McpSettings /> : <p className="text-xs text-muted-foreground">Agent connections are available in the installed extension.</p>
         ) : loadFailed ? null : isVariables ? (
           <VariablesPage requestHeaderRules={entries} networkRules={networkRules} />
         ) : isHome ? (
@@ -511,21 +514,28 @@ function NewRuleButton({ className }: { className?: string }) {
   )
 }
 
-function SettingsMenu({ isVariables }: { isVariables: boolean }) {
+const settingsPages = [
+  { route: '/variables', label: 'Variables', icon: Braces },
+  { route: '/mcp', label: 'Agents', icon: Bot },
+] as const
+
+function SettingsMenu({ route }: { route: string }) {
   return (
     <Sheet>
       <SheetTrigger asChild>
         <Button type="button" variant="quiet" size="icon-lg" aria-label="Open settings menu"><Icon icon={SlidersHorizontal} /></Button>
       </SheetTrigger>
-      <SheetContent className="max-w-[320px]">
-        <SheetHeader><SheetTitle>Settings</SheetTitle><DialogDescription className="sr-only">Go to other settings pages.</DialogDescription></SheetHeader>
-        <nav aria-label="Settings pages">
-          <DialogClose asChild>
-            <a href="#/variables" aria-current={isVariables ? 'page' : undefined}
-              className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground no-underline transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[current=page]:bg-accent aria-[current=page]:text-foreground [&_svg]:size-4">
-              <Icon icon={Braces} />Variables
-            </a>
-          </DialogClose>
+      <SheetContent className="w-full max-w-[320px] sm:max-w-[320px]">
+        <SheetHeader><SheetTitle>Settings</SheetTitle><SheetDescription className="sr-only">Go to other settings pages.</SheetDescription></SheetHeader>
+        <nav aria-label="Settings pages" className="flex flex-col gap-1 px-6 pb-6">
+          {settingsPages.map(page => (
+            <SheetClose key={page.route} asChild>
+              <a href={`#${page.route}`} aria-current={route === page.route ? 'page' : undefined}
+                className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground no-underline transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[current=page]:bg-accent aria-[current=page]:text-foreground [&_svg]:size-4">
+                <Icon icon={page.icon} />{page.label}
+              </a>
+            </SheetClose>
+          ))}
         </nav>
       </SheetContent>
     </Sheet>
