@@ -70,6 +70,36 @@ The prefilled Network Rule bypasses the server by default; you can change matchi
 
 Keep one copy of Overidify enabled. If native Network shows Fetch/XHR calls but the Overidify panel stays empty, disable older copies, close and reopen DevTools, then reload the website. Chrome 154 can hide calls from the panel when another extension copy's interceptor appears in their initiator stack.
 
+## Connect an AI agent (MCP)
+
+Let an AI agent, such as Claude Code, Codex, or Cursor, create and edit rules for you through the Model Context Protocol. Any MCP client that supports Streamable HTTP servers works. You don't need the source code; the setup file comes from the extension.
+
+1. In Settings, click **Agents** and turn on **MCP server**.
+
+To let your agent do the rest, click **Copy prompt and download setup file** and paste the prompt into Claude Code, Codex, or Cursor. The agent runs the setup file and adds Overidify to its own configuration. Keep the Agents page open until it finishes. To set it up yourself instead:
+
+2. Install the helper once. Chrome only starts programs registered with it, and the helper needs [Node.js](https://nodejs.org) 20 or newer. Click **Download setup file**, then run the downloaded file in a terminal:
+
+   ```sh
+   node ~/Downloads/overidify-mcp-setup.mjs
+   ```
+
+   On Windows, run `node "$HOME\Downloads\overidify-mcp-setup.mjs"` in PowerShell. Use a different path if your browser saved the file elsewhere. Download and run it again after updating Overidify.
+
+   It registers the helper for the Chrome, Chromium, Edge, Brave, and Vivaldi profiles it finds. For a browser started with `--user-data-dir`, add `--browser-dir <that folder>`. To remove the helper, run the file with `--uninstall`.
+3. Wait for the status to change to **Running at** `http://127.0.0.1:47821/mcp`. Overidify checks again every few seconds while the Agents page is open.
+4. Choose your agent and copy the configuration shown:
+   - **Claude Code:** a `claude mcp add` command for all your projects.
+   - **Codex:** a server entry for `~/.codex/config.toml`.
+   - **Cursor:** a server entry for `~/.cursor/mcp.json`.
+   - **Other:** a JSON configuration for other clients.
+
+   Each configuration includes the access token.
+
+Agents can list, read, create, update, enable or disable, and delete Header, Switch, and Network Rules, and choose a Switch Rule's option. They use the same validation as Settings, and changes apply immediately. If Overidify asks you to reload website tabs after a Network Rule change, the agent's result says so.
+
+The server runs while Chrome is open and MCP is on. It listens only on `127.0.0.1`, requires the access token, and rejects requests from web pages. **Regenerate token** disconnects agents using the old token. If the port is in use, for example by another browser profile, choose another port.
+
 ## Execution history in DevTools
 
 The **Executions** tab inside the Overidify DevTools panel records Header Rules, Switch Rules, and Network Rules for the inspected website tab. Recording starts when DevTools opens and continues while another panel, such as Console, is selected. Reopen DevTools after updating the extension.

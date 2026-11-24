@@ -51,6 +51,8 @@ function harness(initialTabs: PageTab[]) {
     console: { error: (...args: unknown[]) => errors.push(args) },
     REQUEST_HEADER_STORAGE_KEY: 'requestHeaderRules',
     VARIABLES_STORAGE_KEY: 'variables',
+    startMcpBridge: () => undefined,
+    syncNetworkRules: async () => [],
     getRequestHeaderRules: async () => entries,
     getVariables: async () => [],
     resolveRules,

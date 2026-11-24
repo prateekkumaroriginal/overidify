@@ -2,7 +2,8 @@ import { syncRequestHeaderSessionRules } from '../lib/dnr'
 import { getRequestHeaderRules, REQUEST_HEADER_STORAGE_KEY } from '../lib/request-header-storage'
 import { resolveRules } from '../lib/rule-resolution'
 import { getVariables, VARIABLES_STORAGE_KEY } from '../lib/variables-storage'
-import './network'
+import { syncNetworkRules } from './network'
+import { startMcpBridge } from './mcp'
 import './action-icon'
 import './executions'
 
@@ -110,3 +111,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 })
 
 requestSync()
+
+// Rule changes made over MCP happen in this worker, so activate them directly.
+startMcpBridge(async () => {
+  const [headers, network] = await Promise.allSettled([queueSync(), syncNetworkRules()])
+  const errors = [headers, network].flatMap(result => result.status === 'rejected'
+    ? [result.reason instanceof Error ? result.reason.message : String(result.reason)] : [])
+  return {
+    ok: errors.length === 0,
+    reloadTabIds: network.status === 'fulfilled' ? network.value : [],
+    error: errors.length ? errors.join(' ') : undefined,
+  }
+})
