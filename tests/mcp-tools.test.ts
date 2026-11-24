@@ -269,3 +269,36 @@ test('variable tools hide secret values, rename into rules, and turn rules off o
     assert.deepEqual(state.stored.variables?.map(variable => variable.name), ['TOKEN'])
   } finally { restore() }
 })
+
+test('a variable marked secret while an agent renames it stays secret', async () => {
+  const { state, restore } = setup({ requestHeaderRules: [], networkRules: [], variables: [{ id: 'v1', name: 'HOST', value: 'shown', secret: false }] })
+  try {
+    // Settings marks the variable secret after the agent's call starts but before its write takes the locks.
+    const deps: McpToolDeps = {
+      readRules: getSavedRules, readVariables: getVariables, updateRules: updateSavedRules, activate: async () => ({ ok: true, reloadTabIds: [] }),
+      writeVariables: async input => { state.stored.variables = [{ id: 'v1', name: 'HOST', value: 'shown', secret: true }]; return writeVariables(input) },
+    }
+    const result = await callMcpTool('update_variable', { name: 'HOST', newName: 'API_HOST' }, deps)
+    assert.deepEqual(state.stored.variables, [{ id: 'v1', name: 'API_HOST', value: 'shown', secret: true }])
+    assert.ok(!result.content[0].text.includes('shown'))
+  } finally { restore() }
+})
+
+test('a confirmed delete never removes a different variable that took the name', async () => {
+  const rule = { kind: 'header-rule' as const, id: crypto.randomUUID(), name: 'Uses host', url: '*', enabled: true, order: 0,
+    headers: [{ key: 'X-Host', value: { segments: [{ variableId: 'v1', name: 'HOST' }] } }] }
+  const { state, restore } = setup({ requestHeaderRules: [rule], networkRules: [], variables: [{ id: 'v1', name: 'HOST', value: 'a', secret: false }] })
+  try {
+    let attempts = 0
+    // Between the refused attempt and the confirmed retry, another writer renames HOST and a new HOST appears.
+    const deps: McpToolDeps = {
+      readRules: getSavedRules, readVariables: getVariables, updateRules: updateSavedRules, activate: async () => ({ ok: true, reloadTabIds: [] }),
+      writeVariables: async input => {
+        if (attempts++ === 1) state.stored.variables = [{ id: 'v1', name: 'OLD_HOST', value: 'a', secret: false }, { id: 'v2', name: 'HOST', value: 'b', secret: false }]
+        return writeVariables(input)
+      },
+    }
+    await callMcpTool('delete_variables', { names: ['HOST'], turnOffRules: true }, deps)
+    assert.deepEqual(state.stored.variables?.map(variable => variable.id), ['v2'])
+  } finally { restore() }
+})

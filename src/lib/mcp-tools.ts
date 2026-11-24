@@ -24,7 +24,7 @@ export type McpToolDeps = {
   updateRules: <T>(update: (rules: RuleCollection, variables: Variable[]) => { rules: RuleCollection; result: T }) => Promise<{ result: T; rules: RuleCollection; variables: Variable[] }>
   activate: () => Promise<TransferActivation>
   /** The Variables page's save: rules the change turns off are saved in the same write, only once confirmed. Does not activate. */
-  writeVariables: (input: { baseline: Variable[]; draft: Variable[]; confirmedTurnOff?: string[] }) => Promise<VariablesSaveResult>
+  writeVariables: (input: { draft: (stored: Variable[]) => Variable[]; confirmedTurnOff?: string[] }) => Promise<VariablesSaveResult>
 }
 
 export const MCP_INSTRUCTIONS = `Overidify is a Chrome extension that changes requests made by matching websites.
@@ -439,10 +439,20 @@ function viewVariable(variable: Variable, rules: RuleCollection, index: Variable
   return { name: variable.name, secret: variable.secret, ...variable.secret ? {} : { value: variable.value }, usedBy }
 }
 
-function findVariableByName(variables: Variable[], name: string): Variable {
-  const variable = variables.find(variable => nameKey(variable.name) === nameKey(name.trim()))
-  if (!variable) throw new ToolError(`No variable is named ${name}. Use list_variables to find current names.`)
-  return variable
+/** Finds variables by name on the first save attempt, then by the same IDs on the turnOffRules retry. */
+function variableFinder() {
+  const pinned = new Map<string, string>()
+  return (variables: Variable[], name: string): Variable => {
+    const id = pinned.get(name)
+    const variable = id === undefined
+      ? variables.find(variable => nameKey(variable.name) === nameKey(name.trim()))
+      : variables.find(variable => variable.id === id)
+    if (!variable) throw new ToolError(id === undefined
+      ? `No variable is named ${name}. Use list_variables to find current names.`
+      : `${name} changed while saving. Nothing was saved; use list_variables and try again.`)
+    pinned.set(name, variable.id)
+    return variable
+  }
 }
 
 async function listVariables(_input: z.infer<typeof ListVariablesInput>, deps: McpToolDeps) {
@@ -451,21 +461,23 @@ async function listVariables(_input: z.infer<typeof ListVariablesInput>, deps: M
   return { variables: sortVariables(variables).map(variable => viewVariable(variable, rules, index)) }
 }
 
-/** Applies `change` to the saved list through the Variables page's save, then reports the saved variable and turned-off rules. */
+/**
+ * Applies `change` to the saved list through the Variables page's save, then reports the saved variable and turned-off rules.
+ * `change` runs inside the storage locks on the current variables, so its Secret checks can't act on a stale copy.
+ */
 async function changeVariables(deps: McpToolDeps, change: (variables: Variable[]) => { draft: Variable[]; id?: string }, turnOffRules = false) {
-  const baseline = await deps.readVariables()
-  const { draft, id } = change(baseline)
-  let saved = await deps.writeVariables({ baseline, draft })
-  if (saved.status === 'confirm' && turnOffRules) saved = await deps.writeVariables({ baseline, draft, confirmedTurnOff: saved.turnedOff.map(rule => rule.id) })
+  let id: string | undefined
+  const draft = (stored: Variable[]) => { const next = change(stored); id = next.id; return next.draft }
+  let saved = await deps.writeVariables({ draft })
+  if (saved.status === 'confirm' && turnOffRules) saved = await deps.writeVariables({ draft, confirmedTurnOff: saved.turnedOff.map(rule => rule.id) })
   if (saved.status === 'invalid') throw new ToolError(`name: ${[...new Set(Object.values(saved.errors))].join(' ')}`)
   if (saved.status === 'confirm') {
     const rules = saved.turnedOff.map(rule => `"${rule.name}" (${TYPE_LABEL[rule.type]}, ${rule.id})`).join(', ')
     throw new ToolError(`Nothing was saved. This change would turn off ${saved.turnedOff.length} rule(s) that could no longer run: ${rules}. Ask the user, then repeat the call with turnOffRules: true.`)
   }
   const variable = id === undefined ? undefined : saved.variables.find(variable => variable.id === id)
-  const rules = await deps.readRules()
   return {
-    ...variable ? { variable: viewVariable(variable, rules, indexVariables(saved.variables)) } : {},
+    ...variable ? { variable: viewVariable(variable, saved.rules, indexVariables(saved.variables)) } : {},
     ...saved.turnedOff.length ? { turnedOff: saved.turnedOff.map(rule => ({ id: rule.id, name: rule.name, type: TYPE_LABEL[rule.type] })) } : {},
     activation: await activate(deps),
   }
@@ -477,8 +489,9 @@ async function createVariable(input: z.infer<typeof CreateVariableInput>, deps: 
 }
 
 async function updateVariable(input: z.infer<typeof UpdateVariableInput>, deps: McpToolDeps) {
+  const find = variableFinder()
   return changeVariables(deps, variables => {
-    const current = findVariableByName(variables, input.name)
+    const current = find(variables, input.name)
     if (current.secret && input.secret === false) throw new ToolError(`secret: Agents can't turn Secret off. Ask the user to change ${current.name} in Overidify Settings.`)
     const next = { ...current, name: input.newName?.trim() ?? current.name, value: input.value ?? current.value, secret: input.secret ?? current.secret }
     return { draft: variables.map(variable => variable.id === current.id ? next : variable), id: current.id }
@@ -488,8 +501,9 @@ async function updateVariable(input: z.infer<typeof UpdateVariableInput>, deps: 
 async function deleteVariables({ names, turnOffRules }: z.infer<typeof DeleteVariablesInput>, deps: McpToolDeps) {
   if (!names.length) throw new ToolError('names: List at least one variable name.')
   let deleted: string[] = []
+  const find = variableFinder()
   const result = await changeVariables(deps, variables => {
-    const remove = new Set(names.map(name => findVariableByName(variables, name).id))
+    const remove = new Set(names.map(name => find(variables, name).id))
     deleted = variables.filter(variable => remove.has(variable.id)).map(variable => variable.name)
     return { draft: variables.filter(variable => !remove.has(variable.id)) }
   }, turnOffRules)

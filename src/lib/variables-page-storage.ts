@@ -6,11 +6,12 @@ import { getRequestHeaderRules, REQUEST_HEADER_STORAGE_KEY } from './request-hea
 import { getNetworkRules, NETWORK_STORAGE_KEY } from './network-storage.ts'
 import { activateImportedRules, withRuleStorageLocks } from './rule-transfer-storage.ts'
 import type { TransferActivation } from './rule-transfer-storage.ts'
+import type { RuleCollection } from './rule-transfer.ts'
 
 export type VariablesSaveResult =
   | { status: 'invalid'; errors: Record<string, string> }
   | { status: 'confirm'; turnedOff: TurnedOffRule[] }
-  | { status: 'saved'; variables: Variable[]; turnedOff: TurnedOffRule[]; activation: TransferActivation }
+  | { status: 'saved'; variables: Variable[]; rules: RuleCollection; turnedOff: TurnedOffRule[]; activation: TransferActivation }
 
 export const VARIABLES_SAVE_FAILED = 'Variables were not saved. Your previous variables are still in use.'
 
@@ -18,11 +19,15 @@ export const VARIABLES_SAVE_FAILED = 'Variables were not saved. Your previous va
  * Saves a Variables page draft under the header, Network, and variables locks, in that order.
  * Rules the change turns off are written in the same storage write, after confirmation.
  * `confirmedTurnOff` lists the rule IDs the user agreed to turn off. Any other rule that would turn off asks again.
+ * A `draft` function builds the draft from the saved variables inside the locks, which then serve as the baseline.
  * Callers activate the result; the background worker can't message itself, so MCP activates directly.
  */
-export async function writeVariables({ baseline, draft, confirmedTurnOff = [] }: { baseline: Variable[]; draft: Variable[]; confirmedTurnOff?: string[] }): Promise<VariablesSaveResult> {
+export async function writeVariables(input: { confirmedTurnOff?: string[] } & ({ baseline: Variable[]; draft: Variable[] } | { draft: (stored: Variable[]) => Variable[] })): Promise<VariablesSaveResult> {
+  const { confirmedTurnOff = [] } = input
   return withRuleStorageLocks(() => navigator.locks.request(VARIABLES_STORAGE_KEY, async (): Promise<VariablesSaveResult> => {
     const [stored, requestHeaderRules, networkRules] = await Promise.all([getVariables(), getRequestHeaderRules(), getNetworkRules()])
+    const baseline = 'baseline' in input ? input.baseline : stored
+    const draft = typeof input.draft === 'function' ? input.draft(stored) : input.draft
     const plan = planVariablesSave({ stored, baseline, draft, rules: { requestHeaderRules, networkRules } })
     if (!plan.ok) return { status: 'invalid', errors: plan.errors }
     if (plan.turnedOff.some(rule => !confirmedTurnOff.includes(rule.id))) return { status: 'confirm', turnedOff: plan.turnedOff }
@@ -33,7 +38,7 @@ export async function writeVariables({ baseline, draft, confirmedTurnOff = [] }:
     if (Object.keys(changes).length) {
       try { await writeStorage(changes) } catch { throw new Error(VARIABLES_SAVE_FAILED) }
     }
-    return { status: 'saved', variables: plan.variables, turnedOff: plan.turnedOff, activation: { ok: true, reloadTabIds: [] } }
+    return { status: 'saved', variables: plan.variables, rules: plan.rules, turnedOff: plan.turnedOff, activation: { ok: true, reloadTabIds: [] } }
   }))
 }
 
