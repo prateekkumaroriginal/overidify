@@ -3,6 +3,7 @@ import { XIcon } from "lucide-react"
 import { Dialog as SheetPrimitive } from "radix-ui"
 
 import { Icon } from "@/components/Icon"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
@@ -74,9 +75,12 @@ function SheetContent({
       >
         {children}
         {showCloseButton && (
-          <SheetPrimitive.Close className="absolute top-6 right-6 flex size-6 items-center justify-center rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none data-[state=open]:bg-secondary">
-            <Icon icon={XIcon} className="size-4" />
-            <span className="sr-only">Close</span>
+          // A 30px ghost button centered on the title's 24px line (top 24 + 12 - 15).
+          <SheetPrimitive.Close asChild>
+            <Button type="button" variant="ghost-muted" size="icon" className="absolute top-[21px] right-[17px]">
+              <Icon icon={XIcon} />
+              <span className="sr-only">Close</span>
+            </Button>
           </SheetPrimitive.Close>
         )}
       </SheetPrimitive.Content>
