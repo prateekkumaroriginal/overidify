@@ -517,9 +517,9 @@ function SettingsMenu({ isVariables }: { isVariables: boolean }) {
       <SheetTrigger asChild>
         <Button type="button" variant="quiet" size="icon-lg" aria-label="Open settings menu"><Icon icon={SlidersHorizontal} /></Button>
       </SheetTrigger>
-      <SheetContent className="max-w-[320px]">
+      <SheetContent className="w-full max-w-[320px] sm:max-w-[320px]">
         <SheetHeader><SheetTitle>Settings</SheetTitle><DialogDescription className="sr-only">Go to other settings pages.</DialogDescription></SheetHeader>
-        <nav aria-label="Settings pages">
+        <nav aria-label="Settings pages" className="flex flex-col gap-1 px-6 pb-6">
           <DialogClose asChild>
             <a href="#/variables" aria-current={isVariables ? 'page' : undefined}
               className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground no-underline transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[current=page]:bg-accent aria-[current=page]:text-foreground [&_svg]:size-4">
