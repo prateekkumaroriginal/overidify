@@ -10,10 +10,10 @@ import type { RuleCollection, TransferRule } from './rule-transfer.ts'
 import type { TransferActivation } from './rule-transfer-storage.ts'
 import type { HeaderPair, HeaderRule, RequestHeaderRule, SwitchRule } from './types.ts'
 import type { McpToolDefinition, McpToolResult } from './mcp-protocol.ts'
-import { checkRule, mapRuleTemplates } from './rule-resolution.ts'
-import { displayText, fromSegments, isValidVariableName, trimTemplate } from './templates.ts'
+import { checkRule, mapRuleTemplates, ruleTemplateFields } from './rule-resolution.ts'
+import { displayText, fromSegments, isValidVariableName, templateTokens, trimTemplate } from './templates.ts'
 import type { TemplateSegment, TemplateText } from './templates.ts'
-import { indexVariables, nameKey, tokenName } from './variables.ts'
+import { findVariable, indexVariables, nameKey, tokenName } from './variables.ts'
 import type { Variable, VariableIndex } from './variables.ts'
 
 export type McpToolDeps = {
@@ -29,7 +29,7 @@ export const MCP_INSTRUCTIONS = `Overidify is a Chrome extension that changes re
 - Switch Rules hold named header options; only the selected option applies.
 - Network Rules return a mock response for one API request URL and method.
 Every rule has a website domain list (for example localhost:4200, app.example.com, *.example.com, or * for all websites). A rule applies to requests made from browser tabs whose address-bar URL matches any listed domain, including requests to other API hosts. When several enabled rules set the same header or mock the same request, the later rule wins.
-Text fields can use variables saved in Overidify Settings. A variable appears as {{NAME}}; its value is never shown. Writing {{NAME}} for a saved variable's name uses that variable; any other text stays literal. A rule that can't run with the saved variables is turned off and lists its problems.
+Text fields can use variables saved in Overidify Settings. A variable appears as {{NAME}}; its value is never shown. Writing {{NAME}} for a saved variable's name uses that variable; any other text stays literal. Secret variables can stay in rules that already use them but can't be added to others. A rule that can't run with the saved variables is turned off and lists its problems.
 Changes are saved and applied immediately in the browser.`
 
 const text = (description: string) => z.string().check(z.describe(description))
@@ -144,9 +144,9 @@ export async function callMcpTool(name: string, args: unknown, deps: McpToolDeps
 type RuleView = Record<string, unknown>
 const TYPE_LABEL = { 'header-rule': 'header', 'switch-rule': 'switch', 'network-rule': 'network' } as const
 const toHeaders = (headers: HeaderPair[]) => headers.map(({ key, value }) => ({ name: key as string, value: value as string }))
-const fromHeaders = (headers: { name: string; value: string }[], index: VariableIndex): HeaderPair[] =>
-  headers.map(({ name, value }) => ({ key: fromAgentText(name, index), value: fromAgentText(value, index) }))
-const fromWebsites = (websites: string[], index: VariableIndex) => websites.map(website => fromAgentText(website, index))
+const fromHeaders = (headers: { name: string; value: string }[], link: Link): HeaderPair[] =>
+  headers.map(({ name, value }) => ({ key: fromAgentText(name, link), value: fromAgentText(value, link) }))
+const fromWebsites = (websites: string[], link: Link) => websites.map(website => fromAgentText(website, link))
 
 // Agents read and write variables as {{NAME}} text, never their values.
 const VARIABLE_TEXT = /\{\{([^{}]*)\}\}/g
@@ -154,12 +154,25 @@ function toAgentText<Rule extends TransferRule>(rule: Rule, index: VariableIndex
   return mapRuleTemplates(rule, value => displayText(value, token => tokenName(token, index)))
 }
 /** Only text the agent sends is read this way, so saved literal text is never relinked. */
-function fromAgentText(value: string, index: VariableIndex): TemplateText {
+/**
+ * Agents may keep a rule's existing secret variables but not add new ones: a mock or header can hand
+ * the value to any website the rule matches. `keepSecrets` holds the secret variable IDs the rule
+ * already uses.
+ */
+type Link = { index: VariableIndex; keepSecrets: ReadonlySet<string> }
+function linkFor(index: VariableIndex, current?: TransferRule): Link {
+  const used = current ? ruleTemplateFields(current).flatMap(templateTokens).map(token => findVariable(token, index)) : []
+  return { index, keepSecrets: new Set(used.flatMap(variable => variable?.secret ? [variable.id] : [])) }
+}
+function fromAgentText(value: string, { index, keepSecrets }: Link): TemplateText {
   const segments: TemplateSegment[] = []
   let last = 0
   for (const match of value.matchAll(VARIABLE_TEXT)) {
     const variable = isValidVariableName(match[1]) ? index.byName.get(nameKey(match[1])) : undefined
     if (!variable) continue
+    if (variable.secret && !keepSecrets.has(variable.id)) {
+      throw new ToolError(`${variable.name} is a secret variable. Agents can't add secret variables to rules; add it in Overidify Settings instead.`)
+    }
     segments.push(value.slice(last, match.index), { variableId: variable.id, name: variable.name })
     last = match.index + match[0].length
   }
@@ -221,11 +234,11 @@ async function getRule({ id }: z.infer<typeof GetInput>, deps: McpToolDeps) {
   return { rule: viewRule(findRule(saved, id), true, indexVariables(variables)) }
 }
 
-function buildSwitchOptions(input: z.infer<typeof SwitchOptionInput>[], index: VariableIndex, existing: SwitchRule['options'] = []): SwitchRule['options'] {
+function buildSwitchOptions(input: z.infer<typeof SwitchOptionInput>[], link: Link, existing: SwitchRule['options'] = []): SwitchRule['options'] {
   const previous = new Map(existing.map(option => [option.name.trim().toLowerCase(), option.id]))
   return input.map(option => ({
     id: previous.get(option.name.trim().toLowerCase()) ?? createRuleId(),
-    name: option.name, headers: fromHeaders(option.headers, index),
+    name: option.name, headers: fromHeaders(option.headers, link),
   }))
 }
 
@@ -293,16 +306,17 @@ function createRequestHeaderRule(deps: McpToolDeps, draft: (index: VariableIndex
 
 async function createHeaderRule(input: z.infer<typeof CreateHeaderInput>, deps: McpToolDeps) {
   return createRequestHeaderRule(deps, index => ({
-    kind: 'header-rule', id: createRuleId(), name: input.name, url: fromWebsites(input.websites, index), enabled: input.enabled,
-    headers: fromHeaders(input.headers, index),
+    kind: 'header-rule', id: createRuleId(), name: input.name, url: fromWebsites(input.websites, linkFor(index)), enabled: input.enabled,
+    headers: fromHeaders(input.headers, linkFor(index)),
   }))
 }
 
 async function createSwitchRule(input: z.infer<typeof CreateSwitchInput>, deps: McpToolDeps) {
   return createRequestHeaderRule(deps, index => {
-    const options = buildSwitchOptions(input.options, index)
+    const link = linkFor(index)
+    const options = buildSwitchOptions(input.options, link)
     return {
-      kind: 'switch-rule', id: createRuleId(), name: input.name, url: fromWebsites(input.websites, index), enabled: input.enabled,
+      kind: 'switch-rule', id: createRuleId(), name: input.name, url: fromWebsites(input.websites, link), enabled: input.enabled,
       options, selectedOptionId: selectOption(options, input.selectedOption),
     }
   })
@@ -310,10 +324,11 @@ async function createSwitchRule(input: z.infer<typeof CreateSwitchInput>, deps: 
 
 async function createNetworkRule(input: z.infer<typeof CreateNetworkInput>, deps: McpToolDeps) {
   return save(deps, (rules, index) => {
+    const link = linkFor(index)
     const rule = buildNetworkRule({
-      id: createRuleId(), name: input.name, url: fromWebsites(input.websites, index), enabled: input.enabled,
-      requestUrl: fromAgentText(input.requestUrl, index), method: input.method, mode: input.mode, status: input.status,
-      body: fromAgentText(input.body, index), headers: fromHeaders(input.headers, index),
+      id: createRuleId(), name: input.name, url: fromWebsites(input.websites, link), enabled: input.enabled,
+      requestUrl: fromAgentText(input.requestUrl, link), method: input.method, mode: input.mode, status: input.status,
+      body: fromAgentText(input.body, link), headers: fromHeaders(input.headers, link),
     }, rules.networkRules.length)
     return { rules: { ...rules, networkRules: [...rules.networkRules, rule] }, rule }
   })
@@ -329,26 +344,27 @@ const RULE_NAMES = { 'header-rule': 'Header Rule', 'switch-rule': 'Switch Rule',
 async function updateRule(input: z.infer<typeof UpdateInput>, deps: McpToolDeps) {
   return save(deps, (rules, index) => {
     const current = findRule(rules, input.id)
+    const link = linkFor(index, current)
     const type = ruleType(current)
     const allowed: readonly string[] = FIELDS_BY_TYPE[type]
     const misplaced = Object.keys(input).filter(key => !['id', 'name', 'websites', 'enabled', ...allowed].includes(key))
     if (misplaced.length) throw new ToolError(`${misplaced.join(', ')} cannot be changed on a ${RULE_NAMES[type]}.`)
-    const common = { id: current.id, name: input.name ?? current.name, url: input.websites ? fromWebsites(input.websites, index) : current.url, enabled: input.enabled ?? current.enabled }
+    const common = { id: current.id, name: input.name ?? current.name, url: input.websites ? fromWebsites(input.websites, link) : current.url, enabled: input.enabled ?? current.enabled }
 
     if (!('kind' in current)) {
       const rule = buildNetworkRule({
         ...current, ...common,
-        requestUrl: input.requestUrl === undefined ? current.requestUrl : fromAgentText(input.requestUrl, index), method: input.method ?? current.method, mode: input.mode ?? current.mode,
-        status: input.status ?? current.status, body: input.body === undefined ? current.body : fromAgentText(input.body, index),
-        headers: input.headers ? fromHeaders(input.headers, index) : current.headers,
+        requestUrl: input.requestUrl === undefined ? current.requestUrl : fromAgentText(input.requestUrl, link), method: input.method ?? current.method, mode: input.mode ?? current.mode,
+        status: input.status ?? current.status, body: input.body === undefined ? current.body : fromAgentText(input.body, link),
+        headers: input.headers ? fromHeaders(input.headers, link) : current.headers,
       }, current.order)
       return { rules: { ...rules, networkRules: rules.networkRules.map(item => item.id === current.id ? rule : item) }, rule }
     }
     let rule: RequestHeaderRule
     if (current.kind === 'header-rule') {
-      rule = buildRequestHeaderRule({ ...current, ...common, headers: input.headers ? fromHeaders(input.headers, index) : current.headers }, current.order)
+      rule = buildRequestHeaderRule({ ...current, ...common, headers: input.headers ? fromHeaders(input.headers, link) : current.headers }, current.order)
     } else {
-      const options = input.options ? buildSwitchOptions(input.options, index, current.options) : current.options
+      const options = input.options ? buildSwitchOptions(input.options, link, current.options) : current.options
       rule = buildRequestHeaderRule({
         ...current, ...common, options, selectedOptionId: selectOption(options, input.selectedOption, current.selectedOptionId),
       }, current.order)
