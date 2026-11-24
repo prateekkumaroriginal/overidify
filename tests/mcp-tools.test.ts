@@ -253,6 +253,9 @@ test('variable tools hide secret values, rename into rules, and turn rules off o
     assert.ok(!JSON.stringify(variables).includes('secret-value'))
 
     assert.match((await call('update_variable', { name: 'TOKEN', secret: false })).text, /can't turn Secret off/)
+    const activations = state.activations
+    assert.equal((await call('update_variable', { name: 'HOST', value: 'api2.example.com' })).isError, undefined)
+    assert.equal(state.activations, activations + 1)
     await call('update_variable', { name: 'host', newName: 'API_HOST' })
     assert.deepEqual((await call('get_rule', { id: H1 })).data.rule.headers, [{ name: 'X-Host', value: '{{API_HOST}}' }])
 
@@ -262,7 +265,9 @@ test('variable tools hide secret values, rename into rules, and turn rules off o
     assert.match(refused.text, /Nothing was saved.*"Uses host"/)
     assert.equal(state.writes, writes)
 
-    const deleted = await call('delete_variables', { names: ['API_HOST'], turnOffRules: true })
+    // Approval covers only the listed rules; a rule using the variable that wasn't approved is refused again.
+    assert.match((await call('delete_variables', { names: ['API_HOST'], turnOffRules: ['other-rule'] })).text, /Nothing was saved/)
+    const deleted = await call('delete_variables', { names: ['API_HOST'], turnOffRules: [H1] })
     assert.deepEqual((deleted.structuredContent as { deleted: string[]; turnedOff: { id: string }[] }).deleted, ['API_HOST'])
     assert.deepEqual((deleted.structuredContent as { turnedOff: { id: string }[] }).turnedOff.map(rule => rule.id), [H1])
     assert.equal(state.stored.requestHeaderRules[0].enabled, false)
@@ -284,21 +289,16 @@ test('a variable marked secret while an agent renames it stays secret', async ()
   } finally { restore() }
 })
 
-test('a confirmed delete never removes a different variable that took the name', async () => {
-  const rule = { kind: 'header-rule' as const, id: crypto.randomUUID(), name: 'Uses host', url: '*', enabled: true, order: 0,
-    headers: [{ key: 'X-Host', value: { segments: [{ variableId: 'v1', name: 'HOST' }] } }] }
-  const { state, restore } = setup({ requestHeaderRules: [rule], networkRules: [], variables: [{ id: 'v1', name: 'HOST', value: 'a', secret: false }] })
+test('agents cannot link a secret into a rule by renaming or creating it under a dangling name', async () => {
+  const rule = { kind: 'header-rule' as const, id: crypto.randomUUID(), name: 'Dangling', url: '*', enabled: false, order: 0,
+    headers: [{ key: 'X-Key', value: { segments: [{ variableId: 'gone', name: 'API_KEY' }] } }] }
+  const { state, call, restore } = setup({ requestHeaderRules: [rule], networkRules: [], variables: [{ id: 's1', name: 'TOKEN', value: 'hidden', secret: true }] })
   try {
-    let attempts = 0
-    // Between the refused attempt and the confirmed retry, another writer renames HOST and a new HOST appears.
-    const deps: McpToolDeps = {
-      readRules: getSavedRules, readVariables: getVariables, updateRules: updateSavedRules, activate: async () => ({ ok: true, reloadTabIds: [] }),
-      writeVariables: async input => {
-        if (attempts++ === 1) state.stored.variables = [{ id: 'v1', name: 'OLD_HOST', value: 'a', secret: false }, { id: 'v2', name: 'HOST', value: 'b', secret: false }]
-        return writeVariables(input)
-      },
-    }
-    await callMcpTool('delete_variables', { names: ['HOST'], turnOffRules: true }, deps)
-    assert.deepEqual(state.stored.variables?.map(variable => variable.id), ['v2'])
+    const writes = state.writes
+    assert.match((await call('update_variable', { name: 'TOKEN', newName: 'API_KEY' })).text, /can't add secret variables to rules: "Dangling" would use API_KEY/)
+    assert.match((await call('create_variable', { name: 'API_KEY', value: 'x', secret: true })).text, /can't add secret variables to rules/)
+    assert.equal(state.writes, writes)
+    // A non-secret variable may fill the dangling reference.
+    assert.equal((await call('create_variable', { name: 'API_KEY', value: 'x' })).isError, undefined)
   } finally { restore() }
 })
