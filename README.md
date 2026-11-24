@@ -96,8 +96,9 @@ To let your agent do the rest, click **Copy prompt and download setup file** and
 
    Each configuration includes the access token.
 
-Agents can list, read, create, update, enable or disable, and delete Header, Switch, and Network Rules, and choose a Switch Rule's option. They use the same validation as Settings, and changes apply immediately.
-Agents see variables as `{{NAME}}`, never their values. When an agent writes `{{NAME}}` for a saved variable, the field uses that variable. Agents can't add a secret variable to a rule; add those in Settings. If Overidify asks you to reload website tabs after a Network Rule change, the agent's result says so.
+Agents can list, read, create, update, enable or disable, and delete Header, Switch, and Network Rules, and choose a Switch Rule's option. They can also list, create, rename, change, and delete variables. They use the same validation as Settings, and changes apply immediately.
+
+In rules, agents see variables as `{{NAME}}`. When an agent writes `{{NAME}}` for a saved variable, the field uses that variable. Agents never see secret values, can't add a secret variable to a rule, and can't turn Secret off. A variable change that would turn rules off is refused until the agent confirms it, so the agent should ask you first. If Overidify asks you to reload website tabs after a Network Rule change, the agent's result says so.
 
 The server runs while Chrome is open and MCP is on. It listens only on `127.0.0.1`, requires the access token, and rejects requests from web pages. **Regenerate token** disconnects agents using the old token. If the port is in use, for example by another browser profile, choose another port.
 

@@ -6,6 +6,7 @@ import { getSavedRules, updateSavedRules } from '../src/lib/rule-transfer-storag
 import type { TransferActivation } from '../src/lib/rule-transfer-storage.ts'
 import type { RuleCollection } from '../src/lib/rule-transfer.ts'
 import { getVariables } from '../src/lib/variables-storage.ts'
+import { writeVariables } from '../src/lib/variables-page-storage.ts'
 import type { Variable } from '../src/lib/variables.ts'
 
 type View = { id: string; name: string; type: string; enabled: boolean; body?: string; bodyLength?: number; selectedOption?: string; problems?: string[]; headers?: { name: string; value: string }[] }
@@ -21,7 +22,7 @@ function setup(initial: Stored = { requestHeaderRules: [], networkRules: [] }) {
     set: async (rules: Partial<Stored>) => { state.writes++; Object.assign(state.stored, structuredClone(rules)) },
   } } } })
   const deps: McpToolDeps = {
-    readRules: getSavedRules, readVariables: getVariables, updateRules: updateSavedRules,
+    readRules: getSavedRules, readVariables: getVariables, updateRules: updateSavedRules, writeVariables,
     activate: async () => { state.activations++; return state.activation },
   }
   const call = async (name: string, args: unknown) => {
@@ -227,5 +228,44 @@ test('agents see variables as {{NAME}}, link only saved names, and cannot add se
     assert.equal(off.data.rule.enabled, false)
     assert.deepEqual(off.data.rule.problems, ['Missing variable API_TOKEN.'])
     assert.equal(state.stored.requestHeaderRules[0].enabled, false)
+  } finally { restore() }
+})
+
+test('variable tools hide secret values, rename into rules, and turn rules off only when confirmed', async () => {
+  const H1 = crypto.randomUUID()
+  const { state, call, restore } = setup({ requestHeaderRules: [], networkRules: [] })
+  type VariableView = { name: string; secret: boolean; value?: string; usedBy: { id: string; name: string }[] }
+  const list = async () => (await call('list_variables', {})).structuredContent as { variables: VariableView[] }
+  try {
+    assert.equal((await call('create_variable', { name: 'HOST', value: 'api.example.com' })).isError, undefined)
+    assert.equal((await call('create_variable', { name: 'TOKEN', value: 'secret-value', secret: true })).isError, undefined)
+    assert.match((await call('create_variable', { name: 'host', value: 'x' })).text, /already has this name/)
+    assert.match((await call('create_variable', { name: '1BAD', value: 'x' })).text, /^name: /)
+
+    const created = await call('create_header_rule', { name: 'Uses host', websites: ['*'], headers: [{ name: 'X-Host', value: '{{HOST}}' }] })
+    state.stored.requestHeaderRules[0].id = H1
+    assert.equal(created.data.rule.enabled, true)
+    const variables = (await list()).variables
+    assert.deepEqual(variables.map(({ name, secret, value }) => ({ name, secret, value })), [
+      { name: 'HOST', secret: false, value: 'api.example.com' }, { name: 'TOKEN', secret: true, value: undefined },
+    ])
+    assert.deepEqual(variables[0].usedBy.map(rule => rule.id), [H1])
+    assert.ok(!JSON.stringify(variables).includes('secret-value'))
+
+    assert.match((await call('update_variable', { name: 'TOKEN', secret: false })).text, /can't turn Secret off/)
+    await call('update_variable', { name: 'host', newName: 'API_HOST' })
+    assert.deepEqual((await call('get_rule', { id: H1 })).data.rule.headers, [{ name: 'X-Host', value: '{{API_HOST}}' }])
+
+    const writes = state.writes
+    const refused = await call('delete_variables', { names: ['API_HOST'] })
+    assert.equal(refused.isError, true)
+    assert.match(refused.text, /Nothing was saved.*"Uses host"/)
+    assert.equal(state.writes, writes)
+
+    const deleted = await call('delete_variables', { names: ['API_HOST'], turnOffRules: true })
+    assert.deepEqual((deleted.structuredContent as { deleted: string[]; turnedOff: { id: string }[] }).deleted, ['API_HOST'])
+    assert.deepEqual((deleted.structuredContent as { turnedOff: { id: string }[] }).turnedOff.map(rule => rule.id), [H1])
+    assert.equal(state.stored.requestHeaderRules[0].enabled, false)
+    assert.deepEqual(state.stored.variables?.map(variable => variable.name), ['TOKEN'])
   } finally { restore() }
 })
