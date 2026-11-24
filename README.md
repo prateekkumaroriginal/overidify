@@ -74,7 +74,7 @@ Keep one copy of Overidify enabled. If native Network shows Fetch/XHR calls but 
 
 Let an AI agent, such as Claude Code, Codex, or Cursor, create and edit rules for you through the Model Context Protocol. Any MCP client that supports Streamable HTTP servers works. You don't need the source code; the setup file comes from the extension.
 
-1. In Settings, click **Agents** and turn on **MCP server**.
+1. In Settings, click the sliders icon in the top-right corner, choose **Agents**, and turn on **MCP server**.
 
 To let your agent do the rest, click **Copy prompt and download setup file** and paste the prompt into Claude Code, Codex, or Cursor. The agent runs the setup file and adds Overidify to its own configuration. Keep the Agents page open until it finishes. To set it up yourself instead:
 
@@ -96,7 +96,8 @@ To let your agent do the rest, click **Copy prompt and download setup file** and
 
    Each configuration includes the access token.
 
-Agents can list, read, create, update, enable or disable, and delete Header, Switch, and Network Rules, and choose a Switch Rule's option. They use the same validation as Settings, and changes apply immediately. If Overidify asks you to reload website tabs after a Network Rule change, the agent's result says so.
+Agents can list, read, create, update, enable or disable, and delete Header, Switch, and Network Rules, and choose a Switch Rule's option. They use the same validation as Settings, and changes apply immediately.
+Agents see variables as `{{NAME}}`, never their values. When an agent writes `{{NAME}}` for a saved variable, the field uses that variable. If Overidify asks you to reload website tabs after a Network Rule change, the agent's result says so.
 
 The server runs while Chrome is open and MCP is on. It listens only on `127.0.0.1`, requires the access token, and rejects requests from web pages. **Regenerate token** disconnects agents using the old token. If the port is in use, for example by another browser profile, choose another port.
 
