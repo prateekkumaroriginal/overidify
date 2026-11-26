@@ -167,11 +167,36 @@ class ToolError extends Error {}
 // zod/mini omits default messages. Agents need them to correct their arguments.
 const ARGUMENT_ERRORS = z.locales.en().localeError
 
+/**
+ * A client whose cached tool list predates a field doesn't know its type and sends a list as JSON text.
+ * Decodes such top-level arguments when a list or object was expected, so the call works without reconnecting.
+ */
+function decodeJsonArguments(args: unknown, issues: readonly { code: string; path: readonly PropertyKey[]; expected?: string }[]): Record<string, unknown> | null {
+  if (!args || typeof args !== 'object' || Array.isArray(args)) return null
+  const decoded: Record<string, unknown> = { ...args }
+  let changed = false
+  for (const issue of issues) {
+    const key = issue.path[0]
+    if (issue.code !== 'invalid_type' || issue.path.length !== 1 || typeof key !== 'string' || !['array', 'object'].includes(issue.expected ?? '')) continue
+    const value = decoded[key]
+    if (typeof value !== 'string') continue
+    try {
+      const json: unknown = JSON.parse(value)
+      if (json && typeof json === 'object' && Array.isArray(json) === (issue.expected === 'array')) { decoded[key] = json; changed = true }
+    } catch { /* Not JSON: report the original issue. */ }
+  }
+  return changed ? decoded : null
+}
+
 export async function callMcpTool(name: string, args: unknown, deps: McpToolDeps): Promise<McpToolResult> {
   try {
     if (!Object.hasOwn(RUN, name)) throw new ToolError(`Unknown tool: ${name}.`)
     const tool = RUN[name as ToolName]
-    const parsed = tool.input.safeParse(args ?? {}, { error: ARGUMENT_ERRORS })
+    let parsed = tool.input.safeParse(args ?? {}, { error: ARGUMENT_ERRORS })
+    if (!parsed.success) {
+      const decoded = decodeJsonArguments(args, parsed.error.issues)
+      if (decoded) parsed = tool.input.safeParse(decoded, { error: ARGUMENT_ERRORS })
+    }
     if (!parsed.success) throw new ToolError(`Invalid arguments. ${formatIssues(parsed.error.issues)}`)
     const result = await (tool.run as (input: unknown, deps: McpToolDeps) => Promise<Record<string, unknown>>)(parsed.data, deps)
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }], structuredContent: result }
