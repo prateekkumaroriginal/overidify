@@ -10,7 +10,7 @@ import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from '@/comp
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { startTransition, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
-import { normalizeWebsiteScope } from '../lib/pattern'
+import { normalizeRequestDomains, normalizeWebsiteScope } from '../lib/pattern'
 import { Brand } from '../components/Brand'
 import { Icon } from '../components/Icon'
 import { HeaderRuleEditor } from '../components/HeaderRuleEditor'
@@ -187,6 +187,7 @@ export function OptionsApp() {
       url: normalizeWebsiteScope(draft.url),
       enabled: draft.enabled,
       headers: sanitizeHeaders(draft.headers),
+      excludedRequestDomains: normalizeRequestDomains(draft.excludedRequestDomains ?? []),
       order: 0,
     }
     return persistEntry(rule, ruleId, enabledChanged)

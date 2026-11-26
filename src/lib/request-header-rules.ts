@@ -1,4 +1,4 @@
-import { normalizeWebsiteScope } from './pattern.ts'
+import { normalizeRequestDomains, normalizeWebsiteScope } from './pattern.ts'
 import { isBlankTemplate, isStoredTemplate, normalizeStoredTemplate, trimTemplate } from './templates.ts'
 import { PersistedRequestHeaderRuleSchema, PersistedSwitchRuleOptionSchema } from './persisted-request-header-schemas.ts'
 import type {
@@ -20,7 +20,7 @@ export function createRuleId(): string {
 }
 
 export function createHeaderRuleDraft(): HeaderRuleDraft {
-  return { name: '', url: '*', enabled: true, headers: [createHeaderPair()] }
+  return { name: '', url: '*', enabled: true, headers: [createHeaderPair()], excludedRequestDomains: [] }
 }
 
 export function createSwitchRuleOption(name = 'Option 1'): SwitchRuleOption {
@@ -56,6 +56,7 @@ export function headerRuleToDraft(rule: HeaderRule): HeaderRuleDraft {
     url: structuredClone(rule.url),
     enabled: rule.enabled,
     headers: copyHeaders(rule.headers),
+    excludedRequestDomains: [...rule.excludedRequestDomains ?? []],
   }
 }
 
@@ -100,10 +101,12 @@ function normalizeEntry(input: unknown, index: number): RequestHeaderRule[] {
     order: candidate.order ?? index,
   }
   if (candidate.kind === 'header-rule') {
+    const excludedRequestDomains = normalizeRequestDomains(candidate.excludedRequestDomains)
     return [{
       ...base,
       kind: 'header-rule',
       headers: normalizeHeaders(candidate.headers),
+      ...excludedRequestDomains.length ? { excludedRequestDomains } : {},
     }]
   }
 

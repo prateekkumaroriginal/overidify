@@ -20,4 +20,6 @@ export type RuleDisplay = { url: PlainWebsiteScope; headers: PlainHeaderPair[] }
 export type ResolvedRequestHeaderRule = {
   id: string; kind: 'header-rule' | 'switch-rule'; name: string; url: PlainWebsiteScope; enabled: boolean; order: number
   headers: PlainHeaderPair[]; option?: string; display: RuleDisplay
+  /** Header Rules only: request domains, and their subdomains, that don't get the headers. */
+  excludedRequestDomains?: string[]
 }

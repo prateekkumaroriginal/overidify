@@ -65,6 +65,27 @@ export function isValidDomainPattern(pattern: string): boolean {
   }
 }
 
+/**
+ * A request domain a Header Rule skips, as Chrome's excludedRequestDomains expects: a lowercase
+ * punycode host with no port or wildcard. Chrome also skips its subdomains. Null when invalid.
+ */
+export function getRequestDomain(input: string): string | null {
+  const domain = getDomainPattern(input)
+  if (!domain || /[\s@\\*:[\]]/.test(domain)) return null
+  try {
+    const host = new URL(`http://${domain}`).hostname
+    // Check the parsed host: percent-escapes such as %2a decode to characters Chrome can't match.
+    return /^[a-z\d-]+(?:\.[a-z\d-]+)*$/.test(host) ? host : null
+  } catch {
+    return null
+  }
+}
+
+/** Normalized, unique excluded request domains. Invalid entries are dropped. */
+export function normalizeRequestDomains(input: readonly string[]): string[] {
+  return [...new Set(input.flatMap(domain => getRequestDomain(domain) ?? []))]
+}
+
 export function domainPatternToRegexFilter(pattern: string): string {
   // Existing entries may contain a full URL. Only their host and port matter.
   if (!isValidDomainPattern(pattern)) return '^$'
