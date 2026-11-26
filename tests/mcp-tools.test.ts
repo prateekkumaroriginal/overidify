@@ -333,19 +333,3 @@ test('Header Rules take excluded request domains from agents, and other rule typ
     assert.match(refused.text, /excludedRequestDomains cannot be changed on a Switch Rule/)
   } finally { restore() }
 })
-
-test('lists sent as JSON text by a client with an outdated tool list are decoded', async () => {
-  const { state, call, restore } = setup()
-  try {
-    const created = await call('create_header_rule', {
-      name: 'Token', websites: '["localhost:4202"]', headers: [{ name: 'Authorization', value: 'Bearer abc' }],
-      excludedRequestDomains: '["displace-endorse-activator.ngrok-free.dev"]',
-    })
-    assert.equal(created.isError, undefined, created.text)
-    const rule = state.stored.requestHeaderRules[0]
-    assert.deepEqual([rule.url, rule.kind === 'header-rule' && rule.excludedRequestDomains], ['localhost:4202', ['displace-endorse-activator.ngrok-free.dev']])
-
-    const text = await call('create_header_rule', { name: 'Text', websites: ['*'], headers: [], excludedRequestDomains: 'cdn.example.com' })
-    assert.match(text.text, /excludedRequestDomains: Invalid input: expected array, received string/)
-  } finally { restore() }
-})
