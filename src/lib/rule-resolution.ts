@@ -78,8 +78,7 @@ export function resolveRequestHeaderRule(rule: RequestHeaderRule, index: Variabl
     const check = { problems: resolver.problems, optionProblems: {}, domains }
     if (!headers || !domains || check.problems.length) return check
     return { ...check, resolved: { id: rule.id, kind: rule.kind, name: rule.name, url: plainScope(domains), enabled: rule.enabled, order: rule.order,
-      headers, ...rule.excludedRequestDomains?.length ? { excludedRequestDomains: [...rule.excludedRequestDomains] } : {},
-      display: { ...display, headers: displayHeaders(rule.headers, resolver) } } }
+      headers, display: { ...display, headers: displayHeaders(rule.headers, resolver) } } }
   }
   const selected = getSelectedOption(rule)
   const optionProblems: Record<string, RuleProblem[]> = {}

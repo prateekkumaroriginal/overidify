@@ -1,5 +1,5 @@
 import * as z from 'zod/mini'
-import { getDomainPatterns, getRequestDomain, isValidDomainPattern } from './pattern.ts'
+import { getDomainPatterns, isValidDomainPattern } from './pattern.ts'
 import { displayText, hasTokens, isBlankTemplate, isTemplateObject, normalizeStoredTemplate, TemplateTextSchema } from './templates.ts'
 import type { WebsiteScope } from './pattern.ts'
 
@@ -24,15 +24,6 @@ export const WebsiteSchema = WebsiteScopeSchema.check(z.refine(scope => {
   return patterns.length > 0 && patterns.every(pattern => hasTokens(pattern) || isValidDomainPattern(displayText(pattern)))
 }, {
   message: 'Add a website domain like localhost:4200, *.example.com, or *.',
-}))
-/** Request domains a Header Rule skips. Chrome also skips their subdomains. */
-export const ExcludedRequestDomainsSchema = z.array(z.string())
-export const ExcludedRequestDomainsDraftSchema = ExcludedRequestDomainsSchema.check(z.superRefine((domains, context) => {
-  domains.forEach((domain, index) => {
-    if (getRequestDomain(domain) === null) context.addIssue({
-      code: 'custom', path: [index], message: `${domain} is not a valid excluded domain. Use a host like cdn.example.com, without a port or *.`,
-    })
-  })
 }))
 export const requiredName = (label: string) => z.string().check(z.refine(value => Boolean(value.trim()), {
   message: `${label} is required.`,

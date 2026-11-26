@@ -1,5 +1,5 @@
 import * as z from 'zod/mini'
-import { getDomainPatterns, normalizeRequestDomains, normalizeWebsiteScope } from './pattern.ts'
+import { getDomainPatterns, normalizeWebsiteScope } from './pattern.ts'
 import { createRuleId, normalizeRequestHeaderRules, sanitizeHeaders } from './request-header-rules.ts'
 import { HeaderRuleDraftSchema, SwitchRuleDraftSchema } from './request-header-schemas.ts'
 import { cleanResponseHeaders, normalizeNetworkRules } from './network-rules.ts'
@@ -31,7 +31,7 @@ export const MCP_INSTRUCTIONS = `Overidify is a Chrome extension that changes re
 - Header Rules add or replace request headers.
 - Switch Rules hold named header options; only the selected option applies.
 - Network Rules return a mock response for one API request URL and method.
-Every rule has a website domain list (for example localhost:4200, app.example.com, *.example.com, or * for all websites). A rule applies to requests made from browser tabs whose address-bar URL matches any listed domain, including requests to other API hosts. A Header Rule can also list excluded request domains; requests to those domains and their subdomains don't get its headers. When several enabled rules set the same header or mock the same request, the later rule wins.
+Every rule has a website domain list (for example localhost:4200, app.example.com, *.example.com, or * for all websites). A rule applies to requests made from browser tabs whose address-bar URL matches any listed domain, including requests to other API hosts. When several enabled rules set the same header or mock the same request, the later rule wins.
 Text fields can use variables, managed with the variable tools. A variable appears in rules as {{NAME}}. Secret variables' values are never shown to agents. Writing {{NAME}} for a saved variable's name uses that variable; any other text stays literal. Secret variables can stay in rules that already use them but can't be added to others. A rule that can't run with the saved variables is turned off and lists its problems.
 Changes are saved and applied immediately in the browser.`
 
@@ -42,8 +42,6 @@ const HeaderInput = z.strictObject({
 })
 const Websites = z.array(z.string()).check(z.describe(
   'Website domains whose tabs the rule applies to, such as ["localhost:4200", "*.example.com"]. Use ["*"] for all websites. Full URLs are reduced to their host and port.'))
-const ExcludedRequestDomains = z.array(z.string()).check(z.describe(
-  'Header Rule only: request domains that never get its headers, such as ["cdn.example.com"]. Their subdomains are excluded too. Use hosts without a port or *; full URLs are reduced to their host.'))
 const RuleId = text('Rule ID returned by list_rules or a create tool.')
 const SwitchOptionInput = z.strictObject({
   name: text('Option name, unique within the rule, such as "Admin account".'),
@@ -66,7 +64,6 @@ const GetInput = z.strictObject({ id: RuleId })
 const CreateHeaderInput = z.strictObject({
   name: Name, websites: Websites,
   headers: z.array(HeaderInput).check(z.describe('Request headers to add or replace.')),
-  excludedRequestDomains: z._default(ExcludedRequestDomains, []),
   enabled: z._default(Enabled, true),
 })
 const CreateSwitchInput = z.strictObject({
@@ -90,7 +87,6 @@ const UpdateInput = z.strictObject({
   headers: z.optional(z.array(HeaderInput).check(z.describe('Header Rule: replaces its request headers. Network Rule: replaces its mock response headers.'))),
   options: z.optional(z.array(SwitchOptionInput).check(z.describe('Switch Rule only: replaces all options. Options keep their identity when their name is unchanged.'))),
   selectedOption: z.optional(text('Switch Rule only: name of the option to apply.')),
-  excludedRequestDomains: z.optional(ExcludedRequestDomains.check(z.describe('Header Rule only: replaces its excluded request domains. Use [] to remove them.'))),
   requestUrl: z.optional(RequestUrl), method: z.optional(Method), status: z.optional(Status),
   body: z.optional(Body), mode: z.optional(Mode),
 })
@@ -167,36 +163,11 @@ class ToolError extends Error {}
 // zod/mini omits default messages. Agents need them to correct their arguments.
 const ARGUMENT_ERRORS = z.locales.en().localeError
 
-/**
- * A client whose cached tool list predates a field doesn't know its type and sends a list as JSON text.
- * Decodes such top-level arguments when a list or object was expected, so the call works without reconnecting.
- */
-function decodeJsonArguments(args: unknown, issues: readonly { code: string; path: readonly PropertyKey[]; expected?: string }[]): Record<string, unknown> | null {
-  if (!args || typeof args !== 'object' || Array.isArray(args)) return null
-  const decoded: Record<string, unknown> = { ...args }
-  let changed = false
-  for (const issue of issues) {
-    const key = issue.path[0]
-    if (issue.code !== 'invalid_type' || issue.path.length !== 1 || typeof key !== 'string' || !['array', 'object'].includes(issue.expected ?? '')) continue
-    const value = decoded[key]
-    if (typeof value !== 'string') continue
-    try {
-      const json: unknown = JSON.parse(value)
-      if (json && typeof json === 'object' && Array.isArray(json) === (issue.expected === 'array')) { decoded[key] = json; changed = true }
-    } catch { /* Not JSON: report the original issue. */ }
-  }
-  return changed ? decoded : null
-}
-
 export async function callMcpTool(name: string, args: unknown, deps: McpToolDeps): Promise<McpToolResult> {
   try {
     if (!Object.hasOwn(RUN, name)) throw new ToolError(`Unknown tool: ${name}.`)
     const tool = RUN[name as ToolName]
-    let parsed = tool.input.safeParse(args ?? {}, { error: ARGUMENT_ERRORS })
-    if (!parsed.success) {
-      const decoded = decodeJsonArguments(args, parsed.error.issues)
-      if (decoded) parsed = tool.input.safeParse(decoded, { error: ARGUMENT_ERRORS })
-    }
+    const parsed = tool.input.safeParse(args ?? {}, { error: ARGUMENT_ERRORS })
     if (!parsed.success) throw new ToolError(`Invalid arguments. ${formatIssues(parsed.error.issues)}`)
     const result = await (tool.run as (input: unknown, deps: McpToolDeps) => Promise<Record<string, unknown>>)(parsed.data, deps)
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }], structuredContent: result }
@@ -256,7 +227,7 @@ function viewRule(saved: TransferRule, includeBody: boolean, index: VariableInde
     const body = rule.body as string
     return { ...base, requestUrl, method, mode, status, headers: toHeaders(rule.headers), ...includeBody ? { body } : { bodyLength: body.length } }
   }
-  if (rule.kind === 'header-rule') return { ...base, headers: toHeaders(rule.headers), excludedRequestDomains: rule.excludedRequestDomains ?? [] }
+  if (rule.kind === 'header-rule') return { ...base, headers: toHeaders(rule.headers) }
   return {
     ...base,
     selectedOption: rule.options.find(option => option.id === rule.selectedOptionId)?.name,
@@ -317,10 +288,7 @@ function selectOption(options: SwitchRule['options'], name: string | undefined, 
 function buildRequestHeaderRule(draft: Omit<HeaderRule, 'order'> | Omit<SwitchRule, 'order'>, order: number): RequestHeaderRule {
   if (draft.kind === 'header-rule') {
     validate(HeaderRuleDraftSchema, draft)
-    return {
-      ...draft, name: draft.name.trim(), url: normalizeWebsiteScope(draft.url), headers: sanitizeHeaders(draft.headers),
-      excludedRequestDomains: normalizeRequestDomains(draft.excludedRequestDomains ?? []), order,
-    }
+    return { ...draft, name: draft.name.trim(), url: normalizeWebsiteScope(draft.url), headers: sanitizeHeaders(draft.headers), order }
   }
   validate(SwitchRuleDraftSchema, draft)
   return {
@@ -379,7 +347,7 @@ function createRequestHeaderRule(deps: McpToolDeps, draft: (index: VariableIndex
 async function createHeaderRule(input: z.infer<typeof CreateHeaderInput>, deps: McpToolDeps) {
   return createRequestHeaderRule(deps, index => ({
     kind: 'header-rule', id: createRuleId(), name: input.name, url: fromWebsites(input.websites, linkFor(index)), enabled: input.enabled,
-    headers: fromHeaders(input.headers, linkFor(index)), excludedRequestDomains: input.excludedRequestDomains,
+    headers: fromHeaders(input.headers, linkFor(index)),
   }))
 }
 
@@ -407,7 +375,7 @@ async function createNetworkRule(input: z.infer<typeof CreateNetworkInput>, deps
 }
 
 const FIELDS_BY_TYPE = {
-  'header-rule': ['headers', 'excludedRequestDomains'],
+  'header-rule': ['headers'],
   'switch-rule': ['options', 'selectedOption'],
   'network-rule': ['requestUrl', 'method', 'status', 'body', 'headers', 'mode'],
 } as const
@@ -434,10 +402,7 @@ async function updateRule(input: z.infer<typeof UpdateInput>, deps: McpToolDeps)
     }
     let rule: RequestHeaderRule
     if (current.kind === 'header-rule') {
-      rule = buildRequestHeaderRule({
-        ...current, ...common, headers: input.headers ? fromHeaders(input.headers, link) : current.headers,
-        excludedRequestDomains: input.excludedRequestDomains ?? current.excludedRequestDomains,
-      }, current.order)
+      rule = buildRequestHeaderRule({ ...current, ...common, headers: input.headers ? fromHeaders(input.headers, link) : current.headers }, current.order)
     } else {
       const options = input.options ? buildSwitchOptions(input.options, link, current.options) : current.options
       rule = buildRequestHeaderRule({

@@ -9,7 +9,6 @@ export const PersistedRequestHeaderRuleSchema = z.object({
   id: RuleIdSchema, name: z.catch(z.string(), ''),
   url: PersistedWebsiteScopeSchema, enabled: z.catch(z.boolean(), true),
   order: z.catch(z.optional(z.number()), undefined), kind: z.enum(['header-rule', 'switch-rule']),
-  headers: z.optional(z.unknown()),
-  excludedRequestDomains: z.catch(z.array(z.string()), []), options: z.catch(z.array(z.unknown()), []),
+  headers: z.optional(z.unknown()), options: z.catch(z.array(z.unknown()), []),
   selectedOptionId: z.catch(z.optional(RuleIdSchema), undefined),
 })
