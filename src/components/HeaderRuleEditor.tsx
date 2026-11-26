@@ -2,7 +2,6 @@ import { toast } from 'sonner'
 import { Check, Plus, X } from 'lucide-react'
 import { useRef } from 'react'
 import { WebsiteDomains } from './WebsiteDomains'
-import { ExcludedRequestDomains } from './ExcludedRequestDomains'
 import type { WebsiteDomainsHandle } from './WebsiteDomains'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -75,11 +74,6 @@ export function HeaderRuleEditor({ headerRule, pending, onSave, onDelete }: Head
               </label>
               <Controller control={form.control} name="url" render={({ field, fieldState }) => (
                 <WebsiteDomains ref={domainsRef} disabled={busy} value={field.value} onChange={field.onChange} onBlur={field.onBlur} onPendingChange={setPendingInput} inputRef={field.ref} error={fieldState.error?.message} />
-              )} />
-            </div>
-            <div className="mb-[22px]">
-              <Controller control={form.control} name="excludedRequestDomains" render={({ field, fieldState }) => (
-                <ExcludedRequestDomains disabled={busy} value={field.value ?? []} onChange={field.onChange} onBlur={field.onBlur} inputRef={field.ref} error={fieldState.error} />
               )} />
             </div>
             <div className="flex items-center justify-between gap-5 border-t py-[17px]">

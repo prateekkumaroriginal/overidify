@@ -215,12 +215,3 @@ test('Header Rules, Switch Rules, and popup match identical page domains regardl
     }
   }
 })
-
-test('a Header Rule skips its excluded request domains without narrowing other rules in the same tab', () => {
-  const excluding: RequestHeaderRule = { ...localhostRule, id: '00000000-0000-4000-8000-0000000000e1', name: 'Token',
-    headers: [{ key: 'Authorization', value: 'Bearer abc' }], excludedRequestDomains: ['cdn.example.com', 'tracker.example.net'] }
-  const [origin, token] = requestHeaderRulesToSessionRules([localhostRule, { ...excluding, order: 1 }], [{ id: 7, url: 'http://localhost:4200/app' }])
-  assert.equal(origin.condition.excludedRequestDomains, undefined)
-  assert.deepEqual(token.condition.excludedRequestDomains, ['cdn.example.com', 'tracker.example.net'])
-  assert.deepEqual(token.condition.tabIds, [7])
-})

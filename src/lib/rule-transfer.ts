@@ -16,7 +16,7 @@ export type ImportReview = { rules: RuleCollection; issues: ImportIssue[]; overl
 export type ImportAction = 'replace' | 'add'
 
 const EnvelopeSchema = z.object({
-  format: z.literal('overidify'), version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+  format: z.literal('overidify'), version: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   requestHeaderRules: z.array(z.unknown()), networkRules: z.array(z.unknown()),
 })
 export function ruleType(rule: TransferRule): 'header-rule' | 'switch-rule' | 'network-rule' {
@@ -29,17 +29,13 @@ const ruleUsesVariables = (rule: TransferRule) => {
   return found
 }
 
-const ruleExcludesRequestDomains = (rule: TransferRule) => 'kind' in rule && rule.kind === 'header-rule' && !!rule.excludedRequestDomains?.length
-
 /**
  * Variables are exported by name as `{ "variable": "NAME" }`, never with their values.
- * Version 4 marks files with excluded request domains, so older extensions reject them instead of
- * dropping the exclusions and sending headers to those domains. Version 3 marks files with variables;
- * files without either keep versions 1 and 2.
+ * Version 3 marks files with variables; files without them keep versions 1 and 2.
  */
 export function exportRules(rules: RuleCollection): string {
   const all = [...rules.requestHeaderRules, ...rules.networkRules]
-  const version = all.some(ruleExcludesRequestDomains) ? 4 : all.some(ruleUsesVariables) ? 3 : all.some(rule => Array.isArray(rule.url)) ? 2 : 1
+  const version = all.some(ruleUsesVariables) ? 3 : all.some(rule => Array.isArray(rule.url)) ? 2 : 1
   const byName = <Rule extends TransferRule>(rule: Rule) => mapRuleTemplates(rule, value => hasTokens(value)
     ? { segments: value.segments.map(segment => typeof segment === 'string' ? segment : { variable: segment.name }) } as never
     : value)
@@ -49,7 +45,7 @@ export function exportRules(rules: RuleCollection): string {
 
 /**
  * Links exported `{ "variable": "NAME" }` parts to local variables by name, ignoring case.
- * Only version 3 and later files hold variables, and only in that shape; anything else makes the rule invalid.
+ * Only version 3 files hold variables, and only in that shape; anything else makes the rule invalid.
  */
 function linkImportedField(value: unknown, index: ReturnType<typeof indexVariables>, allowVariables: boolean): unknown {
   if (Array.isArray(value)) return value.map(item => isTemplateObject(item) ? linkImportedField(item, index, allowVariables) : item)
@@ -83,7 +79,7 @@ export function reviewImport(text: string, existing: RuleCollection, variables: 
   if (!envelope.success) throw new Error('This is not a supported Overidify export. Check the file format and version.')
   // Older files keep {{NAME}} text literal.
   const index = indexVariables(variables)
-  const link = (values: unknown[]) => values.map(value => linkImportedVariables(value, index, envelope.data.version >= 3))
+  const link = (values: unknown[]) => values.map(value => linkImportedVariables(value, index, envelope.data.version === 3))
   const incomingHeaderRules = link(envelope.data.requestHeaderRules)
   const incomingNetworkRules = link(envelope.data.networkRules)
   const incoming = [...incomingHeaderRules, ...incomingNetworkRules]
