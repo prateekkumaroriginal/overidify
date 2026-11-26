@@ -41,6 +41,7 @@ export function HeaderRulesList({
           onToggle={(enabled) => onToggle(headerRule, enabled)}
         >
           {headerRule.headers.length} header{headerRule.headers.length === 1 ? '' : 's'}
+          {headerRule.excludedRequestDomains?.length ? ` · Excludes ${headerRule.excludedRequestDomains.join(', ')}` : ''}
         </RuleCard>
       ))}
     </ul>

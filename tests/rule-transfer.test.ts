@@ -73,3 +73,16 @@ test('UUID letter casing cannot break the selected option or hide a duplicate ru
   const duplicates = reviewImport(exportRules({ ...empty, requestHeaderRules: [{ ...header, id }, { ...header, id: id.toUpperCase() }] }), empty)
   assert.equal(duplicates.issues.length, 2)
 })
+
+test('excluded request domains export as version 4, round-trip, and are validated on import', () => {
+  const excluding = { ...header, excludedRequestDomains: ['cdn.example.com'] }
+  const file = exportRules({ requestHeaderRules: [excluding], networkRules: [] })
+  assert.equal(JSON.parse(file).version, 4)
+  const review = reviewImport(file, empty)
+  assert.deepEqual(review.issues, [])
+  assert.deepEqual(applyImport(empty, review, 'add').requestHeaderRules, [excluding])
+  assert.equal(JSON.parse(exportRules({ requestHeaderRules: [header], networkRules: [] })).version, 1)
+
+  const invalid = JSON.stringify({ format: 'overidify', version: 4, requestHeaderRules: [{ ...header, excludedRequestDomains: ['localhost:3000'] }], networkRules: [] })
+  assert.match(reviewImport(invalid, empty).issues[0].message, /excludedRequestDomains\.0: localhost:3000 is not a valid excluded domain/)
+})

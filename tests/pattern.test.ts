@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { domainPatternToRegexFilter, getDomainPattern, isValidDomainPattern } from '../src/lib/pattern.ts'
+import { domainPatternToRegexFilter, getDomainPattern, getRequestDomain, isValidDomainPattern, normalizeRequestDomains } from '../src/lib/pattern.ts'
 
 test('entry domains ignore schemes, paths, queries, and fragments', () => {
   for (const input of ['localhost:4200', 'http://localhost:4200/messages', 'https://LOCALHOST:4200/other?test=1#tab']) {
@@ -39,4 +39,13 @@ test('invalid domains cannot produce a rule matching every request', () => {
   }
   assert.equal(isValidDomainPattern('http://[::1]:4200/messages'), true)
   assert.equal(new RegExp(domainPatternToRegexFilter('[::1]:4200')).test('http://[::1]:4200/api'), true)
+})
+
+test('excluded request domains keep only a host Chrome can exclude', () => {
+  assert.equal(getRequestDomain('https://CDN.Example.com/assets?x=1'), 'cdn.example.com')
+  assert.equal(getRequestDomain('bücher.example'), 'xn--bcher-kva.example')
+  for (const input of ['', '*.example.com', '*', 'localhost:3000', 'user@example.com', '[::1]', 'bad domain', '.example.com']) {
+    assert.equal(getRequestDomain(input), null, input)
+  }
+  assert.deepEqual(normalizeRequestDomains(['cdn.example.com', 'https://cdn.example.com/', 'localhost:3000', 'api.example.net']), ['cdn.example.com', 'api.example.net'])
 })

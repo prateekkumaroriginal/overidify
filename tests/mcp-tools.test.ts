@@ -51,7 +51,7 @@ test('created rules are normalized, appended after existing rules, and activated
     assert.equal(header.isError, undefined)
     assert.deepEqual(header.data.rule, {
       id: header.data.rule.id, type: 'header', name: 'Local token', enabled: true,
-      websites: ['localhost:4200', '*.example.com'], headers: [{ name: 'Authorization', value: 'Bearer abc' }],
+      websites: ['localhost:4200', '*.example.com'], headers: [{ name: 'Authorization', value: 'Bearer abc' }], excludedRequestDomains: [],
     })
     assert.deepEqual(header.data.activation, { applied: true })
 
@@ -300,5 +300,36 @@ test('agents cannot link a secret into a rule by renaming or creating it under a
     assert.equal(state.writes, writes)
     // A non-secret variable may fill the dangling reference.
     assert.equal((await call('create_variable', { name: 'API_KEY', value: 'x' })).isError, undefined)
+  } finally { restore() }
+})
+
+test('Header Rules take excluded request domains from agents, and other rule types refuse them', async () => {
+  const { state, call, restore } = setup()
+  try {
+    const created = await call('create_header_rule', {
+      name: 'Token', websites: ['*'], headers: [{ name: 'Authorization', value: 'Bearer abc' }],
+      excludedRequestDomains: ['https://CDN.example.com/assets', 'cdn.example.com', 'tracker.example.net'],
+    })
+    assert.deepEqual(state.stored.requestHeaderRules[0].kind === 'header-rule' && state.stored.requestHeaderRules[0].excludedRequestDomains,
+      ['cdn.example.com', 'tracker.example.net'])
+    const id = created.data.rule.id
+
+    const invalid = await call('update_rule', { id, excludedRequestDomains: ['*.example.com', 'localhost:3000'] })
+    assert.equal(invalid.isError, true)
+    assert.match(invalid.text, /excludedRequestDomains\.0: \*\.example\.com is not a valid excluded domain/)
+    assert.match(invalid.text, /excludedRequestDomains\.1: localhost:3000 is not a valid excluded domain/)
+
+    await call('update_rule', { id, name: 'Renamed' })
+    assert.deepEqual((await call('get_rule', { id })).data.rule, {
+      id, type: 'header', name: 'Renamed', enabled: true, websites: ['*'], headers: [{ name: 'Authorization', value: 'Bearer abc' }],
+      excludedRequestDomains: ['cdn.example.com', 'tracker.example.net'],
+    })
+    await call('update_rule', { id, excludedRequestDomains: [] })
+    assert.equal('excludedRequestDomains' in state.stored.requestHeaderRules[0], false)
+
+    const switchRule = await call('create_switch_rule', { name: 'Accounts', websites: ['*'], options: [{ name: 'Admin', headers: [{ name: 'X-User', value: 'admin' }] }] })
+    const refused = await call('update_rule', { id: switchRule.data.rule.id, excludedRequestDomains: ['cdn.example.com'] })
+    assert.equal(refused.isError, true)
+    assert.match(refused.text, /excludedRequestDomains cannot be changed on a Switch Rule/)
   } finally { restore() }
 })

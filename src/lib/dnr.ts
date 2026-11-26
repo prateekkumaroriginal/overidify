@@ -54,6 +54,7 @@ function compileRequestHeaderRules(
           tabIds,
           regexFilter: '^(https?|wss?)://',
           resourceTypes: RESOURCE_TYPES,
+          ...rule.excludedRequestDomains?.length ? { excludedRequestDomains: rule.excludedRequestDomains } : {},
         },
       } }]
     })

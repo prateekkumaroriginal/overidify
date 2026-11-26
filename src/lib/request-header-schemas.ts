@@ -1,7 +1,10 @@
 import * as z from 'zod/mini'
-import { EntryShape, HeaderPairSchema, isBlank, requiredName, RuleIdSchema, WebsiteSchema } from './schema-fields.ts'
+import { EntryShape, ExcludedRequestDomainsDraftSchema, ExcludedRequestDomainsSchema, HeaderPairSchema, isBlank, requiredName, RuleIdSchema, WebsiteSchema } from './schema-fields.ts'
 
-export const HeaderRuleSchema = z.object({ ...EntryShape, kind: z.literal('header-rule'), headers: z.array(HeaderPairSchema) })
+export const HeaderRuleSchema = z.object({
+  ...EntryShape, kind: z.literal('header-rule'), headers: z.array(HeaderPairSchema),
+  excludedRequestDomains: z.optional(ExcludedRequestDomainsSchema),
+})
 export const SwitchRuleOptionSchema = z.object({ id: RuleIdSchema, name: z.string(), headers: z.array(HeaderPairSchema) })
 export const SwitchRuleSchema = z.object({
   ...EntryShape, kind: z.literal('switch-rule'), options: z.array(SwitchRuleOptionSchema), selectedOptionId: RuleIdSchema,
@@ -20,6 +23,7 @@ const RequestHeadersSchema = z.array(HeaderPairSchema).check(
 )
 export const HeaderRuleDraftSchema = z.object({
   name: requiredName('Header rule name'), url: WebsiteSchema, enabled: z.boolean(), headers: RequestHeadersSchema,
+  excludedRequestDomains: z.optional(ExcludedRequestDomainsDraftSchema),
 })
 export const SwitchRuleDraftSchema = z.object({
   name: requiredName('Switch rule name'), url: WebsiteSchema, enabled: z.boolean(), selectedOptionId: RuleIdSchema,

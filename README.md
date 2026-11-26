@@ -44,6 +44,8 @@ Add more domains in the same field to share one rule across websites. Each domai
 
 The domains identify websites in your address bar. A rule applies when any listed domain matches. Requests from those websites receive the header even when they call another host, such as `https://api.example.com`. Header, Switch, and Network Rules use the same domain list and matching behavior, including in the popup.
 
+To keep a Header Rule's headers away from some hosts, list them under **Excluded request domains**, separated by commas or spaces, such as `cdn.example.com, analytics.example.net`. Requests to those domains and their subdomains don't get the rule's headers; other requests from the website still do. Enter hosts without a port or `*`.
+
 Open the extension popup on a website to toggle matching rules or choose a Switch Rule option. Your rules are saved locally in your browser.
 
 ### Variables
