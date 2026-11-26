@@ -74,7 +74,8 @@ export function getRequestDomain(input: string): string | null {
   if (!domain || /[\s@\\*:[\]]/.test(domain)) return null
   try {
     const host = new URL(`http://${domain}`).hostname
-    return host && !host.startsWith('.') && !host.endsWith('.') ? host : null
+    // Check the parsed host: percent-escapes such as %2a decode to characters Chrome can't match.
+    return /^[a-z\d-]+(?:\.[a-z\d-]+)*$/.test(host) ? host : null
   } catch {
     return null
   }

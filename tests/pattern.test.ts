@@ -44,7 +44,7 @@ test('invalid domains cannot produce a rule matching every request', () => {
 test('excluded request domains keep only a host Chrome can exclude', () => {
   assert.equal(getRequestDomain('https://CDN.Example.com/assets?x=1'), 'cdn.example.com')
   assert.equal(getRequestDomain('bücher.example'), 'xn--bcher-kva.example')
-  for (const input of ['', '*.example.com', '*', 'localhost:3000', 'user@example.com', '[::1]', 'bad domain', '.example.com']) {
+  for (const input of ['', '*.example.com', '*', 'localhost:3000', 'user@example.com', '[::1]', 'bad domain', '.example.com', '%2a.example.com']) {
     assert.equal(getRequestDomain(input), null, input)
   }
   assert.deepEqual(normalizeRequestDomains(['cdn.example.com', 'https://cdn.example.com/', 'localhost:3000', 'api.example.net']), ['cdn.example.com', 'api.example.net'])
